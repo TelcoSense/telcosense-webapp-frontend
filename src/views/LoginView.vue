@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { api } from '@/api'
-import { useRouter } from 'vue-router'
-import { reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import axios from 'axios'
+import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -16,12 +17,11 @@ async function login() {
   try {
     const res = await api.post('/login', formData)
     if (res.data.message === 'Login successful') {
-      // manually set the user store after successful login
       await auth.checkLogin()
       router.push({ name: 'home' })
     }
   } catch (err) {
-    if (err instanceof Error) {
+    if (axios.isAxiosError(err) && err.response) {
       console.error('Caught error:', err.response.data.message)
       alert(err.response.data.message)
     } else {
@@ -32,13 +32,13 @@ async function login() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-800 text-white">
+  <div class="font-inter min-h-screen bg-gray-800 text-white">
     <main class="flex h-screen items-center justify-center">
       <div class="w-full max-w-md border border-gray-700 bg-gray-800 p-6">
         <h2 class="mb-6 text-center text-xl">Login</h2>
         <form @submit.prevent="login" method="POST" class="space-y-5">
           <div>
-            <label for="username" class="mb-1 block text-sm font-medium">Username</label>
+            <label for="username" class="mb-1 block font-medium">Username</label>
             <input
               type="text"
               id="username"
@@ -50,7 +50,7 @@ async function login() {
             />
           </div>
           <div>
-            <label for="password" class="mb-1 block text-sm font-medium">Password</label>
+            <label for="password" class="mb-1 block font-medium">Password</label>
             <input
               type="password"
               id="password"
