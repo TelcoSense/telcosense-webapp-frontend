@@ -1,4 +1,3 @@
-
 import { api } from '@/api'
 import getSecureConfig from '@/cookies'
 import { defineStore } from 'pinia'
@@ -34,9 +33,9 @@ export const useLinksStore = defineStore('links', {
     selectedTechnologies: [] as string[],
     selectedPolarizations: ['V', 'H', 'X'] as ('V' | 'H' | 'X')[],
     minDistance: 0,
-    maxDistance: Infinity,
+    maxDistance: 100000,
     minFrequency: 0,
-    maxFrequency: Infinity,
+    maxFrequency: 100000,
   }),
 
   actions: {
@@ -62,12 +61,12 @@ export const useLinksStore = defineStore('links', {
     },
     resetLengthFilter() {
       this.minDistance = 0
-      this.maxDistance = Infinity
+      this.maxDistance = 100000
     },
     resetFrequencyFilter() {
       this.minFrequency = 0
-      this.maxFrequency = Infinity
-    }
+      this.maxFrequency = 100000
+    },
   },
 
   getters: {
@@ -86,10 +85,10 @@ export const useLinksStore = defineStore('links', {
       return grouped
     },
     allGroups(state): string[] {
-      return [...new Set(state.links.map(link => link.influx_mapping))]
+      return [...new Set(state.links.map((link) => link.influx_mapping))]
     },
     allTechnologies(state): string[] {
-      return [...new Set(state.links.map(link => link.technology))]
+      return [...new Set(state.links.map((link) => link.technology))]
     },
 
     filteredLinks(state): Link[] {
@@ -98,7 +97,7 @@ export const useLinksStore = defineStore('links', {
       const minFreq = isFinite(state.minFrequency) ? state.minFrequency : 0
       const maxFreq = isFinite(state.maxFrequency) ? state.maxFrequency : Infinity
 
-      return state.links.filter(link => {
+      return state.links.filter((link) => {
         const inGroup = state.selectedGroups.includes(link.influx_mapping)
         const inTech = state.selectedTechnologies.includes(link.technology)
         const inPol = state.selectedPolarizations.includes(link.polarization)
@@ -112,7 +111,8 @@ export const useLinksStore = defineStore('links', {
 
         return inGroup && inTech && inPol && inLength && inFreq
       })
-    }
+    },
 
-  }
+    hasLinks: (state) => state.links.length > 0,
+  },
 })

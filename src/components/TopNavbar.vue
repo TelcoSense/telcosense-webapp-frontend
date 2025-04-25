@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { api } from '@/api'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
-import { useWeatherStationsStore } from '@/stores/weatherStations'
 import { useLinksStore } from '@/stores/links'
+import { useWeatherStationsStore } from '@/stores/weatherStations'
+import axios from 'axios'
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -20,7 +21,7 @@ async function logout() {
       router.push({ name: 'login' })
     }
   } catch (err) {
-    if (err instanceof Error) {
+    if (axios.isAxiosError(err) && err.response) {
       console.error('Caught error:', err.response.data.message)
       alert(err.response.data.message)
     } else {
@@ -31,13 +32,28 @@ async function logout() {
 </script>
 
 <template>
-  <nav class="h-16 bg-gray-800 px-6 text-gray-100">
-    <div class="flex h-full items-center justify-between">
-      <div class="text-xl">TelcoSense</div>
-      <div class="flex">
-        <span class="font-semibold">{{ auth.username }}</span>
-        <button @click="logout()" class="ml-1 cursor-pointer hover:underline">Log out</button>
-      </div>
+  <nav class="absolute top-6 z-10 flex w-full items-end justify-between px-6">
+    <span
+      class="flex h-8 items-center justify-center rounded-md bg-gray-800 px-3 text-xl text-white"
+      >TelcoSense</span
+    >
+
+    <div class="flex gap-x-3">
+      <slot></slot>
+    </div>
+
+    <div class="flex items-center gap-x-3 rounded-md text-white">
+      <span
+        class="flex h-8 items-center rounded-md bg-gray-300/75 px-3 font-semibold text-gray-800"
+        >{{ auth.username }}</span
+      >
+
+      <button
+        @click="logout()"
+        class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-white hover:bg-cyan-700"
+      >
+        Log out
+      </button>
     </div>
   </nav>
 </template>

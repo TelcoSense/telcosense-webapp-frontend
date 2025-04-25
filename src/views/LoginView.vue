@@ -33,9 +33,9 @@ async function login() {
 
 <template>
   <div class="font-inter min-h-screen bg-gray-800 text-white">
-    <main class="flex h-screen items-center justify-center">
+    <main class="flex h-screen flex-col items-center justify-center">
+      <h2 class="mb-4 text-center text-xl">TelcoSense</h2>
       <div class="w-full max-w-md border border-gray-700 bg-gray-800 p-6">
-        <h2 class="mb-6 text-center text-xl">Login</h2>
         <form @submit.prevent="login" method="POST" class="space-y-5">
           <div>
             <label for="username" class="mb-1 block font-medium">Username</label>

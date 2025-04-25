@@ -1,16 +1,19 @@
 <script setup lang="ts">
+import { LCircleMarker, LMap, LPolyline, LTileLayer, LTooltip } from '@vue-leaflet/vue-leaflet'
+import 'leaflet/dist/leaflet.css'
+
 import { useLinksStore } from '@/stores/links'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
-import { LCircleMarker, LMap, LTileLayer, LTooltip, LPolyline } from '@vue-leaflet/vue-leaflet'
-import 'leaflet/dist/leaflet.css'
 import { onMounted, ref, watch } from 'vue'
-import TopNavbar from '../components/TopNavbar.vue'
+
+import TopNavbar from '@/components/TopNavbar.vue'
 
 const mapCenter = ref([49.74379, 15.33863])
 
-const weatherStationsVisible = ref(false)
+const weatherStationsVisible = ref(true)
 const weatherStations = useWeatherStationsStore()
 
+const linksVisible = ref(true)
 const links = useLinksStore()
 
 onMounted(async () => {
@@ -83,10 +86,17 @@ watch(
 
 <template>
   <div class="font-inter min-h-screen">
-    <TopNavbar />
-    <main class="h-[calc(100vh-4rem)]">
-      <div class="relative h-full w-full">
-        <LMap ref="map" :zoom="8" :center="mapCenter" :use-global-leaflet="false" class="z-0">
+    <!-- <TopNavbar /> -->
+    <main class="h-[calc(100vh)]">
+      <div class="relative flex h-full w-full flex-row items-center justify-end">
+        <LMap
+          ref="map"
+          :zoom="8"
+          :center="mapCenter"
+          :use-global-leaflet="false"
+          class="z-0"
+          :options="{ zoomControl: false }"
+        >
           <LTileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&amp;copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
@@ -113,71 +123,82 @@ watch(
               ></LTooltip>
             </LCircleMarker>
           </div>
-
-          <L-Polyline
-            v-for="link in links.filteredLinks"
-            :lat-lngs="[
-              [link.site_A.y, link.site_A.x],
-              [link.site_B.y, link.site_B.x],
-            ]"
-            color="black"
-            :key="link?.id"
-          >
-            <LTooltip :options="{ offset: [30, 0] }" class="font-inter text-black">
-              <div class="mb-1 border-b text-base font-semibold">Link ID: {{ link.id }}</div>
-              <div class="text-base">
-                Site A: {{ link.site_A.name }}<br />
-                Site B: {{ link.site_B.name }}<br />
-                IP Address A: {{ link.ip_address_A }}<br />
-                IP Address B: {{ link.ip_address_B }}<br />
-                Frequency A: {{ link.frequency_A / 1000 }} GHz<br />
-                Frequency B: {{ link.frequency_B / 1000 }} GHz<br />
-                Length: {{ link.length }} m<br />
-                Polarization: {{ link.polarization }}<br />
-                Tech: {{ link.technology }}<br />
-              </div>
-            </LTooltip>
-          </L-Polyline>
+          <div v-if="linksVisible">
+            <L-Polyline
+              v-for="link in links.filteredLinks"
+              :lat-lngs="[
+                [link.site_A.y, link.site_A.x],
+                [link.site_B.y, link.site_B.x],
+              ]"
+              color="black"
+              :key="link?.id"
+            >
+              <LTooltip :options="{ offset: [30, 0] }" class="font-inter text-black">
+                <div class="mb-1 border-b text-base font-semibold">Link ID: {{ link.id }}</div>
+                <div class="text-base">
+                  Site A: {{ link.site_A.name }}<br />
+                  Site B: {{ link.site_B.name }}<br />
+                  IP Address A: {{ link.ip_address_A }}<br />
+                  IP Address B: {{ link.ip_address_B }}<br />
+                  Frequency A: {{ link.frequency_A / 1000 }} GHz<br />
+                  Frequency B: {{ link.frequency_B / 1000 }} GHz<br />
+                  Length: {{ link.length }} m<br />
+                  Polarization: {{ link.polarization }}<br />
+                  Tech: {{ link.technology }}<br />
+                </div>
+              </LTooltip>
+            </L-Polyline>
+          </div>
         </LMap>
-        <div class="absolute top-4 z-10 flex w-full items-center justify-center gap-x-2">
+
+        <TopNavbar>
           <button
             v-if="weatherStations.hasStations"
-            class="cursor-pointer border bg-amber-200 p-1 hover:bg-amber-300"
+            class="h-8 cursor-pointer rounded-md border bg-amber-200 px-3 hover:bg-amber-300"
             :class="{ 'bg-amber-300': weatherStationsVisible }"
             @click="weatherStationsVisible = !weatherStationsVisible"
           >
             Weather stations
           </button>
-        </div>
+          <button
+            v-if="links.hasLinks"
+            class="h-8 cursor-pointer rounded-md border bg-amber-200 px-3 hover:bg-amber-300"
+            :class="{ 'bg-amber-300': linksVisible }"
+            @click="linksVisible = !linksVisible"
+          >
+            Links
+          </button>
+        </TopNavbar>
+
         <!-- link filter -->
         <div
           v-if="!links.loading"
-          class="scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 absolute top-4 right-4 z-20 max-h-[80vh] w-[320px] overflow-y-scroll bg-gray-800 p-4 text-white"
+          class="absolute right-6 z-20 h-[75vh] w-[320px] overflow-y-scroll rounded-md bg-gray-800 p-4 text-white"
         >
           <!-- length -->
           <div class="mb-3 border border-gray-700 p-4">
             <div class="flex justify-between">
-              <label class="text-white">Length filter [m]</label>
+              <label class="text-white">Length (m)</label>
               <button @click="links.resetLengthFilter" class="cursor-pointer hover:underline">
                 Reset
               </button>
             </div>
-            <div class="mt-1 flex justify-between gap-3">
-              <div class="flex items-center bg-gray-700 px-2 py-1">
-                <span class="mr-1 text-sm text-gray-400">Min</span>
+            <div class="mt-1 flex justify-between">
+              <div class="flex py-1">
+                <span class="mr-1 py-1 text-sm text-gray-400">Min</span>
                 <input
                   type="number"
                   v-model.number="links.minDistance"
-                  class="w-16 bg-transparent text-sm text-white focus:outline-none"
+                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
                   min="0"
                 />
               </div>
-              <div class="flex items-center bg-gray-700 px-2 py-1">
-                <span class="mr-1 text-sm text-gray-400">Max</span>
+              <div class="flex py-1">
+                <span class="mr-1 py-1 text-sm text-gray-400">Max</span>
                 <input
                   type="number"
                   v-model.number="links.maxDistance"
-                  class="w-16 bg-transparent text-sm text-white focus:outline-none"
+                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
                   min="0"
                 />
               </div>
@@ -186,29 +207,35 @@ watch(
           <!-- freqs -->
           <div class="mb-3 border border-gray-700 p-4">
             <div class="flex justify-between">
-              <label class="text-white">Frequency filter [GHz]</label>
+              <label class="text-white">Frequency (GHz)</label>
               <button @click="links.resetFrequencyFilter" class="cursor-pointer hover:underline">
                 Reset
               </button>
             </div>
-            <div class="mt-1 flex justify-between gap-3">
-              <div class="flex items-center bg-gray-700 px-2 py-1">
-                <span class="mr-1 text-sm text-gray-400">Min</span>
+            <div class="mt-1 flex justify-between">
+              <div class="flex py-1">
+                <span class="mr-1 py-1 text-sm text-gray-400">Min</span>
                 <input
                   type="number"
                   :value="links.minFrequency / 1000"
-                  @input="(e) => (links.minFrequency = parseFloat(e.target.value) * 1000)"
-                  class="w-16 bg-transparent text-sm text-white focus:outline-none"
+                  @input="
+                    (e) =>
+                      (links.minFrequency = parseFloat((e.target as HTMLInputElement).value) * 1000)
+                  "
+                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
                   min="0"
                 />
               </div>
-              <div class="flex items-center bg-gray-700 px-2 py-1">
-                <span class="mr-1 text-sm text-gray-400">Max</span>
+              <div class="flex py-1">
+                <span class="mr-1 py-1 text-sm text-gray-400">Max</span>
                 <input
                   type="number"
                   :value="links.maxFrequency / 1000"
-                  @input="(e) => (links.maxFrequency = parseFloat(e.target.value) * 1000)"
-                  class="w-16 bg-transparent text-sm text-white focus:outline-none"
+                  @input="
+                    (e) =>
+                      (links.maxFrequency = parseFloat((e.target as HTMLInputElement).value) * 1000)
+                  "
+                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
                   min="0"
                 />
               </div>
@@ -234,7 +261,7 @@ watch(
               class="border border-gray-700 p-4"
             >
               <div class="flex items-center justify-between">
-                <label class="flex cursor-pointer items-center font-semibold">
+                <label class="flex cursor-pointer items-center">
                   <input
                     type="checkbox"
                     class="mr-2"
