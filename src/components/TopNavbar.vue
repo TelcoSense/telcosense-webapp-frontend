@@ -2,15 +2,21 @@
 import { api } from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useWeatherStationsStore } from '@/stores/weatherStations'
+import { useLinksStore } from '@/stores/links'
 
 const router = useRouter()
 const auth = useAuthStore()
+const links = useLinksStore()
+const weatherStations = useWeatherStationsStore()
 
 async function logout() {
   try {
     const res = await api.post('/logout')
     if (res.data.message === 'Logout successful') {
       await auth.checkLogin()
+      links.$reset()
+      weatherStations.$reset()
       router.push({ name: 'login' })
     }
   } catch (err) {
