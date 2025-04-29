@@ -1,306 +1,162 @@
 <script setup lang="ts">
-import { LCircleMarker, LMap, LPolyline, LTileLayer, LTooltip } from '@vue-leaflet/vue-leaflet'
 import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
 
 import { useLinksStore } from '@/stores/links'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 import { onMounted, ref, watch } from 'vue'
 
 import TopNavbar from '@/components/TopNavbar.vue'
+import LinkFilter from '@/components/LinkFilter.vue'
 
-const mapCenter = ref([49.74379, 15.33863])
-
-const weatherStationsVisible = ref(true)
 const weatherStations = useWeatherStationsStore()
 
-const linksVisible = ref(true)
 const links = useLinksStore()
 
+const map = ref(null)
+
+const stationsGroup = ref(null)
+const linksGroup = ref(null)
+
 onMounted(async () => {
+  initMap()
+
   await weatherStations.fetchWeatherStations()
   await links.fetchLinks()
 })
 
-function toggleGroup(group: string) {
-  const techs = Object.keys(links.groupedLinksByMappingAndTechnology[group] || [])
+function initMap() {
+  map.value = L.map('map', {
+    preferCanvas: true,
+    zoomControl: false,
+    renderer: L.canvas(),
+  }).setView([49.74379, 15.33863], 8)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(map.value)
 
-  const allTechsSelected = techs.every((t) => links.selectedTechnologies.includes(t))
-
-  if (allTechsSelected) {
-    // Remove all techs in this group
-    links.selectedTechnologies = links.selectedTechnologies.filter((t) => !techs.includes(t))
-  } else {
-    // Add all techs in this group
-    links.selectedTechnologies = [...new Set([...links.selectedTechnologies, ...techs])]
-  }
-
-  // Now sync selectedGroups based on selectedTechnologies
-  const stillSelected = techs.some((t) => links.selectedTechnologies.includes(t))
-  if (stillSelected) {
-    if (!links.selectedGroups.includes(group)) {
-      links.selectedGroups.push(group)
-    }
-  } else {
-    links.selectedGroups = links.selectedGroups.filter((g) => g !== group)
-  }
+  stationsGroup.value = L.layerGroup().addTo(map.value)
+  linksGroup.value = L.layerGroup().addTo(map.value)
 }
 
-function toggleTech(group: string, tech: string) {
-  const isSelected = links.selectedTechnologies.includes(tech)
-
-  if (isSelected) {
-    links.selectedTechnologies = links.selectedTechnologies.filter((t) => t !== tech)
-  } else {
-    links.selectedTechnologies.push(tech)
-  }
-
-  // Sync selectedGroups based on techs inside the group
-  const techsInGroup = Object.keys(links.groupedLinksByMappingAndTechnology[group] || [])
-  const anyTechSelected = techsInGroup.some((t) => links.selectedTechnologies.includes(t))
-
-  if (anyTechSelected) {
-    if (!links.selectedGroups.includes(group)) {
-      links.selectedGroups.push(group)
-    }
-  } else {
-    links.selectedGroups = links.selectedGroups.filter((g) => g !== group)
-  }
+function drawLinks() {
+  linksGroup.value.clearLayers()
+  links.filteredLinks.forEach((link) => {
+    const latA = link?.site_A?.y
+    const lngA = link?.site_A?.x
+    const latB = link?.site_B?.y
+    const lngB = link?.site_B?.x
+    const polyline = L.polyline(
+      [
+        [latA, lngA],
+        [latB, lngB],
+      ],
+      { color: 'black' },
+    )
+    polyline.bindTooltip(
+      `<div class="font-inter text-black">
+      <div class="mb-1 border-b text-base font-semibold border-gray-300">Link ID: ${link.id}</div>
+      <div class="text-base">
+        Site A: ${link.site_A.name}<br />
+        Site B: ${link.site_B.name}<br />
+        IP Address A: ${link.ip_address_A}<br />
+        IP Address B: ${link.ip_address_B}<br />
+        Frequency A: ${(link.frequency_A / 1000).toFixed(2)} GHz<br />
+        Frequency B: ${(link.frequency_B / 1000).toFixed(2)} GHz<br />
+        Length: ${link.length} m<br />
+        Polarization: ${link.polarization}<br />
+        Tech: ${link.technology}<br />
+      </div>
+    </div>`,
+      {
+        offset: [30, 0],
+        direction: 'auto',
+        permanent: false,
+        sticky: true,
+        opacity: 1,
+      },
+    )
+    linksGroup.value.addLayer(polyline)
+  })
 }
 
-// Track collapsed state per group
-const collapsedGroups = ref<Record<string, boolean>>({})
+function drawStations() {
+  stationsGroup.value.clearLayers()
+  weatherStations.filteredStations.forEach((ws) => {
+    const marker = L.circleMarker([ws.Y, ws.X], {
+      radius: 5,
+      color: 'blue',
+      fillColor: 'blue',
+      fillOpacity: 0.5,
+      weight: 0.5,
+    })
+    marker.bindTooltip(
+      `<div class="font-inter text-black">
+        <div class="mb-1 border-b text-base border-gray-300">${ws.full_name}</div>
+        <div class="text-base">
+          GH ID: ${ws.gh_id}<br/>
+          WSI: ${ws.wsi}<br/>
+          Lat: ${ws.Y}, Lon: ${ws.X}<br/>
+          Elevation: ${ws.elevation} m
+        </div>
+      </div>`,
+      {
+        offset: [30, 0],
+        direction: 'auto',
+        permanent: false,
+        sticky: true,
+        opacity: 1,
+      },
+    )
+    marker.addTo(stationsGroup.value)
+  })
+}
 
-// Initialize collapsed state for all groups (collapsed by default)
 watch(
-  () => links.groupedLinksByMappingAndTechnology,
-  (grouped) => {
-    for (const group in grouped) {
-      if (!(group in collapsedGroups.value)) {
-        collapsedGroups.value[group] = true
-      }
+  () => links.filteredLinks,
+  () => {
+    if (links.hasLinks) {
+      drawLinks()
     }
   },
-  { immediate: true },
+)
+
+watch(
+  () => weatherStations.filteredStations,
+  () => {
+    if (weatherStations.hasStations) {
+      drawStations()
+    }
+  },
 )
 </script>
 
 <template>
   <div class="font-inter min-h-screen">
-    <!-- <TopNavbar /> -->
     <main class="h-[calc(100vh)]">
       <div class="relative flex h-full w-full flex-row items-center justify-end">
-        <LMap
-          ref="map"
-          :zoom="8"
-          :center="mapCenter"
-          :use-global-leaflet="false"
-          class="z-0"
-          :options="{ zoomControl: false }"
-        >
-          <LTileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&amp;copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-            layer-type="base"
-            name="OpenStreetMap"
-          />
-          <div v-if="weatherStationsVisible">
-            <LCircleMarker
-              v-for="ws in weatherStations.stations"
-              :key="ws?.id"
-              :lat-lng="[ws.Y, ws.X]"
-              :radius="5"
-              color="blue"
-            >
-              <LTooltip :options="{ offset: [30, 0] }" class="font-inter text-black">
-                <div class="mb-1 border-b text-base">
-                  {{ ws.full_name }}
-                </div>
-                <div class="text-base">
-                  GH ID: {{ ws.gh_id }} <br />
-                  WSI: {{ ws.wsi }}<br />
-                  Lat: {{ ws.Y }}, Lon: {{ ws.X }}<br />
-                  Elevation: {{ ws.elevation }} m<br /></div
-              ></LTooltip>
-            </LCircleMarker>
-          </div>
-          <div v-if="linksVisible">
-            <L-Polyline
-              v-for="link in links.filteredLinks"
-              :lat-lngs="[
-                [link.site_A.y, link.site_A.x],
-                [link.site_B.y, link.site_B.x],
-              ]"
-              color="black"
-              :key="link?.id"
-            >
-              <LTooltip :options="{ offset: [30, 0] }" class="font-inter text-black">
-                <div class="mb-1 border-b text-base font-semibold">Link ID: {{ link.id }}</div>
-                <div class="text-base">
-                  Site A: {{ link.site_A.name }}<br />
-                  Site B: {{ link.site_B.name }}<br />
-                  IP Address A: {{ link.ip_address_A }}<br />
-                  IP Address B: {{ link.ip_address_B }}<br />
-                  Frequency A: {{ link.frequency_A / 1000 }} GHz<br />
-                  Frequency B: {{ link.frequency_B / 1000 }} GHz<br />
-                  Length: {{ link.length }} m<br />
-                  Polarization: {{ link.polarization }}<br />
-                  Tech: {{ link.technology }}<br />
-                </div>
-              </LTooltip>
-            </L-Polyline>
-          </div>
-        </LMap>
+        <div id="map" ref="map" class="z-0 h-full w-full"></div>
 
         <TopNavbar>
           <button
             v-if="weatherStations.hasStations"
             class="h-8 cursor-pointer rounded-md border bg-amber-200 px-3 hover:bg-amber-300"
-            :class="{ 'bg-amber-300': weatherStationsVisible }"
-            @click="weatherStationsVisible = !weatherStationsVisible"
+            :class="{ 'bg-amber-300': !weatherStations.hideAll }"
+            @click="weatherStations.hideAll = !weatherStations.hideAll"
           >
             Weather stations
           </button>
           <button
             v-if="links.hasLinks"
             class="h-8 cursor-pointer rounded-md border bg-amber-200 px-3 hover:bg-amber-300"
-            :class="{ 'bg-amber-300': linksVisible }"
-            @click="linksVisible = !linksVisible"
+            :class="{ 'bg-amber-300': !links.hideAll }"
+            @click="links.hideAll = !links.hideAll"
           >
             Links
           </button>
         </TopNavbar>
 
-        <!-- link filter -->
-        <div
-          v-if="!links.loading"
-          class="absolute right-6 z-20 h-[75vh] w-[320px] overflow-y-scroll rounded-md bg-gray-800 p-4 text-white"
-        >
-          <!-- length -->
-          <div class="mb-3 border border-gray-700 p-4">
-            <div class="flex justify-between">
-              <label class="text-white">Length (m)</label>
-              <button @click="links.resetLengthFilter" class="cursor-pointer hover:underline">
-                Reset
-              </button>
-            </div>
-            <div class="mt-1 flex justify-between">
-              <div class="flex py-1">
-                <span class="mr-1 py-1 text-sm text-gray-400">Min</span>
-                <input
-                  type="number"
-                  v-model.number="links.minDistance"
-                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
-                  min="0"
-                />
-              </div>
-              <div class="flex py-1">
-                <span class="mr-1 py-1 text-sm text-gray-400">Max</span>
-                <input
-                  type="number"
-                  v-model.number="links.maxDistance"
-                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
-                  min="0"
-                />
-              </div>
-            </div>
-          </div>
-          <!-- freqs -->
-          <div class="mb-3 border border-gray-700 p-4">
-            <div class="flex justify-between">
-              <label class="text-white">Frequency (GHz)</label>
-              <button @click="links.resetFrequencyFilter" class="cursor-pointer hover:underline">
-                Reset
-              </button>
-            </div>
-            <div class="mt-1 flex justify-between">
-              <div class="flex py-1">
-                <span class="mr-1 py-1 text-sm text-gray-400">Min</span>
-                <input
-                  type="number"
-                  :value="links.minFrequency / 1000"
-                  @input="
-                    (e) =>
-                      (links.minFrequency = parseFloat((e.target as HTMLInputElement).value) * 1000)
-                  "
-                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
-                  min="0"
-                />
-              </div>
-              <div class="flex py-1">
-                <span class="mr-1 py-1 text-sm text-gray-400">Max</span>
-                <input
-                  type="number"
-                  :value="links.maxFrequency / 1000"
-                  @input="
-                    (e) =>
-                      (links.maxFrequency = parseFloat((e.target as HTMLInputElement).value) * 1000)
-                  "
-                  class="w-20 bg-gray-700 p-1 text-sm text-white focus:outline-none"
-                  min="0"
-                />
-              </div>
-            </div>
-          </div>
-          <div class="mb-3 border border-gray-700 p-4">
-            <span>Polarization: </span>
-            <label v-for="p in ['V', 'H', 'X']" :key="p" class="mr-3 text-sm">
-              <input
-                type="checkbox"
-                :value="p"
-                v-model="links.selectedPolarizations"
-                class="mr-1"
-              />
-              {{ p }}
-            </label>
-          </div>
-
-          <div class="flex flex-col gap-3">
-            <div
-              v-for="(techs, group) in links.groupedLinksByMappingAndTechnology"
-              :key="group"
-              class="border border-gray-700 p-4"
-            >
-              <div class="flex items-center justify-between">
-                <label class="flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    class="mr-2"
-                    :checked="links.selectedGroups.includes(group)"
-                    @change="toggleGroup(group)"
-                  />
-                  {{ group }}
-                </label>
-
-                <button
-                  type="button"
-                  @click="collapsedGroups[group] = !collapsedGroups[group]"
-                  class="cursor-pointer text-gray-400 select-none hover:text-white"
-                  title="Toggle group"
-                >
-                  ({{ Object.values(techs).flat().length }})
-                  <span v-if="collapsedGroups[group]">▼</span>
-                  <span v-else>▲</span>
-                </button>
-              </div>
-              <div v-show="!collapsedGroups[group]" class="mt-2 ml-4 flex flex-col gap-1">
-                <label
-                  v-for="tech in Object.keys(techs)"
-                  :key="tech"
-                  class="flex cursor-pointer items-center text-sm select-none"
-                >
-                  <input
-                    type="checkbox"
-                    class="mr-2"
-                    :checked="links.selectedTechnologies.includes(tech)"
-                    @change="toggleTech(group, tech)"
-                  />
-                  {{ tech }} ({{ techs[tech].length }})
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- link filter end -->
+        <LinkFilter />
       </div>
     </main>
   </div>

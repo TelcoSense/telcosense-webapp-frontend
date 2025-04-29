@@ -28,8 +28,8 @@ export const useLinksStore = defineStore('links', {
     links: [] as Link[],
     loading: true,
     error: null as string | null,
+    hideAll: false,
 
-    selectedGroups: [] as string[],
     selectedTechnologies: [] as string[],
     selectedPolarizations: ['V', 'H', 'X'] as ('V' | 'H' | 'X')[],
     minDistance: 0,
@@ -45,7 +45,6 @@ export const useLinksStore = defineStore('links', {
       try {
         const res = await api.get<Link[]>('/links', getSecureConfig())
         this.links = res.data
-        this.selectedGroups = this.allGroups
         this.selectedTechnologies = this.allTechnologies
       } catch (err) {
         if (err instanceof Error) {
@@ -90,15 +89,40 @@ export const useLinksStore = defineStore('links', {
     allTechnologies(state): string[] {
       return [...new Set(state.links.map((link) => link.technology))]
     },
+    selectedGroups(state): string[] {
+      const groupsSet = new Set(state.links.map(link => link.influx_mapping))
+      const groups: string[] = []
+
+      for (const group of groupsSet) {
+        const techs = [
+          ...new Set(
+            state.links
+              .filter(link => link.influx_mapping === group)
+              .map(link => link.technology)
+          ),
+        ]
+
+        const allSelected = techs.every(tech => state.selectedTechnologies.includes(tech))
+
+        if (allSelected) {
+          groups.push(group)
+        }
+      }
+
+      return groups
+    },
 
     filteredLinks(state): Link[] {
+      if (state.hideAll) {
+        return []
+      }
+
       const minLen = isFinite(state.minDistance) ? state.minDistance : 0
       const maxLen = isFinite(state.maxDistance) ? state.maxDistance : Infinity
       const minFreq = isFinite(state.minFrequency) ? state.minFrequency : 0
       const maxFreq = isFinite(state.maxFrequency) ? state.maxFrequency : Infinity
 
-      return state.links.filter((link) => {
-        const inGroup = state.selectedGroups.includes(link.influx_mapping)
+      return state.links.filter(link => {
         const inTech = state.selectedTechnologies.includes(link.technology)
         const inPol = state.selectedPolarizations.includes(link.polarization)
 
@@ -109,7 +133,7 @@ export const useLinksStore = defineStore('links', {
           link.frequency_B >= minFreq &&
           link.frequency_B <= maxFreq
 
-        return inGroup && inTech && inPol && inLength && inFreq
+        return inTech && inPol && inLength && inFreq
       })
     },
 

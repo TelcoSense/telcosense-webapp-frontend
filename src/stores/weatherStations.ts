@@ -18,9 +18,18 @@ export const useWeatherStationsStore = defineStore('weatherStations', {
     stations: [] as WeatherStation[],
     loading: false,
     error: null as string | null,
+
+    hideAll: false,
   }),
   getters: {
     hasStations: (state) => state.stations.length > 0,
+
+    filteredStations(state): WeatherStation[] {
+      if (state.hideAll) {
+        return [];
+      }
+      return state.stations;
+    },
   },
   actions: {
     async fetchWeatherStations() {
