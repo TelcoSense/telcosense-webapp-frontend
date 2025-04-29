@@ -97,7 +97,7 @@ const tooltipOptions: L.TooltipOptions = {
   offset: [30, 0],
   direction: 'auto',
   permanent: false,
-  sticky: true,
+  sticky: false,
   opacity: 1,
 }
 
