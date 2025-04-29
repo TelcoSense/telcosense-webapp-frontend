@@ -22,7 +22,7 @@ export const useWeatherStationsStore = defineStore('weatherStations', {
     hideAll: false,
   }),
   getters: {
-    hasStations: (state) => state.stations.length > 0,
+    hasStations: (state): boolean => state.stations.length > 0,
 
     filteredStations(state): WeatherStation[] {
       if (state.hideAll) {

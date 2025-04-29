@@ -1,29 +1,107 @@
 <script setup lang="ts">
-import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+
+import 'leaflet/dist/leaflet.css'
 
 import { useLinksStore } from '@/stores/links'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 import { onMounted, ref, watch } from 'vue'
 
-import TopNavbar from '@/components/TopNavbar.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
+import TopNavbar from '@/components/TopNavbar.vue'
 
-const weatherStations = useWeatherStationsStore()
-
-const links = useLinksStore()
-
-const map = ref(null)
-
-const stationsGroup = ref(null)
-const linksGroup = ref(null)
-
-onMounted(async () => {
+onMounted(() => {
   initMap()
 
-  await weatherStations.fetchWeatherStations()
-  await links.fetchLinks()
+  weatherStations.fetchWeatherStations()
+  links.fetchLinks()
+
+  dragBox = document.getElementById('drag-box') as HTMLDivElement
+  map.value!.on('mousedown', onMapMouseDown)
 })
+
+let dragStart: L.Point | null = null
+let dragBox: HTMLDivElement
+let dragging = false
+
+function onMapMouseDown(e: L.LeafletMouseEvent) {
+  if (!e.originalEvent.ctrlKey) return
+
+  map.value!.dragging.disable()
+  e.originalEvent.preventDefault()
+
+  dragStart = map.value!.mouseEventToContainerPoint(e.originalEvent)
+  dragBox.style.left = `${dragStart.x}px`
+  dragBox.style.top = `${dragStart.y}px`
+  dragBox.style.width = `0px`
+  dragBox.style.height = `0px`
+  dragBox.classList.remove('hidden')
+  dragging = true
+
+  function onMouseMove(e: MouseEvent) {
+    if (!dragging || !dragStart) return
+
+    const current = map.value!.mouseEventToContainerPoint(e)
+    const left = Math.min(dragStart.x, current.x)
+    const right = Math.max(dragStart.x, current.x)
+    const top = Math.min(dragStart.y, current.y)
+    const bottom = Math.max(dragStart.y, current.y)
+
+    dragBox.style.left = `${left}px`
+    dragBox.style.top = `${top}px`
+    dragBox.style.width = `${right - left}px`
+    dragBox.style.height = `${bottom - top}px`
+  }
+
+  function onMouseUp(e: MouseEvent) {
+    if (!dragging || !dragStart) return
+    dragging = false
+    dragBox.classList.add('hidden')
+    map.value!.dragging.enable()
+    const end = map.value!.mouseEventToContainerPoint(e)
+    const bounds = L.latLngBounds(
+      map.value!.containerPointToLatLng(
+        L.point(Math.min(dragStart.x, end.x), Math.min(dragStart.y, end.y)),
+      ),
+      map.value!.containerPointToLatLng(
+        L.point(Math.max(dragStart.x, end.x), Math.max(dragStart.y, end.y)),
+      ),
+    )
+    selectedLinkIds.value.clear()
+    links.filteredLinks.forEach((link) => {
+      const pointA = L.latLng(link.site_A.y, link.site_A.x)
+      const pointB = L.latLng(link.site_B.y, link.site_B.x)
+      const mid = L.latLng((pointA.lat + pointB.lat) / 2, (pointA.lng + pointB.lng) / 2)
+
+      if (bounds.contains(pointA) || bounds.contains(pointB) || bounds.contains(mid)) {
+        selectedLinkIds.value.add(link.id)
+      }
+    })
+    drawLinks()
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
+
+const weatherStations = useWeatherStationsStore()
+const links = useLinksStore()
+
+const map = ref<L.Map | null>(null)
+
+const stationsGroup = ref<L.LayerGroup | null>(null)
+const linksGroup = ref<L.LayerGroup | null>(null)
+
+const tooltipOptions: L.TooltipOptions = {
+  offset: [30, 0],
+  direction: 'auto',
+  permanent: false,
+  sticky: true,
+  opacity: 1,
+}
+
+const selectedLinkIds = ref<Set<number>>(new Set())
 
 function initMap() {
   map.value = L.map('map', {
@@ -31,27 +109,30 @@ function initMap() {
     zoomControl: false,
     renderer: L.canvas(),
   }).setView([49.74379, 15.33863], 8)
+
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(map.value)
+  }).addTo(map.value as L.Map)
 
-  stationsGroup.value = L.layerGroup().addTo(map.value)
-  linksGroup.value = L.layerGroup().addTo(map.value)
+  stationsGroup.value = L.layerGroup().addTo(map.value as L.Map)
+  linksGroup.value = L.layerGroup().addTo(map.value as L.Map)
 }
 
 function drawLinks() {
-  linksGroup.value.clearLayers()
+  linksGroup.value!.clearLayers()
   links.filteredLinks.forEach((link) => {
     const latA = link?.site_A?.y
     const lngA = link?.site_A?.x
     const latB = link?.site_B?.y
     const lngB = link?.site_B?.x
+
+    const color = selectedLinkIds.value.has(link.id) ? 'red' : 'black'
     const polyline = L.polyline(
       [
         [latA, lngA],
         [latB, lngB],
       ],
-      { color: 'black' },
+      { color: color },
     )
     polyline.bindTooltip(
       `<div class="font-inter text-black">
@@ -68,20 +149,14 @@ function drawLinks() {
         Tech: ${link.technology}<br />
       </div>
     </div>`,
-      {
-        offset: [30, 0],
-        direction: 'auto',
-        permanent: false,
-        sticky: true,
-        opacity: 1,
-      },
+      tooltipOptions,
     )
-    linksGroup.value.addLayer(polyline)
+    linksGroup.value!.addLayer(polyline)
   })
 }
 
 function drawStations() {
-  stationsGroup.value.clearLayers()
+  stationsGroup.value!.clearLayers()
   weatherStations.filteredStations.forEach((ws) => {
     const marker = L.circleMarker([ws.Y, ws.X], {
       radius: 5,
@@ -100,15 +175,9 @@ function drawStations() {
           Elevation: ${ws.elevation} m
         </div>
       </div>`,
-      {
-        offset: [30, 0],
-        direction: 'auto',
-        permanent: false,
-        sticky: true,
-        opacity: 1,
-      },
+      tooltipOptions,
     )
-    marker.addTo(stationsGroup.value)
+    stationsGroup.value!.addLayer(marker)
   })
 }
 
@@ -136,7 +205,10 @@ watch(
     <main class="h-[calc(100vh)]">
       <div class="relative flex h-full w-full flex-row items-center justify-end">
         <div id="map" ref="map" class="z-0 h-full w-full"></div>
-
+        <div
+          id="drag-box"
+          class="pointer-events-none absolute z-40 hidden border-2 border-blue-400 bg-blue-400/10"
+        ></div>
         <TopNavbar>
           <button
             v-if="weatherStations.hasStations"

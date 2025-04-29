@@ -30,8 +30,10 @@ export const useLinksStore = defineStore('links', {
     error: null as string | null,
     hideAll: false,
 
+    selectedGroups: [] as string[],
     selectedTechnologies: [] as string[],
     selectedPolarizations: ['V', 'H', 'X'] as ('V' | 'H' | 'X')[],
+
     minDistance: 0,
     maxDistance: 100000,
     minFrequency: 0,
@@ -88,28 +90,6 @@ export const useLinksStore = defineStore('links', {
     },
     allTechnologies(state): string[] {
       return [...new Set(state.links.map((link) => link.technology))]
-    },
-    selectedGroups(state): string[] {
-      const groupsSet = new Set(state.links.map(link => link.influx_mapping))
-      const groups: string[] = []
-
-      for (const group of groupsSet) {
-        const techs = [
-          ...new Set(
-            state.links
-              .filter(link => link.influx_mapping === group)
-              .map(link => link.technology)
-          ),
-        ]
-
-        const allSelected = techs.every(tech => state.selectedTechnologies.includes(tech))
-
-        if (allSelected) {
-          groups.push(group)
-        }
-      }
-
-      return groups
     },
 
     filteredLinks(state): Link[] {
