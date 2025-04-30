@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import L from 'leaflet'
-
 import 'leaflet/dist/leaflet.css'
+import L from 'leaflet'
 
 import { useLinksStore } from '@/stores/links'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 import { onMounted, ref, watch } from 'vue'
 
 import { useLinkSelection } from '@/composables/useLinkSelection'
+import { useRealtime } from '@/composables/useRealtime'
 
 import LinkFilter from '@/components/LinkFilter.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
@@ -38,6 +38,8 @@ const { onMapMouseDown } = useLinkSelection({
   drawLinks,
 })
 
+const { currentTimestamp, oneWeekAgoTimestamp, formattedCountdown } = useRealtime(5)
+
 onMounted(() => {
   initMap()
 
@@ -66,16 +68,11 @@ function initMap() {
 function drawLinks() {
   linksGroup.value!.clearLayers()
   links.filteredLinks.forEach((link) => {
-    const latA = link?.site_A?.y
-    const lngA = link?.site_A?.x
-    const latB = link?.site_B?.y
-    const lngB = link?.site_B?.x
-
     const color = selectedLinkIds.value.has(link.id) ? 'red' : 'black'
     const polyline = L.polyline(
       [
-        [latA, lngA],
-        [latB, lngB],
+        [link.site_A.y, link.site_A.x],
+        [link.site_B.y, link.site_B.x],
       ],
       { color: color, weight: 2 },
     )
@@ -149,11 +146,22 @@ watch(
   <div class="font-inter min-h-screen">
     <main class="h-[calc(100vh)]">
       <div class="relative flex h-full w-full flex-row items-center justify-end">
-        <div id="map" ref="map" class="z-0 h-full w-full"></div>
+        <div id="map" class="z-0 h-full w-full"></div>
+
+        <div
+          id="timestamps"
+          class="font-chivo absolute bottom-0 left-0 z-10 m-6 flex flex-col rounded-md bg-gray-800 p-2 text-white"
+        >
+          <span> {{ oneWeekAgoTimestamp }} </span>
+          <span> {{ currentTimestamp }} </span>
+          <p>Next update in: {{ formattedCountdown }}</p>
+        </div>
+
         <div
           id="drag-box"
           class="pointer-events-none absolute z-40 hidden border-2 border-blue-400 bg-blue-400/10"
         ></div>
+
         <TopNavbar>
           <button
             v-if="weatherStations.hasStations"

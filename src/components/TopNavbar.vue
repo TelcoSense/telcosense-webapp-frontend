@@ -1,23 +1,27 @@
 <script setup lang="ts">
-import { api } from '@/api'
-import { useAuthStore } from '@/stores/auth'
-import { useLinksStore } from '@/stores/links'
-import { useWeatherStationsStore } from '@/stores/weatherStations'
 import axios from 'axios'
+
+import { api } from '@/api'
+
+import { useWeatherStationsStore } from '@/stores/weatherStations'
+import { useLinksStore } from '@/stores/links'
+import { useAuthStore } from '@/stores/auth'
+
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const auth = useAuthStore()
-const links = useLinksStore()
+
 const weatherStations = useWeatherStationsStore()
+const links = useLinksStore()
 
 async function logout() {
   try {
     const res = await api.post('/logout')
     if (res.data.message === 'Logout successful') {
       await auth.checkLogin()
-      links.$reset()
       weatherStations.$reset()
+      links.$reset()
       router.push({ name: 'login' })
     }
   } catch (err) {
