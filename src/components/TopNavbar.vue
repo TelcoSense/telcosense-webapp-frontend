@@ -3,9 +3,11 @@ import axios from 'axios'
 
 import { api } from '@/api'
 
-import { useWeatherStationsStore } from '@/stores/weatherStations'
-import { useLinksStore } from '@/stores/links'
 import { useAuthStore } from '@/stores/auth'
+import { useLinksStore } from '@/stores/links'
+import { useWeatherStationsStore } from '@/stores/weatherStations'
+
+import { useRadarStore } from '@/stores/radar'
 
 import { useRouter } from 'vue-router'
 
@@ -14,6 +16,7 @@ const auth = useAuthStore()
 
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
+const radar = useRadarStore()
 
 async function logout() {
   try {
@@ -22,6 +25,7 @@ async function logout() {
       await auth.checkLogin()
       weatherStations.$reset()
       links.$reset()
+      radar.$reset()
       router.push({ name: 'login' })
     }
   } catch (err) {

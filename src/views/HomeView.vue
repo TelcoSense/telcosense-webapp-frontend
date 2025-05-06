@@ -1,19 +1,25 @@
 <script setup lang="ts">
-import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 
 import { useLinksStore } from '@/stores/links'
+import { useRadarStore } from '@/stores/radar'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
+
+import type { Ref } from 'vue'
 import { onMounted, ref, watch } from 'vue'
 
 import { useLinkSelection } from '@/composables/useLinkSelection'
 import { useRealtime } from '@/composables/useRealtime'
 
+import LayerControls from '@/components/LayerControls.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
+
+const radar = useRadarStore()
 
 const map = ref<L.Map | null>(null)
 const stationsGroup = ref<L.LayerGroup | null>(null)
@@ -31,7 +37,7 @@ const tooltipOptions: L.TooltipOptions = {
 }
 
 const { onMapMouseDown } = useLinkSelection({
-  map,
+  map: map as Ref<L.Map | null>,
   dragBox,
   links,
   selectedLinkIds,
@@ -40,14 +46,39 @@ const { onMapMouseDown } = useLinkSelection({
 
 const { currentTimestamp, oneWeekAgoTimestamp, formattedCountdown } = useRealtime(5)
 
-onMounted(() => {
-  initMap()
+// let firstRadarUpdate = true
 
+// watch(currentTimestamp, async (newVal) => {
+//   if (!newVal) return
+
+//   if (!firstRadarUpdate) {
+//     await new Promise((resolve) => setTimeout(resolve, 32000))
+//   }
+//   firstRadarUpdate = false
+//   const wasPlaying = isPlaying.value
+//   await radar.fetchLatestFrame(newVal)
+//   if (wasPlaying) {
+//     currentRadarIndex.value = Math.max(currentRadarIndex.value - 1, 0)
+//   } else {
+//     currentRadarIndex.value = 0
+//     showRadarFrame(0)
+//   }
+// })
+
+onMounted(async () => {
+  initMap()
   weatherStations.fetchWeatherStations()
   links.fetchLinks()
-
   dragBox.value = document.getElementById('drag-box') as HTMLDivElement
-  map.value.on('mousedown', onMapMouseDown)
+
+  const mapObject = map.value as L.Map
+  mapObject.on('mousedown', onMapMouseDown)
+
+  radar.$reset()
+  radar.setMap(mapObject)
+  await radar.fetchRadarList(oneWeekAgoTimestamp.value, currentTimestamp.value)
+  await radar.preloadWindow(0, 30)
+  radar.showRadarFrame(0)
 })
 
 function initMap() {
@@ -146,7 +177,7 @@ watch(
   <div class="font-inter min-h-screen">
     <main class="h-[calc(100vh)]">
       <div class="relative flex h-full w-full flex-row items-center justify-end">
-        <div id="map" class="z-0 h-full w-full"></div>
+        <div id="map" class="leaflet-container z-0 h-full w-full"></div>
 
         <div
           id="timestamps"
@@ -182,7 +213,15 @@ watch(
         </TopNavbar>
 
         <LinkFilter />
+
+        <LayerControls />
       </div>
     </main>
   </div>
 </template>
+
+<style>
+.leaflet-image-layer {
+  image-rendering: pixelated !important;
+}
+</style>
