@@ -17,19 +17,29 @@ export const useRadarStore = defineStore('radar', {
     error: null as string | null,
     map: null as L.Map | null,
 
-    currentRadarIndex: 0,
+    currentIndex: 0,
     radarOverlay: null as L.ImageOverlay | null,
     lastPreloadIndex: -9999,
 
     isPlaying: false,
     playbackTimer: null as number | null,
-    animationSpeed: 75,
+    animationSpeed: 100,
     frameLoading: false,
   }),
 
   actions: {
     setMap(map: L.Map) {
       this.map = markRaw(map)
+    },
+
+    setVisible(visible: boolean) {
+      if (this.radarOverlay) {
+        if (visible) {
+          this.radarOverlay.addTo(this.map as L.Map)
+        } else {
+          this.radarOverlay.remove()
+        }
+      }
     },
 
     async fetchRadarList(start: string, end: string) {
@@ -144,7 +154,7 @@ export const useRadarStore = defineStore('radar', {
           L.latLng(51.458, 19.624)
         )
 
-        this.currentRadarIndex = index
+        this.currentIndex = index
 
         if (!this.radarOverlay) {
           this.radarOverlay = markRaw(
@@ -165,7 +175,7 @@ export const useRadarStore = defineStore('radar', {
     },
 
     changeRadarFrame(delta: number) {
-      const newIndex = this.currentRadarIndex + delta
+      const newIndex = this.currentIndex + delta
       if (newIndex >= 0 && newIndex < this.frames.length) {
         this.showRadarFrame(newIndex)
       }
@@ -176,7 +186,7 @@ export const useRadarStore = defineStore('radar', {
       this.isPlaying = true
 
       this.playbackTimer = window.setInterval(() => {
-        const next = (this.currentRadarIndex + 1) % this.frames.length
+        const next = (this.currentIndex + 1) % this.frames.length
         this.showRadarFrame(next)
       }, this.animationSpeed)
     },

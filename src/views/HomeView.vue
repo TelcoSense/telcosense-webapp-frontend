@@ -13,6 +13,7 @@ import { useLinkSelection } from '@/composables/useLinkSelection'
 import { useRealtime } from '@/composables/useRealtime'
 
 import LayerControls from '@/components/LayerControls.vue'
+import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
@@ -46,25 +47,6 @@ const { onMapMouseDown } = useLinkSelection({
 
 const { currentTimestamp, oneWeekAgoTimestamp, formattedCountdown } = useRealtime(5)
 
-// let firstRadarUpdate = true
-
-// watch(currentTimestamp, async (newVal) => {
-//   if (!newVal) return
-
-//   if (!firstRadarUpdate) {
-//     await new Promise((resolve) => setTimeout(resolve, 32000))
-//   }
-//   firstRadarUpdate = false
-//   const wasPlaying = isPlaying.value
-//   await radar.fetchLatestFrame(newVal)
-//   if (wasPlaying) {
-//     currentRadarIndex.value = Math.max(currentRadarIndex.value - 1, 0)
-//   } else {
-//     currentRadarIndex.value = 0
-//     showRadarFrame(0)
-//   }
-// })
-
 onMounted(async () => {
   initMap()
   weatherStations.fetchWeatherStations()
@@ -77,8 +59,6 @@ onMounted(async () => {
   radar.$reset()
   radar.setMap(mapObject)
   await radar.fetchRadarList(oneWeekAgoTimestamp.value, currentTimestamp.value)
-  await radar.preloadWindow(0, 30)
-  radar.showRadarFrame(0)
 })
 
 function initMap() {
@@ -215,6 +195,8 @@ watch(
         <LinkFilter />
 
         <LayerControls />
+
+        <LayerSwitcher />
       </div>
     </main>
   </div>

@@ -1,76 +1,48 @@
 <script setup lang="ts">
-import { useRadarStore } from '@/stores/radar'
+import { useActiveLayer } from '@/composables/useActiveLayer'
 import { computed } from 'vue'
 
-const radar = useRadarStore()
+const { activeLayer } = useActiveLayer()
 
-const disablePrev = computed(() => radar.currentRadarIndex <= 0)
-const disableNext = computed(() => radar.currentRadarIndex >= radar.frames.length - 1)
-
-const currentFrameNumber = computed(() => radar.currentRadarIndex + 1)
-const totalFrames = computed(() => radar.frames.length)
-const currentTimestamp = computed(() => radar.frames[radar.currentRadarIndex]?.timestamp ?? '—')
+const disablePrev = computed(() => !activeLayer.value || activeLayer.value.currentIndex <= 0)
+const disableNext = computed(
+  () => !activeLayer.value || activeLayer.value.currentIndex >= activeLayer.value.frames.length - 1,
+)
 
 function togglePlayback() {
-  radar.toggleRadar()
+  activeLayer.value?.toggle()
 }
 
 function onSliderChange(event: Event) {
   const index = parseInt((event.target as HTMLInputElement).value)
-  radar.showRadarFrame(index)
+  activeLayer.value?.showFrame(index)
 }
 </script>
 
 <template>
-  <div
-    class="absolute bottom-6 left-0 ml-72 flex flex-col items-start gap-3 bg-gray-800 p-2 text-white"
-  >
-    <!-- Frame Info -->
+  <div v-if="activeLayer" class="absolute bottom-6 left-0 ml-72 bg-gray-800 p-2 text-white">
     <div class="font-mono text-sm">
-      Frame {{ currentFrameNumber }} / {{ totalFrames }}<br />
-      Timestamp: {{ currentTimestamp }}
+      Frame {{ activeLayer.currentIndex + 1 }} / {{ activeLayer.frames.length }}<br />
+      Timestamp: {{ activeLayer.frames[activeLayer.currentIndex]?.timestamp ?? '—' }}
     </div>
 
-    <!-- Loading Spinner -->
-    <div v-if="radar.frameLoading" class="text-sm text-yellow-400">Loading...</div>
+    <div v-if="activeLayer.frameLoading" class="text-yellow-400">Loading...</div>
 
-    <!-- Slider -->
     <input
-      v-if="radar.frames.length"
+      v-if="activeLayer.frames.length"
       type="range"
       min="0"
-      :max="radar.frames.length - 1"
-      :value="radar.currentRadarIndex"
-      class="w-64"
-      :disabled="radar.isPlaying || radar.frameLoading"
+      :max="activeLayer.frames.length - 1"
+      :value="activeLayer.currentIndex"
+      :disabled="activeLayer.isPlaying || activeLayer.frameLoading"
       @input="onSliderChange"
+      class="w-64"
     />
 
-    <!-- Controls -->
-    <div class="flex gap-2">
-      <button
-        @click="radar.changeRadarFrame(-1)"
-        :disabled="disablePrev || radar.frameLoading"
-        class="rounded bg-white px-2 py-1 text-black"
-      >
-        Prev
-      </button>
-
-      <button
-        @click="radar.changeRadarFrame(1)"
-        :disabled="disableNext || radar.frameLoading"
-        class="rounded bg-white px-2 py-1 text-black"
-      >
-        Next
-      </button>
-
-      <button
-        @click="togglePlayback"
-        :disabled="radar.frameLoading"
-        class="rounded bg-white px-2 py-1 text-black"
-      >
-        {{ radar.isPlaying ? 'Pause' : 'Play' }}
-      </button>
+    <div class="mt-2 flex gap-2">
+      <button @click="activeLayer.changeFrame(-1)" :disabled="disablePrev">Prev</button>
+      <button @click="activeLayer.changeFrame(1)" :disabled="disableNext">Next</button>
+      <button @click="togglePlayback">{{ activeLayer.isPlaying ? 'Pause' : 'Play' }}</button>
     </div>
   </div>
 </template>
