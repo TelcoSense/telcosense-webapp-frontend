@@ -47,7 +47,7 @@ export const useRadarStore = defineStore('radar', {
       this.error = null
       try {
         const res = await radarApi.get<RadarFrame[]>(
-          `/api/radar/list`,
+          `/api/maxz/list`,
           {
             params: { start, end }
           }
@@ -108,7 +108,7 @@ export const useRadarStore = defineStore('radar', {
       const newTime = new Date(timestamp).getTime()
       if (newTime <= lastTime) return
       try {
-        const res = await radarApi.get<RadarFrame[]>('/api/radar/list', {
+        const res = await radarApi.get<RadarFrame[]>('/api/maxz/list', {
           params: { start: timestamp, end: timestamp },
         })
         if (!res.data.length) return
