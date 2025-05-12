@@ -3,7 +3,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
 import { useLinksStore } from '@/stores/links'
-import { useRadarStore } from '@/stores/radar'
+import { useMaxzStore } from '@/stores/maxz'
+import { useMerge1hStore } from '@/stores/merge1h'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
 import type { Ref } from 'vue'
@@ -20,7 +21,8 @@ import TopNavbar from '@/components/TopNavbar.vue'
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
 
-const radar = useRadarStore()
+const maxz = useMaxzStore()
+const merge1h = useMerge1hStore()
 
 const map = ref<L.Map | null>(null)
 const stationsGroup = ref<L.LayerGroup | null>(null)
@@ -56,9 +58,14 @@ onMounted(async () => {
   const mapObject = map.value as L.Map
   mapObject.on('mousedown', onMapMouseDown)
 
-  radar.$reset()
-  radar.setMap(mapObject)
-  await radar.fetchRadarList(oneWeekAgoTimestamp.value, currentTimestamp.value)
+  maxz.$reset()
+  maxz.setMap(mapObject)
+
+  merge1h.$reset()
+  merge1h.setMap(mapObject)
+
+  await maxz.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
+  await merge1h.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
 })
 
 function initMap() {
@@ -156,16 +163,19 @@ watch(
 <template>
   <div class="font-inter min-h-screen">
     <main class="h-[calc(100vh)]">
-      <div class="relative flex h-full w-full flex-row items-center justify-end">
+      <div class="relative flex h-full w-full flex-row items-center justify-center">
         <div id="map" class="leaflet-container z-0 h-full w-full"></div>
 
         <div
           id="timestamps"
-          class="font-chivo absolute bottom-0 left-0 z-10 m-6 flex flex-col rounded-md bg-gray-800 p-2 text-white"
+          class="absolute bottom-0 left-0 z-10 m-6 flex flex-col rounded-md bg-gray-800 p-2 text-white"
         >
-          <span> {{ oneWeekAgoTimestamp }} </span>
-          <span> {{ currentTimestamp }} </span>
-          <p>Next update in: {{ formattedCountdown }}</p>
+          <span class="font-chivo"> {{ oneWeekAgoTimestamp }} </span>
+          <span class="font-chivo"> {{ currentTimestamp }} </span>
+
+          <p>
+            Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
+          </p>
         </div>
 
         <div

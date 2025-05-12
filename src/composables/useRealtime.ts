@@ -25,7 +25,7 @@ export function useRealtime(updateIntervalMinutes = 1) {
     currentTimestamp.value = alignedDate.toISOString()
 
     const oneWeekAgo = new Date(alignedDate)
-    oneWeekAgo.setUTCDate(alignedDate.getUTCDate() - 1)
+    oneWeekAgo.setUTCDate(alignedDate.getUTCDate() - 7)
     oneWeekAgoTimestamp.value = oneWeekAgo.toISOString()
   }
 

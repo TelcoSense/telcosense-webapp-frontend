@@ -4,27 +4,34 @@ import L from 'leaflet'
 import { defineStore } from 'pinia'
 import { markRaw } from 'vue'
 
-export interface RadarFrame {
+export interface Frame {
   timestamp: string
   url: string
   objectUrl: string | null
 }
 
-export const useRadarStore = defineStore('radar', {
+export const useMerge1hStore = defineStore('merge1h', {
   state: () => ({
-    frames: [] as RadarFrame[],
+    frames: [] as Frame[],
     loading: false,
     error: null as string | null,
     map: null as L.Map | null,
 
     currentIndex: 0,
-    radarOverlay: null as L.ImageOverlay | null,
+    overlay: null as L.ImageOverlay | null,
     lastPreloadIndex: -9999,
 
     isPlaying: false,
     playbackTimer: null as number | null,
-    animationSpeed: 100,
+    animationSpeed: 150,
     frameLoading: false,
+
+    bounds: L.latLngBounds(
+      L.latLng(48.047, 11.267),
+      L.latLng(51.458, 19.624)
+    ),
+
+    apiUrl: '/api/merge1h/list',
   }),
 
   actions: {
@@ -33,21 +40,21 @@ export const useRadarStore = defineStore('radar', {
     },
 
     setVisible(visible: boolean) {
-      if (this.radarOverlay) {
+      if (this.overlay) {
         if (visible) {
-          this.radarOverlay.addTo(this.map as L.Map)
+          this.overlay.addTo(this.map as L.Map)
         } else {
-          this.radarOverlay.remove()
+          this.overlay.remove()
         }
       }
     },
 
-    async fetchRadarList(start: string, end: string) {
+    async fetchList(start: string, end: string) {
       this.loading = true
       this.error = null
       try {
-        const res = await radarApi.get<RadarFrame[]>(
-          `/api/maxz/list`,
+        const res = await radarApi.get<Frame[]>(
+          this.apiUrl,
           {
             params: { start, end }
           }
@@ -58,11 +65,12 @@ export const useRadarStore = defineStore('radar', {
         }))
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Unknown error'
-        console.error('Radar fetch error:', err)
+        console.error('Fetch error:', err)
       } finally {
         this.loading = false
       }
     },
+
     async preloadWindow(centerIndex: number, range = 50) {
       const start = Math.max(0, centerIndex - range)
       const end = Math.min(this.frames.length, centerIndex + range)
@@ -74,7 +82,6 @@ export const useRadarStore = defineStore('radar', {
             if (!frame.objectUrl) {
               try {
                 const res = await radarApi.get(frame.url, {
-                  ...getSecureConfig(),
                   responseType: 'blob',
                 })
                 const blob = res.data as Blob
@@ -108,12 +115,12 @@ export const useRadarStore = defineStore('radar', {
       const newTime = new Date(timestamp).getTime()
       if (newTime <= lastTime) return
       try {
-        const res = await radarApi.get<RadarFrame[]>('/api/maxz/list', {
+        const res = await radarApi.get<Frame[]>(this.apiUrl, {
           params: { start: timestamp, end: timestamp },
         })
         if (!res.data.length) return
         const raw = res.data[0]
-        const newFrame: RadarFrame = {
+        const newFrame: Frame = {
           timestamp: raw.timestamp,
           url: raw.url,
           objectUrl: null,
@@ -128,17 +135,15 @@ export const useRadarStore = defineStore('radar', {
         if (removed?.objectUrl) URL.revokeObjectURL(removed.objectUrl)
         this.frames.push(newFrame)
       } catch (err) {
-        console.error('Failed to fetch latest radar frame:', err)
+        console.error('Failed to fetch latest frame:', err)
       }
     },
 
-    async showRadarFrame(index: number) {
+    async showFrame(index: number) {
       if (!this.frames.length) return
       const frame = this.frames[index]
       if (!frame) return
-
       this.frameLoading = true
-
       try {
         if (!frame.objectUrl) {
           const res = await radarApi.get(frame.url, {
@@ -148,50 +153,42 @@ export const useRadarStore = defineStore('radar', {
           const blob = res.data as Blob
           frame.objectUrl = URL.createObjectURL(blob)
         }
-
-        const radarBounds = L.latLngBounds(
-          L.latLng(48.047, 11.267),
-          L.latLng(51.458, 19.624)
-        )
-
         this.currentIndex = index
-
-        if (!this.radarOverlay) {
-          this.radarOverlay = markRaw(
-            L.imageOverlay(frame.objectUrl, radarBounds, { className: 'no-smoothing' }).addTo(this.map as L.Map)
+        if (!this.overlay) {
+          this.overlay = markRaw(
+            L.imageOverlay(frame.objectUrl, this.bounds).addTo(this.map as L.Map)
           )
         } else {
-          this.radarOverlay.setUrl(frame.objectUrl)
+          this.overlay.setUrl(frame.objectUrl)
         }
         if (Math.abs(index - this.lastPreloadIndex) >= 5) {
           this.preloadWindow(index, 25)
           this.lastPreloadIndex = index
         }
       } catch (err) {
-        console.error(`Failed to load radar frame at index ${index}:`, err)
+        console.error(`Failed to load frame at index ${index}:`, err)
       } finally {
         this.frameLoading = false
       }
     },
 
-    changeRadarFrame(delta: number) {
+    changeFrame(delta: number) {
       const newIndex = this.currentIndex + delta
       if (newIndex >= 0 && newIndex < this.frames.length) {
-        this.showRadarFrame(newIndex)
+        this.showFrame(newIndex)
       }
     },
 
-    playRadar() {
+    play() {
       if (this.isPlaying || this.frames.length === 0) return
       this.isPlaying = true
-
       this.playbackTimer = window.setInterval(() => {
         const next = (this.currentIndex + 1) % this.frames.length
-        this.showRadarFrame(next)
+        this.showFrame(next)
       }, this.animationSpeed)
     },
 
-    pauseRadar() {
+    pause() {
       this.isPlaying = false
       if (this.playbackTimer !== null) {
         clearInterval(this.playbackTimer)
@@ -199,9 +196,9 @@ export const useRadarStore = defineStore('radar', {
       }
     },
 
-    toggleRadar() {
-      if (this.isPlaying) this.pauseRadar()
-      else this.playRadar()
+    toggle() {
+      if (this.isPlaying) this.pause()
+      else this.play()
     },
 
     releaseBlobs() {

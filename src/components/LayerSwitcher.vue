@@ -1,34 +1,59 @@
 <script setup lang="ts">
 import { useActiveLayer } from '@/composables/useActiveLayer'
-import { useRadarStore } from '@/stores/radar'
+import { useMaxzStore } from '@/stores/maxz'
+import { useMerge1hStore } from '@/stores/merge1h'
 import { computed } from 'vue'
 
-const radar = useRadarStore()
 const { activeLayer, setLayer, clearLayer } = useActiveLayer()
 
-const isRadarActive = computed(() => activeLayer.value?.name === 'Radar')
+const maxz = useMaxzStore()
+const merge1h = useMerge1hStore()
 
-function toggleRadar() {
-  if (isRadarActive.value) {
+const isMaxzActive = computed(() => activeLayer.value?.name === 'maxz')
+const isMerge1hActive = computed(() => activeLayer.value?.name === 'merge1h')
+
+function toggleMaxz() {
+  if (isMaxzActive.value) {
     clearLayer()
   } else {
-    setLayer(radar, 'Radar')
+    setLayer(maxz, 'maxz')
+  }
+}
+
+function toggleMerge1h() {
+  if (isMerge1hActive.value) {
+    clearLayer()
+  } else {
+    setLayer(merge1h, 'merge1h')
   }
 }
 </script>
 
 <template>
-  <div class="absolute top-20 left-6 flex flex-col gap-y-3">
-    <button
-      @click="toggleRadar()"
-      class="cursor-pointer rounded border px-2 py-1"
-      :class="
-        isRadarActive
-          ? 'border-black bg-blue-600 text-white'
-          : 'bg-blue-200 text-black hover:bg-blue-300'
-      "
-    >
-      Radar
-    </button>
+  <div class="absolute top-20 left-6 w-[160px] rounded-md bg-gray-800 p-3">
+    <span class="flex border-b border-gray-700 pb-1.5 text-white">Map layers</span>
+
+    <span class="my-1.5 flex text-white">CHMI</span>
+    <div class="flex flex-col gap-y-3">
+      <button
+        @click="toggleMaxz()"
+        class="h-8 cursor-pointer rounded-md bg-gray-600 text-white hover:bg-gray-500 hover:opacity-100"
+        :class="isMaxzActive ? 'bg-gray-600' : 'border border-gray-700 opacity-40'"
+      >
+        Max Z
+      </button>
+      <button
+        @click="toggleMerge1h()"
+        class="h-8 cursor-pointer rounded-md bg-gray-600 text-white hover:bg-gray-500 hover:opacity-100"
+        :class="isMerge1hActive ? 'bg-gray-600' : 'border border-gray-700 opacity-40'"
+      >
+        Merge 1h
+      </button>
+    </div>
+    <span class="mt-3 mb-1.5 flex text-white">TelcoSense</span>
+    <div class="flex flex-col gap-y-3">
+      <button class="h-8 rounded-md border border-gray-700 text-gray-400">Rain</button>
+      <button class="h-8 rounded-md border border-gray-700 text-gray-400">Temperature</button>
+    </div>
   </div>
 </template>

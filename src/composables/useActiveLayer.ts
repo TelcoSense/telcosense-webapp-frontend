@@ -25,11 +25,11 @@ export function useActiveLayer() {
       currentIndex: number
       isPlaying: boolean
       frameLoading: boolean
-      showRadarFrame(index: number): void
-      playRadar(): void
-      pauseRadar(): void
-      toggleRadar(): void
-      changeRadarFrame(delta: number): void
+      showFrame(index: number): void
+      play(): void
+      pause(): void
+      toggle(): void
+      changeFrame(delta: number): void
       setVisible(visible: boolean): void
     },
     name = 'Unnamed Layer'
@@ -43,11 +43,11 @@ export function useActiveLayer() {
       isPlaying: computed(() => store.isPlaying),
       frameLoading: computed(() => store.frameLoading),
 
-      showFrame: store.showRadarFrame.bind(store),
-      play: store.playRadar.bind(store),
-      pause: store.pauseRadar.bind(store),
-      toggle: store.toggleRadar.bind(store),
-      changeFrame: store.changeRadarFrame.bind(store),
+      showFrame: store.showFrame.bind(store),
+      play: store.play.bind(store),
+      pause: store.pause.bind(store),
+      toggle: store.toggle.bind(store),
+      changeFrame: store.changeFrame.bind(store),
       setVisible: store.setVisible.bind(store),
     }
 

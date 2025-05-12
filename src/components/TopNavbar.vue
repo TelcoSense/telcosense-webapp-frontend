@@ -2,21 +2,25 @@
 import axios from 'axios'
 
 import { api } from '@/api'
+import { useRouter } from 'vue-router'
+
+import { useActiveLayer } from '@/composables/useActiveLayer'
 
 import { useAuthStore } from '@/stores/auth'
 import { useLinksStore } from '@/stores/links'
+import { useMaxzStore } from '@/stores/maxz'
+import { useMerge1hStore } from '@/stores/merge1h'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
-
-import { useRadarStore } from '@/stores/radar'
-
-import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
-const radar = useRadarStore()
+const maxz = useMaxzStore()
+const merge1h = useMerge1hStore()
+
+const { clearLayer } = useActiveLayer()
 
 async function logout() {
   try {
@@ -25,7 +29,12 @@ async function logout() {
       await auth.checkLogin()
       weatherStations.$reset()
       links.$reset()
-      radar.$reset()
+
+      // reset map layers
+      clearLayer()
+      maxz.$reset()
+      merge1h.$reset()
+
       router.push({ name: 'login' })
     }
   } catch (err) {
@@ -42,7 +51,7 @@ async function logout() {
 <template>
   <nav class="absolute top-6 z-10 flex w-full items-end justify-between px-6">
     <span
-      class="flex h-8 items-center justify-center rounded-md bg-gray-800 px-3 text-xl text-white"
+      class="flex h-8 items-center justify-center rounded-md bg-gray-800 px-3 text-xl text-white select-none"
       >TelcoSense</span
     >
 
@@ -52,7 +61,7 @@ async function logout() {
 
     <div class="flex items-center gap-x-3 rounded-md text-white">
       <span
-        class="flex h-8 items-center rounded-md bg-gray-300/75 px-3 font-semibold text-gray-800"
+        class="flex h-8 items-center rounded-md border border-gray-700 bg-gray-300 px-3 font-semibold text-gray-800"
         >{{ auth.username }}</span
       >
 
