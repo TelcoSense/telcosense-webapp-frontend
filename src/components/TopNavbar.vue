@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useLinksStore } from '@/stores/links'
 import { useMaxzStore } from '@/stores/maxz'
 import { useMerge1hStore } from '@/stores/merge1h'
+import { useRainczStore } from '@/stores/raincz'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
 const router = useRouter()
@@ -19,6 +20,7 @@ const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
 const maxz = useMaxzStore()
 const merge1h = useMerge1hStore()
+const raincz = useRainczStore()
 
 const { clearLayer } = useActiveLayer()
 
@@ -34,6 +36,7 @@ async function logout() {
       clearLayer()
       maxz.$reset()
       merge1h.$reset()
+      raincz.$reset()
 
       router.push({ name: 'login' })
     }
@@ -61,9 +64,10 @@ async function logout() {
 
     <div class="flex items-center gap-x-3 rounded-md text-white">
       <span
-        class="flex h-8 items-center rounded-md border border-gray-700 bg-gray-300 px-3 font-semibold text-gray-800"
-        >{{ auth.username }}</span
+        class="flex h-8 items-center rounded-md border border-gray-700 bg-gray-300 px-3 font-semibold text-nowrap text-gray-800"
       >
+        {{ `${auth.username} (${auth.org})` }}
+      </span>
 
       <button
         @click="logout()"

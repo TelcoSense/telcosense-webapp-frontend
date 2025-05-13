@@ -5,12 +5,14 @@ import { defineStore } from 'pinia';
 interface AuthState {
   isLoggedIn: boolean | null;
   username: string | null;
+  org: string | null;
 }
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     isLoggedIn: null,
     username: null,
+    org: null
   }),
 
   actions: {
@@ -19,6 +21,7 @@ export const useAuthStore = defineStore('auth', {
         const res = await api.get('/login-check', getSecureConfig());
         this.isLoggedIn = res.data.valid;
         this.username = res.data.username ?? null;
+        this.org = res.data.org ?? null;
         return this.isLoggedIn === true;
       } catch (err) {
         if (err instanceof Error) {

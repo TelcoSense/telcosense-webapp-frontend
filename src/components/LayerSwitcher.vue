@@ -2,15 +2,18 @@
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useMaxzStore } from '@/stores/maxz'
 import { useMerge1hStore } from '@/stores/merge1h'
+import { useRainczStore } from '@/stores/raincz'
 import { computed } from 'vue'
 
 const { activeLayer, setLayer, clearLayer } = useActiveLayer()
 
 const maxz = useMaxzStore()
 const merge1h = useMerge1hStore()
+const raincz = useRainczStore()
 
 const isMaxzActive = computed(() => activeLayer.value?.name === 'maxz')
 const isMerge1hActive = computed(() => activeLayer.value?.name === 'merge1h')
+const isRainczActive = computed(() => activeLayer.value?.name === 'raincz')
 
 function toggleMaxz() {
   if (isMaxzActive.value) {
@@ -25,6 +28,14 @@ function toggleMerge1h() {
     clearLayer()
   } else {
     setLayer(merge1h, 'merge1h')
+  }
+}
+
+function toggleRaincz() {
+  if (isRainczActive.value) {
+    clearLayer()
+  } else {
+    setLayer(raincz, 'raincz')
   }
 }
 </script>
@@ -52,8 +63,13 @@ function toggleMerge1h() {
     </div>
     <span class="mt-3 mb-1.5 flex text-white">TelcoSense</span>
     <div class="flex flex-col gap-y-3">
-      <button class="h-8 rounded-md border border-gray-700 text-gray-400">Rain</button>
-      <button class="h-8 rounded-md border border-gray-700 text-gray-400">Temperature</button>
+      <button
+        @click="toggleRaincz()"
+        class="h-8 cursor-pointer rounded-md bg-gray-600 text-white hover:bg-gray-500 hover:opacity-100"
+        :class="isRainczActive ? 'bg-gray-600' : 'border border-gray-700 opacity-40'"
+      >
+        Rain CZ
+      </button>
     </div>
   </div>
 </template>

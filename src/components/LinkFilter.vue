@@ -77,14 +77,13 @@ watch(
 
 <template>
   <div
-    v-if="!links.loading"
+    v-if="!links.loading && links.hasLinks"
     class="absolute top-20 right-6 z-20 rounded-md text-white"
-    :class="{ 'h-[75vh] w-[320px] overflow-y-scroll bg-gray-800 p-3': linkFilterVisible }"
+    :class="{ 'h-[70vh] w-[320px] overflow-y-scroll bg-gray-800 p-3': linkFilterVisible }"
   >
     <button
       @click="linkFilterVisible = !linkFilterVisible"
       class="mb-1.5 h-8 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 hover:opacity-100"
-      :class="{ 'opacity-60': !linkFilterVisible }"
     >
       Link filter
     </button>

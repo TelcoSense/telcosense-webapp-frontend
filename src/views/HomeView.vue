@@ -5,11 +5,13 @@ import 'leaflet/dist/leaflet.css'
 import { useLinksStore } from '@/stores/links'
 import { useMaxzStore } from '@/stores/maxz'
 import { useMerge1hStore } from '@/stores/merge1h'
+import { useRainczStore } from '@/stores/raincz'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
 import type { Ref } from 'vue'
 import { onMounted, ref, watch } from 'vue'
 
+import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useLinkSelection } from '@/composables/useLinkSelection'
 import { useRealtime } from '@/composables/useRealtime'
 
@@ -18,11 +20,17 @@ import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
+import PrecipitationBar from '@/components/PrecipitationBar.vue'
+import ReflectivityBar from '@/components/ReflectivityBar.vue'
+
+import { datetimeFormat } from '@/utils'
+
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
 
 const maxz = useMaxzStore()
 const merge1h = useMerge1hStore()
+const raincz = useRainczStore()
 
 const map = ref<L.Map | null>(null)
 const stationsGroup = ref<L.LayerGroup | null>(null)
@@ -47,7 +55,8 @@ const { onMapMouseDown } = useLinkSelection({
   drawLinks,
 })
 
-const { currentTimestamp, oneWeekAgoTimestamp, formattedCountdown } = useRealtime(5)
+const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(5)
+const { activeLayer } = useActiveLayer()
 
 onMounted(async () => {
   initMap()
@@ -64,8 +73,12 @@ onMounted(async () => {
   merge1h.$reset()
   merge1h.setMap(mapObject)
 
+  raincz.$reset()
+  raincz.setMap(mapObject)
+
   await maxz.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
   await merge1h.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
+  await raincz.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
 })
 
 function initMap() {
@@ -168,14 +181,20 @@ watch(
 
         <div
           id="timestamps"
-          class="absolute bottom-0 left-0 z-10 m-6 flex flex-col rounded-md bg-gray-800 p-2 text-white"
+          class="absolute right-6 bottom-6 z-10 flex flex-col rounded-md bg-gray-800 p-3 text-white"
         >
-          <span class="font-chivo"> {{ oneWeekAgoTimestamp }} </span>
-          <span class="font-chivo"> {{ currentTimestamp }} </span>
-
-          <p>
-            Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
+          <p v-if="oneWeekAgoTimestamp">
+            One week ago:
+            <span class="font-chivo">{{ datetimeFormat(oneWeekAgoTimestamp, 'UTC') }} </span>
           </p>
+          <p v-if="currentTimestamp">
+            Current date:
+            <span class="font-chivo">{{ datetimeFormat(currentTimestamp, 'UTC') }} </span>
+          </p>
+
+          <!-- <p>
+            Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
+          </p> -->
         </div>
 
         <div
@@ -207,6 +226,9 @@ watch(
         <LayerControls />
 
         <LayerSwitcher />
+
+        <PrecipitationBar v-if="activeLayer?.name == 'merge1h'" />
+        <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
       </div>
     </main>
   </div>

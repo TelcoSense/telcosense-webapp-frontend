@@ -9,7 +9,7 @@ export interface Frame {
   objectUrl: string | null
 }
 
-export const useMerge1hStore = defineStore('merge1h', {
+export const useRainczStore = defineStore('raincz', {
   state: () => ({
     frames: [] as Frame[],
     loading: false,
@@ -26,11 +26,11 @@ export const useMerge1hStore = defineStore('merge1h', {
     frameLoading: false,
 
     bounds: L.latLngBounds(
-      L.latLng(48.047, 11.267),
-      L.latLng(51.458, 19.624)
+      L.latLng(48.5525, 12.0905),
+      L.latLng(51.0557, 18.8591)
     ),
 
-    apiUrl: '/api/merge1h/list',
+    apiUrl: '/api/raincz/list',
   }),
 
   actions: {

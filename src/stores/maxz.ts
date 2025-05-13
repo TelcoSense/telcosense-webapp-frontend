@@ -1,4 +1,4 @@
-import { radarApi } from '@/api'
+import { api } from '@/api'
 import L from 'leaflet'
 import { defineStore } from 'pinia'
 import { markRaw } from 'vue'
@@ -52,7 +52,7 @@ export const useMaxzStore = defineStore('maxz', {
       this.loading = true
       this.error = null
       try {
-        const res = await radarApi.get<Frame[]>(
+        const res = await api.get<Frame[]>(
           this.apiUrl,
           {
             params: { start, end }
@@ -80,7 +80,7 @@ export const useMaxzStore = defineStore('maxz', {
           if (toKeep.has(i)) {
             if (!frame.objectUrl) {
               try {
-                const res = await radarApi.get(frame.url, {
+                const res = await api.get(frame.url, {
                   responseType: 'blob',
                 })
                 const blob = res.data as Blob
@@ -114,7 +114,7 @@ export const useMaxzStore = defineStore('maxz', {
       const newTime = new Date(timestamp).getTime()
       if (newTime <= lastTime) return
       try {
-        const res = await radarApi.get<Frame[]>(this.apiUrl, {
+        const res = await api.get<Frame[]>(this.apiUrl, {
           params: { start: timestamp, end: timestamp },
         })
         if (!res.data.length) return
@@ -124,7 +124,7 @@ export const useMaxzStore = defineStore('maxz', {
           url: raw.url,
           objectUrl: null,
         }
-        const blobRes = await radarApi.get(newFrame.url, {
+        const blobRes = await api.get(newFrame.url, {
           responseType: 'blob',
         })
         const blob = blobRes.data as Blob
@@ -144,7 +144,7 @@ export const useMaxzStore = defineStore('maxz', {
       this.frameLoading = true
       try {
         if (!frame.objectUrl) {
-          const res = await radarApi.get(frame.url, {
+          const res = await api.get(frame.url, {
             responseType: 'blob',
           })
           const blob = res.data as Blob

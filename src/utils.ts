@@ -1,6 +1,6 @@
 export function datetimeFormat(datetimeStr: string, timeZone: 'UTC' | 'Europe/Prague'): string {
   const date = new Date(datetimeStr)
-  const dateFormatter = new Intl.DateTimeFormat('cs-CZ', {
+  const formatter = new Intl.DateTimeFormat('cs-CZ', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -9,8 +9,9 @@ export function datetimeFormat(datetimeStr: string, timeZone: 'UTC' | 'Europe/Pr
     hour12: false,
     timeZone,
   })
-  const parts = dateFormatter.formatToParts(date)
-  const get = (type: string) => parts.find((p) => p.type === type)!.value
-  const tzString = timeZone == 'UTC' ? 'UTC' : 'Local'
-  return `${get('day')}.${get('month')}.${get('year')} ${get('hour')}:${get('minute')} ${tzString}`
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((p) => [p.type, p.value])
+  )
+  const tzLabel = timeZone === 'UTC' ? 'UTC' : 'Local'
+  return `${parts.day}.${parts.month}.${parts.year} ${parts.hour}:${parts.minute} ${tzLabel}`
 }
