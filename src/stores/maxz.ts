@@ -30,7 +30,7 @@ export const useMaxzStore = defineStore('maxz', {
       L.latLng(51.458, 19.624)
     ),
 
-    apiUrl: '/api/maxz/list',
+    apiUrl: '/maxz/list',
   }),
 
   actions: {

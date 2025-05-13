@@ -30,7 +30,7 @@ export const useRainczStore = defineStore('raincz', {
       L.latLng(51.0557, 18.8591)
     ),
 
-    apiUrl: '/api/raincz/list',
+    apiUrl: '/raincz/list',
   }),
 
   actions: {

@@ -30,7 +30,7 @@ export const useMerge1hStore = defineStore('merge1h', {
       L.latLng(51.458, 19.624)
     ),
 
-    apiUrl: '/api/merge1h/list',
+    apiUrl: '/merge1h/list',
   }),
 
   actions: {
