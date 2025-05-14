@@ -55,7 +55,7 @@ const { onMapMouseDown } = useLinkSelection({
   drawLinks,
 })
 
-const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(5)
+const { currentTimestamp, oneWeekAgoTimestamp, formattedCountdown } = useRealtime(0.25)
 const { activeLayer } = useActiveLayer()
 
 onMounted(async () => {
@@ -192,9 +192,9 @@ watch(
             <span class="font-chivo">{{ datetimeFormat(currentTimestamp, 'UTC') }} </span>
           </p>
 
-          <!-- <p>
+          <p>
             Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
-          </p> -->
+          </p>
         </div>
 
         <div

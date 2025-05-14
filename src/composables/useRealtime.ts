@@ -1,6 +1,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 
-export function useRealtime(updateIntervalMinutes = 1) {
+export function useRealtime(updateIntervalMinutes = 1, numDays = 7) {
   const currentTimestamp = ref('')
   const oneWeekAgoTimestamp = ref('')
   const secondsUntilNextUpdate = ref(0)
@@ -25,7 +25,7 @@ export function useRealtime(updateIntervalMinutes = 1) {
     currentTimestamp.value = alignedDate.toISOString()
 
     const oneWeekAgo = new Date(alignedDate)
-    oneWeekAgo.setUTCDate(alignedDate.getUTCDate() - 7)
+    oneWeekAgo.setUTCDate(alignedDate.getUTCDate() - numDays)
     oneWeekAgoTimestamp.value = oneWeekAgo.toISOString()
   }
 
