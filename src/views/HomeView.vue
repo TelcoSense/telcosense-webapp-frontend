@@ -2,36 +2,34 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-import { useLinksStore } from '@/stores/links'
-import { useMaxzStore } from '@/stores/maxz'
-import { useMerge1hStore } from '@/stores/merge1h'
-import { useRainczStore } from '@/stores/raincz'
-import { useWeatherStationsStore } from '@/stores/weatherStations'
-
+import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
 import type { Ref } from 'vue'
 import { onMounted, ref, watch } from 'vue'
-
-import { useActiveLayer } from '@/composables/useActiveLayer'
-import { useLinkSelection } from '@/composables/useLinkSelection'
-import { useRealtime } from '@/composables/useRealtime'
 
 import LayerControls from '@/components/LayerControls.vue'
 import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
-import TopNavbar from '@/components/TopNavbar.vue'
-
 import PrecipitationBar from '@/components/PrecipitationBar.vue'
 import ReflectivityBar from '@/components/ReflectivityBar.vue'
+import TopNavbar from '@/components/TopNavbar.vue'
 
+import { useLinksStore } from '@/stores/links'
+import { useWeatherStationsStore } from '@/stores/weatherStations'
+
+import { useActiveLayer } from '@/composables/useActiveLayer'
+import { useImageLayer } from '@/composables/useImageLayer'
+import { useLinkSelection } from '@/composables/useLinkSelection'
+import { useRealtime } from '@/composables/useRealtime'
 import { datetimeFormat } from '@/utils'
 
+// realtime composable
+const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
+
+// store definitions
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
 
-const maxz = useMaxzStore()
-const merge1h = useMerge1hStore()
-const raincz = useRainczStore()
-
+// map initialization, link selection setup
 const map = ref<L.Map | null>(null)
 const stationsGroup = ref<L.LayerGroup | null>(null)
 const linksGroup = ref<L.LayerGroup | null>(null)
@@ -39,46 +37,12 @@ const linksGroup = ref<L.LayerGroup | null>(null)
 const selectedLinkIds = ref<Set<number>>(new Set())
 const dragBox = ref<HTMLDivElement | null>(null)
 
-const tooltipOptions: L.TooltipOptions = {
-  offset: [30, 0],
-  direction: 'auto',
-  permanent: false,
-  sticky: false,
-  opacity: 1,
-}
-
 const { onMapMouseDown } = useLinkSelection({
   map: map as Ref<L.Map | null>,
   dragBox,
   links,
   selectedLinkIds,
   drawLinks,
-})
-
-const { currentTimestamp, oneWeekAgoTimestamp, formattedCountdown } = useRealtime(0.25)
-const { activeLayer } = useActiveLayer()
-
-onMounted(async () => {
-  initMap()
-  weatherStations.fetchWeatherStations()
-  links.fetchLinks()
-  dragBox.value = document.getElementById('drag-box') as HTMLDivElement
-
-  const mapObject = map.value as L.Map
-  mapObject.on('mousedown', onMapMouseDown)
-
-  maxz.$reset()
-  maxz.setMap(mapObject)
-
-  merge1h.$reset()
-  merge1h.setMap(mapObject)
-
-  raincz.$reset()
-  raincz.setMap(mapObject)
-
-  await maxz.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
-  await merge1h.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
-  await raincz.fetchList(oneWeekAgoTimestamp.value, currentTimestamp.value)
 })
 
 function initMap() {
@@ -94,6 +58,55 @@ function initMap() {
 
   stationsGroup.value = L.layerGroup().addTo(map.value as L.Map)
   linksGroup.value = L.layerGroup().addTo(map.value as L.Map)
+}
+
+// map layers setup
+const { activeLayer } = useActiveLayer()
+
+const maxz = useImageLayer('maxz', {
+  apiUrl: '/maxz/list',
+  bounds: L.latLngBounds(L.latLng(48.047, 11.267), L.latLng(51.458, 19.624)),
+})
+
+const merge1h = useImageLayer('merge1h', {
+  apiUrl: '/merge1h/list',
+  bounds: L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
+})
+
+const raincz = useImageLayer('raincz', {
+  apiUrl: '/raincz/list',
+  bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
+})
+
+async function initLayer(layer: ImageSequenceLayer, map: L.Map, start: string, end: string) {
+  layer.releaseBlobs()
+  layer.setMap(map)
+  await layer.fetchList(start, end)
+}
+
+onMounted(async () => {
+  initMap()
+  weatherStations.fetchWeatherStations()
+  links.fetchLinks()
+  dragBox.value = document.getElementById('drag-box') as HTMLDivElement
+
+  const mapObject = map.value as L.Map
+  mapObject.on('mousedown', onMapMouseDown)
+
+  await Promise.all([
+    initLayer(maxz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
+    initLayer(merge1h, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
+    initLayer(raincz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
+  ])
+})
+
+// link and station drawing setup
+const tooltipOptions: L.TooltipOptions = {
+  offset: [30, 0],
+  direction: 'auto',
+  permanent: false,
+  sticky: false,
+  opacity: 1,
 }
 
 function drawLinks() {
@@ -140,7 +153,7 @@ function drawStations() {
     })
     marker.bindTooltip(
       `<div class="font-inter text-black">
-        <div class="mb-1 border-b text-base border-gray-300">${ws.full_name}</div>
+        <div class="mb-1 border-b text-base border-gray-300 font-semibold">${ws.full_name}</div>
         <div class="text-base">
           GH ID: ${ws.gh_id}<br/>
           WSI: ${ws.wsi}<br/>
@@ -154,6 +167,7 @@ function drawStations() {
   })
 }
 
+// watchers for the filtered links and stations drawing
 watch(
   () => links.filteredLinks,
   () => {
@@ -181,7 +195,7 @@ watch(
 
         <div
           id="timestamps"
-          class="absolute right-6 bottom-6 z-10 flex flex-col rounded-md bg-gray-800 p-3 text-white"
+          class="absolute right-6 bottom-6 z-10 flex flex-col rounded-md p-3 text-sm text-gray-800"
         >
           <p v-if="oneWeekAgoTimestamp">
             One week ago:
@@ -192,9 +206,9 @@ watch(
             <span class="font-chivo">{{ datetimeFormat(currentTimestamp, 'UTC') }} </span>
           </p>
 
-          <p>
+          <!-- <p>
             Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
-          </p>
+          </p> -->
         </div>
 
         <div
@@ -222,9 +236,7 @@ watch(
         </TopNavbar>
 
         <LinkFilter />
-
         <LayerControls />
-
         <LayerSwitcher />
 
         <PrecipitationBar v-if="activeLayer?.name == 'merge1h'" />

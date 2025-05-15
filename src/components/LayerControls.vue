@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { datetimeFormat } from '@/utils'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const { activeLayer } = useActiveLayer()
 
@@ -19,46 +19,43 @@ function togglePlayback() {
   activeLayer.value?.toggle()
 }
 
-function onSliderChange(event: Event) {
+function onSliderChanged(event: Event) {
   const index = parseInt((event.target as HTMLInputElement).value)
   activeLayer.value?.showFrame(index)
 }
+
+const sliderIndex = ref(0)
+
+watch(
+  () => activeLayer.value?.currentIndex,
+  (index) => {
+    if (index != null) sliderIndex.value = index
+  },
+)
+
+const sliderLabel = computed(() =>
+  activeLayer.value && activeLayer.value.frames.length
+    ? `${sliderIndex.value + 1}/${activeLayer.value.frames.length}`
+    : '—',
+)
 </script>
 
 <template>
-  <div v-if="activeLayer" class="absolute bottom-6 w-96 rounded-md bg-gray-800 p-3 text-white">
-    <div>
-      <!-- <span v-if="activeLayer.frameLoading"> Loading...</span> -->
-      First frame:
-      <span class="font-chivo">
-        {{ datetimeFormat(activeLayer.frames[0]?.timestamp, 'UTC') ?? '—' }}
-      </span>
-      <br />
-      Last frame:
-      <span class="font-chivo">
-        {{
-          datetimeFormat(activeLayer.frames[activeLayer.frames.length - 1]?.timestamp, 'UTC') ?? '—'
-        }}
-      </span>
-      <br />
-      Current frame:
-      <span class="font-chivo">
-        {{ datetimeFormat(activeLayer.frames[activeLayer.currentIndex]?.timestamp, 'UTC') ?? '—' }}
-      </span>
-    </div>
-
-    <input
-      v-if="activeLayer.frames.length"
-      type="range"
-      min="0"
-      :max="activeLayer.frames.length - 1"
-      :value="activeLayer.currentIndex"
-      :disabled="activeLayer.isPlaying || activeLayer.frameLoading"
-      @input="onSliderChange"
-      class="w-full"
-    />
-
-    <div class="flex items-center gap-2 p-2">
+  <div
+    v-if="activeLayer"
+    class="absolute bottom-6 rounded-md bg-gray-800/50 p-3 text-sm text-white"
+  >
+    <div class="flex items-center gap-x-3 pb-2">
+      <span>Opacity:</span>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.01"
+        :value="activeLayer.opacity"
+        @input="(e) => activeLayer?.setOpacity(parseFloat((e.target as HTMLInputElement).value))"
+        class="w-20"
+      />
       <button
         @click="activeLayer.changeFrame(-1)"
         :disabled="disablePrev"
@@ -79,8 +76,33 @@ function onSliderChange(event: Event) {
       >
         Play/Pause
       </button>
-      <span class="font-chivo">
-        {{ activeLayer.currentIndex + 1 }}/{{ activeLayer.frames.length }}
+
+      <p>
+        Current frame:
+        <span class="font-chivo">
+          {{ datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, 'UTC') ?? '—' }}
+        </span>
+        <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
+      </p>
+    </div>
+    <div class="flex items-center gap-x-3">
+      <span class="font-chivo text-nowrap">
+        {{ datetimeFormat(activeLayer.frames[0]?.timestamp, 'UTC') ?? '—' }}
+      </span>
+      <input
+        v-if="activeLayer.frames.length"
+        type="range"
+        min="0"
+        :max="activeLayer.frames.length - 1"
+        v-model.number="sliderIndex"
+        @change="onSliderChanged"
+        :disabled="activeLayer.isPlaying || activeLayer.frameLoading"
+        class="w-[480px]"
+      />
+      <span class="font-chivo text-nowrap">
+        {{
+          datetimeFormat(activeLayer.frames[activeLayer.frames.length - 1]?.timestamp, 'UTC') ?? '—'
+        }}
       </span>
     </div>
   </div>

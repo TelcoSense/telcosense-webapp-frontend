@@ -12,6 +12,5 @@ export function datetimeFormat(datetimeStr: string, timeZone: 'UTC' | 'Europe/Pr
   const parts = Object.fromEntries(
     formatter.formatToParts(date).map((p) => [p.type, p.value])
   )
-  const tzLabel = timeZone === 'UTC' ? 'UTC' : 'Local'
-  return `${parts.day}.${parts.month}.${parts.year} ${parts.hour}:${parts.minute} ${tzLabel}`
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
 }

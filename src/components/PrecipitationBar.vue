@@ -1,6 +1,6 @@
 <template>
   <div
-    class="font-chivo absolute bottom-6 left-6 flex flex-col items-end gap-y-1 rounded-md bg-gray-800/60 px-3 pt-1.5 pb-3 text-sm"
+    class="font-chivo absolute bottom-6 left-6 flex flex-col items-end gap-y-1 rounded-md bg-gray-800/50 px-3 pt-1.5 pb-3 text-sm"
   >
     <div class="mr-3 text-white select-none">mm</div>
     <div class="flex gap-x-2">

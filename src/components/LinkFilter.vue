@@ -87,7 +87,13 @@ watch(
     >
       Link filter
     </button>
+
     <div v-if="linkFilterVisible">
+      <div>
+        Showing
+        <span class="font-chivo">{{ links.filteredLinks.length }}/{{ links.links.length }}</span>
+        links
+      </div>
       <!-- length filter -->
       <div class="mt-1.5 mb-3 border border-gray-700 p-4">
         <div class="flex justify-between">

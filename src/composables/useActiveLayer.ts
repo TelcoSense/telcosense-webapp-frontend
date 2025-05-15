@@ -1,5 +1,6 @@
-import type { ComputedRef } from 'vue';
-import { computed, ref } from 'vue';
+import type { ComputedRef, Ref } from 'vue';
+import { computed, ref, unref } from 'vue';
+import type { Frame } from './useImageSequenceLayer';
 
 export interface ControllableLayer {
   name: string
@@ -7,6 +8,7 @@ export interface ControllableLayer {
   currentIndex: ComputedRef<number>
   isPlaying: ComputedRef<boolean>
   frameLoading: ComputedRef<boolean>
+  opacity: ComputedRef<number>
 
   showFrame(index: number): void
   play(): void
@@ -14,34 +16,44 @@ export interface ControllableLayer {
   toggle(): void
   changeFrame(delta: number): void
   setVisible(visible: boolean): void
+  setOpacity(value: number): void
 }
 
 const activeLayer = ref<ControllableLayer | null>(null)
 
+function toComputed<T>(source: Ref<T> | T): ComputedRef<T> {
+  return computed(() => unref(source))
+}
+
 export function useActiveLayer() {
   function setLayer(
     store: {
-      frames: { timestamp: string; objectUrl: string | null }[]
-      currentIndex: number
-      isPlaying: boolean
-      frameLoading: boolean
+      frames: Ref<Frame[]> | Frame[]
+      currentIndex: Ref<number> | number
+      isPlaying: Ref<boolean> | boolean
+      frameLoading: Ref<boolean> | boolean
+      opacity: Ref<number> | number
+
       showFrame(index: number): void
       play(): void
       pause(): void
       toggle(): void
       changeFrame(delta: number): void
       setVisible(visible: boolean): void
+      setOpacity(value: number): void
     },
     name = 'Unnamed Layer'
   ) {
     activeLayer.value?.pause()
     activeLayer.value?.setVisible(false)
+
     activeLayer.value = {
       name,
-      frames: computed(() => store.frames),
-      currentIndex: computed(() => store.currentIndex),
-      isPlaying: computed(() => store.isPlaying),
-      frameLoading: computed(() => store.frameLoading),
+      frames: toComputed(store.frames),
+      currentIndex: toComputed(store.currentIndex),
+      isPlaying: toComputed(store.isPlaying),
+      frameLoading: toComputed(store.frameLoading),
+      opacity: toComputed(store.opacity),
 
       showFrame: store.showFrame.bind(store),
       play: store.play.bind(store),
@@ -49,10 +61,12 @@ export function useActiveLayer() {
       toggle: store.toggle.bind(store),
       changeFrame: store.changeFrame.bind(store),
       setVisible: store.setVisible.bind(store),
+      setOpacity: store.setOpacity.bind(store)
     }
-
-    activeLayer.value?.setVisible(true)
-    activeLayer.value?.showFrame(0)
+    if (activeLayer.value) {
+      activeLayer.value.setVisible(true)
+      activeLayer.value.showFrame(0)
+    }
   }
 
   function clearLayer() {

@@ -8,9 +8,6 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 
 import { useAuthStore } from '@/stores/auth'
 import { useLinksStore } from '@/stores/links'
-import { useMaxzStore } from '@/stores/maxz'
-import { useMerge1hStore } from '@/stores/merge1h'
-import { useRainczStore } from '@/stores/raincz'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
 const router = useRouter()
@@ -18,9 +15,6 @@ const auth = useAuthStore()
 
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
-const maxz = useMaxzStore()
-const merge1h = useMerge1hStore()
-const raincz = useRainczStore()
 
 const { clearLayer } = useActiveLayer()
 
@@ -32,11 +26,8 @@ async function logout() {
       weatherStations.$reset()
       links.$reset()
 
-      // reset map layers
+      // reset map layer
       clearLayer()
-      maxz.$reset()
-      merge1h.$reset()
-      raincz.$reset()
 
       router.push({ name: 'login' })
     }
