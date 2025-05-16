@@ -41,11 +41,29 @@ const sliderLabel = computed(() =>
 </script>
 
 <template>
-  <div
-    v-if="activeLayer"
-    class="absolute bottom-6 rounded-md bg-gray-800/50 p-3 text-sm text-white"
-  >
+  <div v-if="activeLayer" class="absolute bottom-6 rounded-md bg-gray-800 p-3 text-sm text-white">
     <div class="flex items-center gap-x-3 pb-2">
+      <span class="font-chivo text-nowrap">
+        {{ datetimeFormat(activeLayer.frames[0]?.timestamp, 'UTC') ?? '—' }}
+      </span>
+      <input
+        v-if="activeLayer.frames.length"
+        type="range"
+        min="0"
+        :max="activeLayer.frames.length - 1"
+        v-model.number="sliderIndex"
+        @change="onSliderChanged"
+        :disabled="activeLayer.isPlaying || activeLayer.frameLoading"
+        class="w-[480px]"
+      />
+      <span class="font-chivo text-nowrap">
+        {{
+          datetimeFormat(activeLayer.frames[activeLayer.frames.length - 1]?.timestamp, 'UTC') ?? '—'
+        }}
+      </span>
+    </div>
+
+    <div class="flex items-center gap-x-3">
       <span>Opacity:</span>
       <input
         type="range"
@@ -84,26 +102,6 @@ const sliderLabel = computed(() =>
         </span>
         <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
       </p>
-    </div>
-    <div class="flex items-center gap-x-3">
-      <span class="font-chivo text-nowrap">
-        {{ datetimeFormat(activeLayer.frames[0]?.timestamp, 'UTC') ?? '—' }}
-      </span>
-      <input
-        v-if="activeLayer.frames.length"
-        type="range"
-        min="0"
-        :max="activeLayer.frames.length - 1"
-        v-model.number="sliderIndex"
-        @change="onSliderChanged"
-        :disabled="activeLayer.isPlaying || activeLayer.frameLoading"
-        class="w-[480px]"
-      />
-      <span class="font-chivo text-nowrap">
-        {{
-          datetimeFormat(activeLayer.frames[activeLayer.frames.length - 1]?.timestamp, 'UTC') ?? '—'
-        }}
-      </span>
     </div>
   </div>
 </template>
