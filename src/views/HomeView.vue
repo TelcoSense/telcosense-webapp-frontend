@@ -4,11 +4,12 @@ import 'leaflet/dist/leaflet.css'
 
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
 import type { Ref } from 'vue'
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch, computed } from 'vue'
 
 import LayerControls from '@/components/LayerControls.vue'
 import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
+import MultiPlot from '@/components/MultiPlot.vue'
 import PrecipitationBar from '@/components/PrecipitationBar.vue'
 import ReflectivityBar from '@/components/ReflectivityBar.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
@@ -21,7 +22,7 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
 import { useLinkSelection } from '@/composables/useLinkSelection'
 import { useRealtime } from '@/composables/useRealtime'
-import { useStationSelection } from '@/composables/useStationSelection'
+// import { useStationSelection } from '@/composables/useStationSelection'
 import { datetimeFormat } from '@/utils'
 
 // realtime composable
@@ -54,13 +55,13 @@ const { onMapMouseDown } = useLinkSelection({
   drawLinks,
 })
 
-const { onMapMouseDown: onStationMouseDown } = useStationSelection({
-  map: map as Ref<L.Map | null>,
-  dragBox,
-  stations: weatherStations,
-  selectedStationIds,
-  drawStations,
-})
+// const { onMapMouseDown: onStationMouseDown } = useStationSelection({
+//   map: map as Ref<L.Map | null>,
+//   dragBox,
+//   stations: weatherStations,
+//   selectedStationIds,
+//   drawStations,
+// })
 
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
@@ -86,6 +87,11 @@ function initMap() {
 
 // map layers setup
 const { activeLayer } = useActiveLayer()
+
+const currentCursorTime = computed(() => {
+  const frame = activeLayer.value?.frames[activeLayer.value.currentIndex]
+  return frame?.timestamp ?? null
+})
 
 const maxz = useImageLayer('maxz', {
   apiUrl: '/maxz/list',
@@ -118,7 +124,7 @@ onMounted(async () => {
 
   mapObject.on('mousedown', (e: L.LeafletMouseEvent) => {
     onMapMouseDown(e)
-    onStationMouseDown(e)
+    // onStationMouseDown(e)
   })
 
   window.addEventListener('keydown', onKeyDown)
@@ -306,6 +312,72 @@ watch(
 
         <PrecipitationBar v-if="activeLayer?.name == 'merge1h'" />
         <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
+
+        <div
+          v-if="weatherData.stationIds.length > 0"
+          class="absolute bottom-34 flex h-52 w-[55%] flex-col gap-2"
+        >
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex-1 overflow-x-auto pr-2 whitespace-nowrap">
+              <div class="inline-flex gap-2">
+                <button
+                  v-for="stationId in weatherData.stationIds"
+                  :key="stationId"
+                  @click="weatherData.selectStation(stationId)"
+                  @dblclick.stop="weatherData.removeStation(stationId)"
+                  class="cursor-pointer rounded px-4 py-1 text-sm font-medium transition-colors"
+                  :class="
+                    stationId === weatherData.selectedStationId
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  "
+                >
+                  {{ stationId }}
+                </button>
+              </div>
+            </div>
+
+            <div class="flex shrink-0 items-center gap-2">
+              <button
+                v-if="weatherData.stationIds.length > 0"
+                @click="weatherData.refresh(oneWeekAgoTimestamp, currentTimestamp)"
+                class="cursor-pointer rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
+              >
+                Refresh all
+              </button>
+              <button
+                v-if="weatherData.stationIds.length > 0"
+                @click="weatherData.clear()"
+                class="cursor-pointer rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+              >
+                Clear all
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-1 items-center justify-center rounded bg-gray-800">
+            <div v-if="weatherData.loading" class="animate-pulse text-sm text-gray-300">
+              Loading data...
+            </div>
+            <MultiPlot
+              v-else-if="weatherData.selectedStationId"
+              :seriesData="[
+                {
+                  name: 'Temperature (°C)',
+                  data: weatherData.currentTemperature,
+                },
+                {
+                  name: 'Rainfall (mm)',
+                  data: weatherData.currentPrecipitation,
+                },
+              ]"
+              :x-min="oneWeekAgoTimestamp"
+              :x-max="currentTimestamp"
+              :cursorTime="currentCursorTime"
+            />
+          </div>
+        </div>
+        <!-- plot end -->
       </div>
     </main>
   </div>

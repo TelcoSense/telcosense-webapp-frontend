@@ -9,12 +9,14 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useAuthStore } from '@/stores/auth'
 import { useLinksStore } from '@/stores/links'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
+import { useWeatherDataStore } from '@/stores/weatherData'
 
 const router = useRouter()
 const auth = useAuthStore()
 
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
+const weatherData = useWeatherDataStore()
 
 const { clearLayer } = useActiveLayer()
 
@@ -24,6 +26,7 @@ async function logout() {
     if (res.data.message === 'Logout successful') {
       await auth.checkLogin()
       weatherStations.$reset()
+      weatherData.$reset()
       links.$reset()
 
       // reset map layer
