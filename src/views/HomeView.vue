@@ -326,99 +326,130 @@ watch(
         <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
 
         <div
-          v-if="weatherData.stationIds.length > 0"
-          class="absolute bottom-34 flex h-80 w-[55%] flex-col gap-2"
+          v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0"
+          class="absolute bottom-33 flex h-96 w-[1300px] flex-col gap-2"
         >
-          <!-- <div class="flex items-center justify-between gap-2">
-            <div class="flex-1 overflow-x-auto pr-2 whitespace-nowrap">
-              <div class="inline-flex gap-2">
-                <button
-                  v-for="stationId in weatherData.stationIds"
-                  :key="stationId"
-                  @click="weatherData.selectStation(stationId)"
-                  @dblclick.stop="weatherData.removeStation(stationId)"
-                  class="cursor-pointer rounded px-4 py-1 text-sm font-medium transition-colors"
-                  :class="
-                    stationId === weatherData.selectedStationId
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  "
-                >
-                  {{ stationId }}
-                </button>
-              </div>
-            </div>
+          <div class="inline-flex h-8 gap-2">
+            <button
+              v-for="stationId in weatherData.stationIds"
+              :key="stationId"
+              @click="weatherData.selectStation(stationId)"
+              @dblclick.stop="weatherData.removeStation(stationId)"
+              class="cursor-pointer rounded px-4 py-1 text-sm font-medium transition-colors"
+              :class="
+                stationId === weatherData.selectedStationId
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              "
+            >
+              {{ stationId }}
+            </button>
 
-            <div class="flex shrink-0 items-center gap-2">
-              <button
-                v-if="weatherData.stationIds.length > 0"
-                @click="weatherData.refresh(oneWeekAgoTimestamp, currentTimestamp)"
-                class="cursor-pointer rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
-              >
-                Refresh all
-              </button>
-              <button
-                v-if="weatherData.stationIds.length > 0"
-                @click="weatherData.clear()"
-                class="cursor-pointer rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
-              >
-                Clear all
-              </button>
-            </div>
-          </div> -->
-
-          <div class="flex flex-1 items-center justify-center rounded bg-gray-800">
-            <div v-if="weatherData.loading" class="animate-pulse text-sm text-gray-300">
-              Loading data...
-            </div>
-            <MultiPlot
-              v-else-if="weatherData.selectedStationId"
-              :seriesData="[
-                {
-                  name: 'Temperature (°C)',
-                  data: weatherData.currentTemperature,
-                },
-                {
-                  name: 'Rainfall (mm)',
-                  data: weatherData.currentPrecipitation,
-                },
-              ]"
-              :x-min="oneWeekAgoTimestamp"
-              :x-max="currentTimestamp"
-              :cursorTime="currentCursorTime"
-              :left-axis-name="'Temperature (°C)'"
-              :right-axis-name="'Rainfall (mm)'"
-            />
+            <!-- <button
+              v-if="weatherData.stationIds.length > 0"
+              @click="weatherData.refresh(oneWeekAgoTimestamp, currentTimestamp)"
+              class="cursor-pointer rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
+            >
+              Refresh all
+            </button> -->
+            <button
+              v-if="weatherData.stationIds.length > 0"
+              @click="weatherData.clear()"
+              class="cursor-pointer rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+            >
+              Clear selection
+            </button>
           </div>
 
-          <div class="flex flex-1 items-center justify-center rounded bg-gray-800">
-            <div v-if="cmlData.loading" class="animate-pulse text-sm text-gray-300">
+          <div class="flex flex-1 items-center justify-center bg-gray-800">
+            <div
+              v-if="weatherData.loading || cmlData.loading"
+              class="animate-pulse text-sm text-gray-300"
+            >
               Loading data...
             </div>
-
             <MultiPlot
-              v-else-if="cmlData.selectedCmlId"
+              v-else-if="weatherData.selectedStationId || cmlData.selectedCmlId"
               :seriesData="[
                 {
-                  name: 'Temperature A',
-                  data: cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureA ?? [],
+                  name: 'WS temperature',
+                  data: weatherData.currentTemperature,
+                  subplotIndex: 0,
+                  yAxisSide: 'left',
                 },
                 {
-                  name: 'Temperature B',
-                  data: cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureB ?? [],
+                  name: 'WS rainfall',
+                  data: weatherData.currentPrecipitation,
+                  subplotIndex: 0,
+                  yAxisSide: 'right',
                 },
-                { name: 'TRSL A', data: cmlData.cmls.get(cmlData.selectedCmlId)?.trslA ?? [] },
-                { name: 'TRSL B', data: cmlData.cmls.get(cmlData.selectedCmlId)?.trslB ?? [] },
+                {
+                  name: 'CML A temperature',
+                  data: cmlData.selectedCmlId
+                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureA ?? [])
+                    : [],
+                  subplotIndex: 1,
+                  yAxisSide: 'left',
+                },
+                {
+                  name: 'CML B temperature',
+                  data: cmlData.selectedCmlId
+                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureB ?? [])
+                    : [],
+                  subplotIndex: 1,
+                  yAxisSide: 'left',
+                },
+                {
+                  name: 'CML A TRSL',
+                  data: cmlData.selectedCmlId
+                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslA ?? [])
+                    : [],
+                  subplotIndex: 1,
+                  yAxisSide: 'right',
+                },
+                {
+                  name: 'CML B TRSL',
+                  data: cmlData.selectedCmlId
+                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslB ?? [])
+                    : [],
+                  subplotIndex: 1,
+                  yAxisSide: 'right',
+                },
               ]"
-              :leftAxisName="'Temperature (°C)'"
-              :rightAxisName="'TRSL (dB)'"
               :xMin="oneWeekAgoTimestamp"
               :xMax="currentTimestamp"
               :cursorTime="currentCursorTime"
+              :topLeftAxisName="'Temperature (°C)'"
+              :topRightAxisName="'Rainfall (mm)'"
+              :bottomLeftAxisName="'Temperature (°C)'"
+              :bottomRightAxisName="'TRSL (dB)'"
             />
           </div>
-        </div>
 
+          <div class="inline-flex h-8 gap-2">
+            <button
+              v-for="cmlId in cmlData.cmlIds"
+              :key="cmlId"
+              @click="cmlData.selectCml(cmlId)"
+              @dblclick.stop="cmlData.removeCml(cmlId)"
+              class="cursor-pointer rounded px-4 py-1 text-sm font-medium transition-colors"
+              :class="
+                cmlId === cmlData.selectedCmlId
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              "
+            >
+              ID: {{ cmlId }}
+            </button>
+            <button
+              v-if="cmlData.cmlIds.length > 0"
+              @click="cmlData.clear()"
+              class="cursor-pointer rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
         <!-- plot end -->
       </div>
     </main>

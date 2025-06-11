@@ -82,5 +82,17 @@ export const useCmlDataStore = defineStore('cmlData', {
         this.selectedCmlId = cmlId
       }
     },
+
+    removeCml(cmlId: string) {
+      this.cmls.delete(cmlId)
+      if (this.selectedCmlId === cmlId) {
+        this.selectedCmlId = this.cmlIds[0] ?? null
+      }
+    },
+
+    clear() {
+      this.cmls.clear()
+      this.selectedCmlId = null
+    },
   },
 })
