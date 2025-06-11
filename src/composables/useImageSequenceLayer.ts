@@ -25,7 +25,7 @@ export function useImageSequenceLayer(config: {
   const loading = ref(false)
   const error = ref<string | null>(null)
   const frameLoading = ref(false)
-  const opacity = ref(1)
+  const opacity = ref(0.5)
 
   let preloadInProgress = false
   let currentAbort: AbortController | null = null

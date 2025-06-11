@@ -8,9 +8,9 @@ import {
   DataZoomComponent,
   GridComponent,
   LegendComponent,
+  MarkLineComponent,
   TitleComponent,
   TooltipComponent,
-  MarkLineComponent,
 } from 'echarts/components'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -29,17 +29,21 @@ use([
 const props = defineProps<{
   seriesData: Array<{
     name: string
-    data: { time: string; value: number }[]
+    data: { time: string; value: number | null }[]
   }>
   xMin?: string
   xMax?: string
   cursorTime?: string
+  leftAxisName?: string
+  rightAxisName?: string
 }>()
 
+const chartOptions = ref<EChartsOption>({})
+
 const CURSOR_LINE_STYLE = {
-  color: '#00FFFF',
+  color: '#FF0000',
   width: 1.5,
-  type: 'dashed' as const,
+  type: 'solid' as const,
 }
 
 const buildCursorSeries = (): SeriesOption | undefined => {
@@ -62,13 +66,17 @@ const buildCursorSeries = (): SeriesOption | undefined => {
   }
 }
 
-const chartOptions = ref<EChartsOption>({})
+const resolveYAxisIndex = (name: string): number => {
+  const lower = name.toLowerCase()
+  if (lower.includes('trsl') || lower.includes('rainfall') || lower.includes('srážky')) return 1
+  return 0
+}
 
 const buildOptions = () => {
   const series: SeriesOption[] = []
 
-  props.seriesData.forEach((seriesItem, idx) => {
-    const convertedData: [string, number][] = seriesItem.data.map((d) => [d.time, d.value])
+  props.seriesData.forEach((seriesItem) => {
+    const convertedData: [string, number | null][] = seriesItem.data.map((d) => [d.time, d.value])
     const s: SeriesOption = {
       name: seriesItem.name,
       type: 'line',
@@ -76,7 +84,7 @@ const buildOptions = () => {
       showSymbol: false,
       sampling: 'lttb',
       lineStyle: { width: 1.5 },
-      yAxisIndex: idx,
+      yAxisIndex: resolveYAxisIndex(seriesItem.name),
     }
     series.push(s)
   })
@@ -93,7 +101,6 @@ const buildOptions = () => {
     },
     tooltip: {
       trigger: 'axis',
-
       transitionDuration: 0,
       enterable: false,
       axisPointer: {
@@ -142,7 +149,7 @@ const buildOptions = () => {
     yAxis: [
       {
         type: 'value',
-        name: props.seriesData[0]?.name || 'Left',
+        name: props.leftAxisName ?? 'Left Axis',
         position: 'left',
         nameRotate: 90,
         nameLocation: 'middle',
@@ -155,15 +162,18 @@ const buildOptions = () => {
           rotate: 0,
           color: '#ffffff',
           fontFamily: 'Chivo Mono, monospace',
+          width: 40,
+          formatter: (value: number) =>
+            Number.isInteger(value) ? value.toString() : value.toFixed(1),
         },
         axisLine: { lineStyle: { color: '#6b7280' } },
         splitLine: { show: false },
-        show: !!props.seriesData[0],
-        minInterval: 1,
+        min: 'dataMin',
+        max: 'dataMax',
       },
       {
         type: 'value',
-        name: props.seriesData[1]?.name || 'Right',
+        name: props.rightAxisName ?? 'Right Axis',
         position: 'right',
         nameRotate: 90,
         nameLocation: 'middle',
@@ -176,11 +186,14 @@ const buildOptions = () => {
           rotate: 0,
           color: '#ffffff',
           fontFamily: 'Chivo Mono, monospace',
+          width: 40,
+          formatter: (value: number) =>
+            Number.isInteger(value) ? value.toString() : value.toFixed(1),
         },
         axisLine: { lineStyle: { color: '#6b7280' } },
         splitLine: { show: false },
-        show: !!props.seriesData[1],
-        minInterval: 1,
+        min: 'dataMin',
+        max: 'dataMax',
       },
     ],
     series,

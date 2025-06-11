@@ -40,7 +40,7 @@ function isActive(id: string) {
 </script>
 
 <template>
-  <div class="absolute top-20 left-6 w-[120px] rounded-md bg-gray-800 p-3">
+  <div class="absolute top-20 left-6 w-[120px] rounded-md bg-gray-800 p-3 text-sm">
     <span class="flex border-b border-gray-700 pb-1.5 text-white">Map layers</span>
 
     <template v-for="group in ['CHMI', 'TelcoSense']" :key="group">

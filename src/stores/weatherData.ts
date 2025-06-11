@@ -39,7 +39,7 @@ export const useWeatherDataStore = defineStore('weatherData', {
           temperature: res.data.T,
           precipitation: res.data.SRA10M,
         })
-        this.selectedStationId ||= ghId
+        this.selectStation(ghId)
       } catch (err) {
         this.error = err instanceof Error ? err.message : 'Unknown error'
         console.error(err)

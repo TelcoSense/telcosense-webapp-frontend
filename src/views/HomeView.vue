@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
 import type { Ref } from 'vue'
-import { onBeforeUnmount, onMounted, ref, watch, computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import LayerControls from '@/components/LayerControls.vue'
 import LayerSwitcher from '@/components/LayerSwitcher.vue'
@@ -14,6 +14,7 @@ import PrecipitationBar from '@/components/PrecipitationBar.vue'
 import ReflectivityBar from '@/components/ReflectivityBar.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
+import { useCmlDataStore } from '@/stores/cmlData'
 import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
@@ -32,6 +33,7 @@ const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
 const weatherStations = useWeatherStationsStore()
 const weatherData = useWeatherDataStore()
 const links = useLinksStore()
+const cmlData = useCmlDataStore()
 
 // map initialization, link and station selection setup
 const map = ref<L.Map | null>(null)
@@ -90,7 +92,7 @@ const { activeLayer } = useActiveLayer()
 
 const currentCursorTime = computed(() => {
   const frame = activeLayer.value?.frames[activeLayer.value.currentIndex]
-  return frame?.timestamp ?? null
+  return frame?.timestamp ?? undefined
 })
 
 const maxz = useImageLayer('maxz', {
@@ -186,6 +188,16 @@ function drawLinks() {
         </div>`,
         tooltipOptions,
       )
+      polyline.on('click', async () => {
+        await cmlData.fetchCmlData(
+          oneWeekAgoTimestamp.value,
+          currentTimestamp.value,
+          String(link.id),
+          link.ip_address_A,
+          link.ip_address_B,
+          link.influx_mapping,
+        )
+      })
       polyline.addTo(group as L.LayerGroup)
       linkPolylines.set(link.id, polyline)
     } else {
@@ -315,9 +327,9 @@ watch(
 
         <div
           v-if="weatherData.stationIds.length > 0"
-          class="absolute bottom-34 flex h-52 w-[55%] flex-col gap-2"
+          class="absolute bottom-34 flex h-80 w-[55%] flex-col gap-2"
         >
-          <div class="flex items-center justify-between gap-2">
+          <!-- <div class="flex items-center justify-between gap-2">
             <div class="flex-1 overflow-x-auto pr-2 whitespace-nowrap">
               <div class="inline-flex gap-2">
                 <button
@@ -353,7 +365,7 @@ watch(
                 Clear all
               </button>
             </div>
-          </div>
+          </div> -->
 
           <div class="flex flex-1 items-center justify-center rounded bg-gray-800">
             <div v-if="weatherData.loading" class="animate-pulse text-sm text-gray-300">
@@ -374,9 +386,39 @@ watch(
               :x-min="oneWeekAgoTimestamp"
               :x-max="currentTimestamp"
               :cursorTime="currentCursorTime"
+              :left-axis-name="'Temperature (°C)'"
+              :right-axis-name="'Rainfall (mm)'"
+            />
+          </div>
+
+          <div class="flex flex-1 items-center justify-center rounded bg-gray-800">
+            <div v-if="cmlData.loading" class="animate-pulse text-sm text-gray-300">
+              Loading data...
+            </div>
+
+            <MultiPlot
+              v-else-if="cmlData.selectedCmlId"
+              :seriesData="[
+                {
+                  name: 'Temperature A',
+                  data: cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureA ?? [],
+                },
+                {
+                  name: 'Temperature B',
+                  data: cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureB ?? [],
+                },
+                { name: 'TRSL A', data: cmlData.cmls.get(cmlData.selectedCmlId)?.trslA ?? [] },
+                { name: 'TRSL B', data: cmlData.cmls.get(cmlData.selectedCmlId)?.trslB ?? [] },
+              ]"
+              :leftAxisName="'Temperature (°C)'"
+              :rightAxisName="'TRSL (dB)'"
+              :xMin="oneWeekAgoTimestamp"
+              :xMax="currentTimestamp"
+              :cursorTime="currentCursorTime"
             />
           </div>
         </div>
+
         <!-- plot end -->
       </div>
     </main>

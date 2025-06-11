@@ -78,8 +78,8 @@ watch(
 <template>
   <div
     v-if="!links.loading && links.hasLinks"
-    class="absolute top-20 right-6 z-20 rounded-md text-white"
-    :class="{ 'h-[70vh] w-[320px] overflow-y-scroll bg-gray-800 p-3': linkFilterVisible }"
+    class="absolute top-20 right-6 z-20 rounded-md text-sm text-white"
+    :class="{ 'h-[660px] w-[320px] overflow-y-scroll bg-gray-800 p-3': linkFilterVisible }"
   >
     <button
       @click="linkFilterVisible = !linkFilterVisible"
@@ -174,7 +174,7 @@ watch(
         <div
           v-for="(techs, group) in links.groupedLinksByMappingAndTechnology"
           :key="group"
-          class="border border-gray-700 p-4"
+          class="border border-gray-700 p-2"
         >
           <div class="flex items-center justify-between">
             <label class="flex cursor-pointer items-center">

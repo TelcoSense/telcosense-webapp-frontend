@@ -11,8 +11,8 @@ export interface Site {
 
 export interface Link {
   id: number
-  ip_address_A: string | null
-  ip_address_B: string | null
+  ip_address_A: string
+  ip_address_B: string
   site_A: Site
   site_B: Site
   technology: string
