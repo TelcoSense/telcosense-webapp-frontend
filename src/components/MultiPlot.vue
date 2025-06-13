@@ -4,6 +4,7 @@ import type { EChartsOption, SeriesOption } from 'echarts'
 import { LineChart } from 'echarts/charts'
 import {
   DataZoomComponent,
+  GraphicComponent,
   GridComponent,
   LegendComponent,
   MarkLineComponent,
@@ -24,6 +25,7 @@ use([
   DataZoomComponent,
   CanvasRenderer,
   MarkLineComponent,
+  GraphicComponent,
 ])
 
 const props = defineProps<{
@@ -53,7 +55,6 @@ const resolveYAxisIndex = (name: string): number => {
 
 const buildOptions = () => {
   const series: SeriesOption[] = []
-
   props.seriesData.forEach((seriesItem) => {
     const convertedData: [string, number | null][] = seriesItem.data.map((d) => [d.time, d.value])
     const subplotIndex = seriesItem.subplotIndex
@@ -74,23 +75,43 @@ const buildOptions = () => {
     })
   })
 
-  // series.push({
-  //   id: 'cursor',
-  //   name: 'Cursor Line',
-  //   type: 'line',
-  //   data: [],
-  //   z: 100,
-  //   silent: true,
-  //   tooltip: { show: false },
-  //   lineStyle: { opacity: 0 },
-  //   markLine: {
-  //     silent: true,
-  //     symbol: 'none',
-  //     lineStyle: CURSOR_LINE_STYLE,
-  //     label: { show: false },
-  //     data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
-  //   },
-  // })
+  series.push({
+    id: 'cursor-markline-top',
+    type: 'line',
+    data: [],
+    xAxisIndex: 0,
+    yAxisIndex: 0,
+    silent: true,
+    markLine: {
+      symbol: 'none',
+      label: { show: false },
+      lineStyle: {
+        type: 'solid',
+        color: '#FF0000',
+        width: 1.5,
+      },
+      data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
+    },
+  })
+
+  series.push({
+    id: 'cursor-markline-bottom',
+    type: 'line',
+    data: [],
+    xAxisIndex: 1,
+    yAxisIndex: 2,
+    silent: true,
+    markLine: {
+      symbol: 'none',
+      label: { show: false },
+      lineStyle: {
+        type: 'solid',
+        color: '#FF0000',
+        width: 1.5,
+      },
+      data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
+    },
+  })
 
   chartOptions.value = {
     useUTC: true,
@@ -278,7 +299,108 @@ onMounted(async () => {
   buildOptions()
 })
 
-watch(() => props.seriesData, buildOptions, { deep: true })
+watch(
+  () => props.seriesData,
+  (newData) => {
+    const chart = chartRef.value?.chart as echarts.ECharts | undefined
+    if (!chart) return
+    const updatedSeries: SeriesOption[] = newData.map((seriesItem) => {
+      const convertedData: [string, number | null][] = seriesItem.data.map((d) => [d.time, d.value])
+      const subplotIndex = seriesItem.subplotIndex
+      const yAxisSide =
+        seriesItem.yAxisSide ?? (resolveYAxisIndex(seriesItem.name) === 0 ? 'left' : 'right')
+      const yAxisOffset = yAxisSide === 'left' ? 0 : 1
+      const yAxisIndex = subplotIndex * 2 + yAxisOffset
+      return {
+        id: seriesItem.name,
+        name: seriesItem.name,
+        type: 'line',
+        data: convertedData,
+        showSymbol: false,
+        sampling: 'lttb',
+        lineStyle: { width: 1.5 },
+        xAxisIndex: subplotIndex,
+        yAxisIndex,
+      }
+    })
+    updatedSeries.push(
+      {
+        id: 'cursor-markline-top',
+        type: 'line',
+        data: [],
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        silent: true,
+        markLine: {
+          symbol: 'none',
+          label: { show: false },
+          lineStyle: {
+            type: 'solid',
+            color: '#FF0000',
+            width: 1.5,
+          },
+          data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
+        },
+      },
+      {
+        id: 'cursor-markline-bottom',
+        type: 'line',
+        data: [],
+        xAxisIndex: 1,
+        yAxisIndex: 2,
+        silent: true,
+        markLine: {
+          symbol: 'none',
+          label: { show: false },
+          lineStyle: {
+            type: 'solid',
+            color: '#FF0000',
+            width: 1.5,
+          },
+          data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
+        },
+      },
+    )
+    chart.setOption(
+      {
+        series: updatedSeries,
+      },
+      {
+        replaceMerge: ['series'],
+      },
+    )
+  },
+  { deep: false },
+)
+
+watch(
+  () => props.cursorTime,
+  (cursor) => {
+    const chart = chartRef.value?.chart as echarts.ECharts | undefined
+    if (!chart) return
+    chart.setOption(
+      {
+        series: [
+          {
+            id: 'cursor-markline-top',
+            markLine: {
+              data: cursor ? [{ xAxis: cursor }] : [],
+            },
+          },
+          {
+            id: 'cursor-markline-bottom',
+            markLine: {
+              data: cursor ? [{ xAxis: cursor }] : [],
+            },
+          },
+        ],
+      },
+      {
+        notMerge: false,
+      },
+    )
+  },
+)
 </script>
 
 <template>

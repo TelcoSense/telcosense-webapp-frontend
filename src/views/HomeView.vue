@@ -161,7 +161,9 @@ function drawLinks() {
     }
   }
   links.filteredLinks.forEach((link) => {
-    const color = selectedLinkIds.value.has(link.id) ? 'red' : 'black'
+    const isSelected =
+      selectedLinkIds.value.has(link.id) || link.id.toString() === cmlData.selectedCmlId
+    const color = isSelected ? 'red' : 'black'
     let polyline = linkPolylines.get(link.id)
     if (!polyline) {
       polyline = L.polyline(
@@ -173,19 +175,19 @@ function drawLinks() {
       )
       polyline.bindTooltip(
         `<div class="font-inter text-black">
-          <div class="mb-1 border-b text-base font-semibold border-gray-300">Link ID: ${link.id}</div>
-          <div class="text-base">
-            Site A: ${link.site_A.name}<br />
-            Site B: ${link.site_B.name}<br />
-            IP Address A: ${link.ip_address_A}<br />
-            IP Address B: ${link.ip_address_B}<br />
-            Frequency A: ${(link.frequency_A / 1000).toFixed(2)} GHz<br />
-            Frequency B: ${(link.frequency_B / 1000).toFixed(2)} GHz<br />
-            Length: ${link.length} m<br />
-            Polarization: ${link.polarization}<br />
-            Tech: ${link.technology}<br />
-          </div>
-        </div>`,
+            <div class="mb-1 border-b text-base font-semibold border-gray-300">Link ID: ${link.id}</div>
+            <div class="text-base">
+              Site A: ${link.site_A.name}<br />
+              Site B: ${link.site_B.name}<br />
+              IP Address A: ${link.ip_address_A}<br />
+              IP Address B: ${link.ip_address_B}<br />
+              Frequency A: ${(link.frequency_A / 1000).toFixed(2)} GHz<br />
+              Frequency B: ${(link.frequency_B / 1000).toFixed(2)} GHz<br />
+              Length: ${link.length} m<br />
+              Polarization: ${link.polarization}<br />
+              Tech: ${link.technology}<br />
+            </div>
+          </div>`,
         tooltipOptions,
       )
       polyline.on('click', async () => {
@@ -216,7 +218,9 @@ function drawStations() {
     }
   }
   weatherStations.filteredStations.forEach((ws) => {
-    const color = selectedStationIds.value.has(ws.id) ? 'red' : 'blue'
+    const isSelected =
+      selectedStationIds.value.has(ws.id) || ws.gh_id === weatherData.selectedStationId
+    const color = isSelected ? 'red' : 'blue'
     let marker = stationMarkers.get(ws.id)
     if (!marker) {
       marker = L.circleMarker([ws.Y, ws.X], {
@@ -228,14 +232,14 @@ function drawStations() {
       })
       marker.bindTooltip(
         `<div class="font-inter text-black">
-          <div class="mb-1 border-b text-base border-gray-300 font-semibold">${ws.full_name}</div>
-          <div class="text-base">
-            GH ID: ${ws.gh_id}<br/>
-            WSI: ${ws.wsi}<br/>
-            Lat: ${ws.Y}, Lon: ${ws.X}<br/>
-            Elevation: ${ws.elevation} m
-          </div>
-        </div>`,
+            <div class="mb-1 border-b text-base border-gray-300 font-semibold">${ws.full_name}</div>
+            <div class="text-base">
+              GH ID: ${ws.gh_id}<br/>
+              WSI: ${ws.wsi}<br/>
+              Lat: ${ws.Y}, Lon: ${ws.X}<br/>
+              Elevation: ${ws.elevation} m
+            </div>
+          </div>`,
         tooltipOptions,
       )
       marker.on('click', async () => {
@@ -268,6 +272,69 @@ watch(
     }
   },
 )
+
+watch(
+  () => weatherData.selectedStationId,
+  () => {
+    drawStations()
+  },
+)
+
+watch(
+  () => cmlData.selectedCmlId,
+  () => {
+    drawLinks()
+  },
+)
+
+function y(side: 'left' | 'right') {
+  return side
+}
+
+const seriesData = computed(() => {
+  return [
+    {
+      name: 'WS temperature',
+      data: weatherData.currentTemperature,
+      subplotIndex: 0,
+      yAxisSide: y('left'),
+    },
+    {
+      name: 'WS rainfall',
+      data: weatherData.currentPrecipitation,
+      subplotIndex: 0,
+      yAxisSide: y('right'),
+    },
+    {
+      name: 'CML A temperature',
+      data: cmlData.selectedCmlId
+        ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureA ?? [])
+        : [],
+      subplotIndex: 1,
+      yAxisSide: y('left'),
+    },
+    {
+      name: 'CML B temperature',
+      data: cmlData.selectedCmlId
+        ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureB ?? [])
+        : [],
+      subplotIndex: 1,
+      yAxisSide: y('left'),
+    },
+    {
+      name: 'CML A TRSL',
+      data: cmlData.selectedCmlId ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslA ?? []) : [],
+      subplotIndex: 1,
+      yAxisSide: y('right'),
+    },
+    {
+      name: 'CML B TRSL',
+      data: cmlData.selectedCmlId ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslB ?? []) : [],
+      subplotIndex: 1,
+      yAxisSide: y('right'),
+    },
+  ]
+})
 </script>
 
 <template>
@@ -290,8 +357,8 @@ watch(
           </p>
 
           <!-- <p>
-            Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
-          </p> -->
+              Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
+            </p> -->
         </div>
 
         <div
@@ -329,39 +396,34 @@ watch(
           v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0"
           class="absolute bottom-33 flex h-96 w-[1300px] flex-col gap-2"
         >
-          <div class="inline-flex h-8 gap-2">
-            <button
-              v-for="stationId in weatherData.stationIds"
-              :key="stationId"
-              @click="weatherData.selectStation(stationId)"
-              @dblclick.stop="weatherData.removeStation(stationId)"
-              class="cursor-pointer rounded px-4 py-1 text-sm font-medium transition-colors"
-              :class="
-                stationId === weatherData.selectedStationId
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              "
-            >
-              {{ stationId }}
-            </button>
-
-            <!-- <button
-              v-if="weatherData.stationIds.length > 0"
-              @click="weatherData.refresh(oneWeekAgoTimestamp, currentTimestamp)"
-              class="cursor-pointer rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700"
-            >
-              Refresh all
-            </button> -->
+          <div class="flex h-8 items-center justify-between gap-2">
+            <div class="flex-1 overflow-x-auto whitespace-nowrap">
+              <div class="flex gap-x-2">
+                <button
+                  v-for="stationId in weatherData.stationIds"
+                  :key="stationId"
+                  @click="weatherData.selectStation(stationId)"
+                  @dblclick.stop="weatherData.removeStation(stationId)"
+                  class="inline-block cursor-pointer rounded-md px-4 py-1 text-sm font-medium"
+                  :class="
+                    stationId === weatherData.selectedStationId
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  "
+                >
+                  {{ stationId }}
+                </button>
+              </div>
+            </div>
             <button
               v-if="weatherData.stationIds.length > 0"
               @click="weatherData.clear()"
-              class="cursor-pointer rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+              class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
             >
-              Clear selection
+              Clear
             </button>
           </div>
-
-          <div class="flex flex-1 items-center justify-center bg-gray-800">
+          <div class="flex flex-1 items-center justify-center rounded-md bg-gray-800">
             <div
               v-if="weatherData.loading || cmlData.loading"
               class="animate-pulse text-sm text-gray-300"
@@ -370,52 +432,7 @@ watch(
             </div>
             <MultiPlot
               v-else-if="weatherData.selectedStationId || cmlData.selectedCmlId"
-              :seriesData="[
-                {
-                  name: 'WS temperature',
-                  data: weatherData.currentTemperature,
-                  subplotIndex: 0,
-                  yAxisSide: 'left',
-                },
-                {
-                  name: 'WS rainfall',
-                  data: weatherData.currentPrecipitation,
-                  subplotIndex: 0,
-                  yAxisSide: 'right',
-                },
-                {
-                  name: 'CML A temperature',
-                  data: cmlData.selectedCmlId
-                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureA ?? [])
-                    : [],
-                  subplotIndex: 1,
-                  yAxisSide: 'left',
-                },
-                {
-                  name: 'CML B temperature',
-                  data: cmlData.selectedCmlId
-                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureB ?? [])
-                    : [],
-                  subplotIndex: 1,
-                  yAxisSide: 'left',
-                },
-                {
-                  name: 'CML A TRSL',
-                  data: cmlData.selectedCmlId
-                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslA ?? [])
-                    : [],
-                  subplotIndex: 1,
-                  yAxisSide: 'right',
-                },
-                {
-                  name: 'CML B TRSL',
-                  data: cmlData.selectedCmlId
-                    ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslB ?? [])
-                    : [],
-                  subplotIndex: 1,
-                  yAxisSide: 'right',
-                },
-              ]"
+              :seriesData="seriesData"
               :xMin="oneWeekAgoTimestamp"
               :xMax="currentTimestamp"
               :cursorTime="currentCursorTime"
@@ -426,27 +443,31 @@ watch(
             />
           </div>
 
-          <div class="inline-flex h-8 gap-2">
-            <button
-              v-for="cmlId in cmlData.cmlIds"
-              :key="cmlId"
-              @click="cmlData.selectCml(cmlId)"
-              @dblclick.stop="cmlData.removeCml(cmlId)"
-              class="cursor-pointer rounded px-4 py-1 text-sm font-medium transition-colors"
-              :class="
-                cmlId === cmlData.selectedCmlId
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-              "
-            >
-              ID: {{ cmlId }}
-            </button>
+          <div class="flex h-8 items-center justify-between gap-2">
+            <div class="flex-1 gap-x-2 overflow-x-auto whitespace-nowrap">
+              <div class="flex gap-x-2">
+                <button
+                  v-for="cmlId in cmlData.cmlIds"
+                  :key="cmlId"
+                  @click="cmlData.selectCml(cmlId)"
+                  @dblclick.stop="cmlData.removeCml(cmlId)"
+                  class="inline-block cursor-pointer rounded-md px-4 py-1 text-sm font-medium"
+                  :class="
+                    cmlId === cmlData.selectedCmlId
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  "
+                >
+                  Link ID: {{ cmlId }}
+                </button>
+              </div>
+            </div>
             <button
               v-if="cmlData.cmlIds.length > 0"
               @click="cmlData.clear()"
-              class="cursor-pointer rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+              class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
             >
-              Clear selection
+              Clear
             </button>
           </div>
         </div>
