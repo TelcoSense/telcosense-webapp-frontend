@@ -5,11 +5,17 @@ import { api } from '@/api'
 import { useRouter } from 'vue-router'
 
 import { useActiveLayer } from '@/composables/useActiveLayer'
+import { useTokenCountdown } from '@/composables/useTokenCountdown'
 
 import { useAuthStore } from '@/stores/auth'
+import { useCmlDataStore } from '@/stores/cmlData'
 import { useLinksStore } from '@/stores/links'
-import { useWeatherStationsStore } from '@/stores/weatherStations'
 import { useWeatherDataStore } from '@/stores/weatherData'
+import { useWeatherStationsStore } from '@/stores/weatherStations'
+
+import { computed, watch } from 'vue'
+
+const SESSION_MAX_SECONDS = 1800 // 30 minutes
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -17,8 +23,22 @@ const auth = useAuthStore()
 const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
 const weatherData = useWeatherDataStore()
+const cmlData = useCmlDataStore()
 
 const { clearLayer } = useActiveLayer()
+const { remainingTime } = useTokenCountdown()
+
+const formattedTime = computed(() => {
+  if (remainingTime.value === null) return ''
+  return Math.floor(remainingTime.value / 60).toString()
+})
+
+const progressBarWidth = computed(() => {
+  if (remainingTime.value === null) return '0%'
+  const used = SESSION_MAX_SECONDS - remainingTime.value
+  const percentage = Math.min((used / SESSION_MAX_SECONDS) * 100, 100)
+  return `${percentage}%`
+})
 
 async function logout() {
   try {
@@ -28,6 +48,7 @@ async function logout() {
       weatherStations.$reset()
       weatherData.$reset()
       links.$reset()
+      cmlData.$reset()
 
       // reset map layer
       clearLayer()
@@ -43,6 +64,17 @@ async function logout() {
     }
   }
 }
+
+watch(remainingTime, (newVal) => {
+  if (newVal === 0) {
+    auth.reset()
+    weatherStations.$reset()
+    weatherData.$reset()
+    links.$reset()
+    cmlData.$reset()
+    router.push({ name: 'login' })
+  }
+})
 </script>
 
 <template>
@@ -62,7 +94,17 @@ async function logout() {
       >
         {{ `${auth.username} (${auth.org})` }}
       </span>
-
+      <!-- time left -->
+      <div
+        v-if="formattedTime"
+        class="flex h-8 flex-col items-center justify-center rounded-md bg-gray-800 px-2 text-nowrap"
+      >
+        <div class="text-center text-xs text-white">{{ formattedTime }} min left</div>
+        <div class="h-2 w-full overflow-hidden rounded bg-gray-600">
+          <div class="h-2 bg-blue-500" :style="{ width: progressBarWidth }"></div>
+        </div>
+      </div>
+      <!-- time left end -->
       <button
         @click="logout()"
         class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-white hover:bg-cyan-700"

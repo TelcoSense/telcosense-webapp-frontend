@@ -2,6 +2,8 @@ import { api } from '@/api'
 import getSecureConfig from '@/cookies'
 import { defineStore } from 'pinia'
 
+
+
 export interface WeatherDataPoint {
   time: string
   measurement: string
@@ -26,7 +28,8 @@ export const useWeatherDataStore = defineStore('weatherData', {
   },
 
   actions: {
-    async fetchStationData(start: string, stop: string, ghId: string) {
+    async fetchStationData(start: string | null, stop: string | null, ghId: string) {
+      if (!start || !stop) return;
       this.loading = true
       this.error = null
       try {

@@ -79,7 +79,7 @@ watch(
   <div
     v-if="!links.loading && links.hasLinks"
     class="absolute top-20 right-6 z-20 rounded-md text-sm text-white"
-    :class="{ 'h-[660px] w-[320px] overflow-y-scroll bg-gray-800 p-3': linkFilterVisible }"
+    :class="{ 'h-[660px] w-[300px] overflow-y-scroll bg-gray-800 p-3': linkFilterVisible }"
   >
     <button
       @click="linkFilterVisible = !linkFilterVisible"

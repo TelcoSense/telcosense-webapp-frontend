@@ -14,6 +14,7 @@ export const useCmlDataStore = defineStore('cmlData', {
       temperatureB: DataPoint[]
       trslA: DataPoint[]
       trslB: DataPoint[]
+      rainIntensity: DataPoint[]
     }>(),
     selectedCmlId: null as string | null,
     loading: false,
@@ -21,26 +22,19 @@ export const useCmlDataStore = defineStore('cmlData', {
   }),
 
   getters: {
-    currentTemperature: (state) =>
-      state.selectedCmlId
-        ? state.cmls.get(state.selectedCmlId)?.temperatureA ?? []
-        : [],
-    currentTrsl: (state) =>
-      state.selectedCmlId
-        ? state.cmls.get(state.selectedCmlId)?.trslA ?? []
-        : [],
     cmlIds: (state) => Array.from(state.cmls.keys()),
   },
 
   actions: {
     async fetchCmlData(
-      start: string,
-      stop: string,
+      start: string | null,
+      stop: string | null,
       cmlId: string,
       ipA: string,
       ipB: string,
       tech: string
     ) {
+      if (!start || !stop) return
       this.loading = true
       this.error = null
       try {
@@ -49,24 +43,26 @@ export const useCmlDataStore = defineStore('cmlData', {
           temp_b: Array<number | null>
           trsl_a: Array<number | null>
           trsl_b: Array<number | null>
+          rain_intensity: Array<number | null>
           time: string[]
+          rain_intensity_time: string[]
         }>(
           '/cmldata',
-          { start, stop, ipA, ipB, tech },
+          { start, stop, ipA, ipB, tech, cmlId },
           getSecureConfig()
         )
-        const { temp_a, temp_b, trsl_a, trsl_b, time } = res.data
-        const makeSeries = (values: Array<number | null>): DataPoint[] =>
+        const { temp_a, temp_b, trsl_a, trsl_b, rain_intensity, time, rain_intensity_time } = res.data
+        const makeSeries = (values: Array<number | null>, timestamps: string[]): DataPoint[] =>
           values.map((v, i) => ({
-            time: time[i],
+            time: timestamps[i] ?? '',
             value: v,
           }))
-
         this.cmls.set(cmlId, {
-          temperatureA: makeSeries(temp_a),
-          temperatureB: makeSeries(temp_b),
-          trslA: makeSeries(trsl_a),
-          trslB: makeSeries(trsl_b),
+          temperatureA: makeSeries(temp_a, time),
+          temperatureB: makeSeries(temp_b, time),
+          trslA: makeSeries(trsl_a, time),
+          trslB: makeSeries(trsl_b, time),
+          rainIntensity: makeSeries(rain_intensity, rain_intensity_time),
         })
         this.selectCml(cmlId)
       } catch (err) {

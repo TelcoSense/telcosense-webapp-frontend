@@ -6,15 +6,16 @@ import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
 import type { Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import DataPlotting from '@/components/DataPlotting.vue'
 import LayerControls from '@/components/LayerControls.vue'
 import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
-import MultiPlot from '@/components/MultiPlot.vue'
 import PrecipitationBar from '@/components/PrecipitationBar.vue'
 import ReflectivityBar from '@/components/ReflectivityBar.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
 import { useCmlDataStore } from '@/stores/cmlData'
+import { useConfigStore } from '@/stores/config'
 import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
@@ -34,6 +35,10 @@ const weatherStations = useWeatherStationsStore()
 const weatherData = useWeatherDataStore()
 const links = useLinksStore()
 const cmlData = useCmlDataStore()
+const config = useConfigStore()
+// realtime/historic bounds
+const start = computed(() => (config.realtime ? oneWeekAgoTimestamp.value : config.start))
+const end = computed(() => (config.realtime ? currentTimestamp.value : config.end))
 
 // map initialization, link and station selection setup
 const map = ref<L.Map | null>(null)
@@ -88,12 +93,7 @@ function initMap() {
 }
 
 // map layers setup
-const { activeLayer } = useActiveLayer()
-
-const currentCursorTime = computed(() => {
-  const frame = activeLayer.value?.frames[activeLayer.value.currentIndex]
-  return frame?.timestamp ?? undefined
-})
+const { activeLayer, clearLayer } = useActiveLayer()
 
 const maxz = useImageLayer('maxz', {
   apiUrl: '/maxz/list',
@@ -192,8 +192,8 @@ function drawLinks() {
       )
       polyline.on('click', async () => {
         await cmlData.fetchCmlData(
-          oneWeekAgoTimestamp.value,
-          currentTimestamp.value,
+          start.value,
+          end.value,
           String(link.id),
           link.ip_address_A,
           link.ip_address_B,
@@ -244,7 +244,7 @@ function drawStations() {
       )
       marker.on('click', async () => {
         const ghId = ws.gh_id
-        await weatherData.fetchStationData(oneWeekAgoTimestamp.value, currentTimestamp.value, ghId)
+        await weatherData.fetchStationData(start.value, end.value, ghId)
       })
       marker.addTo(group as L.LayerGroup)
       stationMarkers.set(ws.id, marker)
@@ -287,54 +287,22 @@ watch(
   },
 )
 
-function y(side: 'left' | 'right') {
-  return side
-}
-
-const seriesData = computed(() => {
-  return [
-    {
-      name: 'WS temperature',
-      data: weatherData.currentTemperature,
-      subplotIndex: 0,
-      yAxisSide: y('left'),
-    },
-    {
-      name: 'WS rainfall',
-      data: weatherData.currentPrecipitation,
-      subplotIndex: 0,
-      yAxisSide: y('right'),
-    },
-    {
-      name: 'CML A temperature',
-      data: cmlData.selectedCmlId
-        ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureA ?? [])
-        : [],
-      subplotIndex: 1,
-      yAxisSide: y('left'),
-    },
-    {
-      name: 'CML B temperature',
-      data: cmlData.selectedCmlId
-        ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureB ?? [])
-        : [],
-      subplotIndex: 1,
-      yAxisSide: y('left'),
-    },
-    {
-      name: 'CML A TRSL',
-      data: cmlData.selectedCmlId ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslA ?? []) : [],
-      subplotIndex: 1,
-      yAxisSide: y('right'),
-    },
-    {
-      name: 'CML B TRSL',
-      data: cmlData.selectedCmlId ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslB ?? []) : [],
-      subplotIndex: 1,
-      yAxisSide: y('right'),
-    },
-  ]
-})
+// watcher for historic/realtime switching
+watch(
+  () => config.realtime,
+  (newVal) => {
+    if (newVal) {
+      maxz.fetchList(start.value, end.value)
+      merge1h.fetchList(start.value, end.value)
+      raincz.fetchList(start.value, end.value)
+    } else {
+      // do something when switching to historic calcs
+      clearLayer()
+      weatherData.clear()
+      cmlData.clear()
+    }
+  },
+)
 </script>
 
 <template>
@@ -344,18 +312,19 @@ const seriesData = computed(() => {
         <div id="map" class="leaflet-container z-0 h-full w-full"></div>
 
         <div
+          v-if="start && end"
           id="timestamps"
-          class="absolute right-6 bottom-6 z-10 flex flex-col rounded-md p-3 text-sm text-gray-800"
+          class="absolute right-6 bottom-6 z-10 flex flex-col rounded-md bg-gray-800 p-2 text-sm text-white select-none"
         >
-          <p v-if="oneWeekAgoTimestamp">
-            One week ago:
-            <span class="font-chivo">{{ datetimeFormat(oneWeekAgoTimestamp, 'UTC') }} </span>
+          <p v-if="config.realtime" class="border-b border-gray-700">Realtime bounds</p>
+          <p v-if="!config.realtime" class="border-b border-gray-700">Historic bounds</p>
+          <p v-if="start">
+            Start:
+            <span class="font-chivo">{{ datetimeFormat(start, 'UTC') }} </span>
           </p>
-          <p v-if="currentTimestamp">
-            Current date:
-            <span class="font-chivo">{{ datetimeFormat(currentTimestamp, 'UTC') }} </span>
+          <p v-if="end">
+            End: <span class="font-chivo">{{ datetimeFormat(end, 'UTC') }} </span>
           </p>
-
           <!-- <p>
               Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
             </p> -->
@@ -367,6 +336,31 @@ const seriesData = computed(() => {
         ></div>
 
         <TopNavbar>
+          <div class="mr-32 flex gap-x-3">
+            <button
+              :class="[
+                'h-8 cursor-pointer rounded-md px-3 text-gray-300',
+                config.realtime
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-700 hover:bg-gray-600',
+              ]"
+              @click="config.setToRealtime()"
+            >
+              Realtime
+            </button>
+
+            <button
+              :class="[
+                'h-8 cursor-pointer rounded-md px-3 text-gray-300',
+                !config.realtime
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-700 hover:bg-gray-600',
+              ]"
+              @click="config.setToHistoric()"
+            >
+              Historic
+            </button>
+          </div>
           <button
             v-if="weatherStations.hasStations"
             class="h-8 cursor-pointer rounded-md border bg-amber-200 px-3 hover:bg-amber-300"
@@ -392,86 +386,7 @@ const seriesData = computed(() => {
         <PrecipitationBar v-if="activeLayer?.name == 'merge1h'" />
         <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
 
-        <div
-          v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0"
-          class="absolute bottom-33 flex h-96 w-[1300px] flex-col gap-2"
-        >
-          <div class="flex h-8 items-center justify-between gap-2">
-            <div class="flex-1 overflow-x-auto whitespace-nowrap">
-              <div class="flex gap-x-2">
-                <button
-                  v-for="stationId in weatherData.stationIds"
-                  :key="stationId"
-                  @click="weatherData.selectStation(stationId)"
-                  @dblclick.stop="weatherData.removeStation(stationId)"
-                  class="inline-block cursor-pointer rounded-md px-4 py-1 text-sm font-medium"
-                  :class="
-                    stationId === weatherData.selectedStationId
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  "
-                >
-                  {{ stationId }}
-                </button>
-              </div>
-            </div>
-            <button
-              v-if="weatherData.stationIds.length > 0"
-              @click="weatherData.clear()"
-              class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
-            >
-              Clear
-            </button>
-          </div>
-          <div class="flex flex-1 items-center justify-center rounded-md bg-gray-800">
-            <div
-              v-if="weatherData.loading || cmlData.loading"
-              class="animate-pulse text-sm text-gray-300"
-            >
-              Loading data...
-            </div>
-            <MultiPlot
-              v-else-if="weatherData.selectedStationId || cmlData.selectedCmlId"
-              :seriesData="seriesData"
-              :xMin="oneWeekAgoTimestamp"
-              :xMax="currentTimestamp"
-              :cursorTime="currentCursorTime"
-              :topLeftAxisName="'Temperature (°C)'"
-              :topRightAxisName="'Rainfall (mm)'"
-              :bottomLeftAxisName="'Temperature (°C)'"
-              :bottomRightAxisName="'TRSL (dB)'"
-            />
-          </div>
-
-          <div class="flex h-8 items-center justify-between gap-2">
-            <div class="flex-1 gap-x-2 overflow-x-auto whitespace-nowrap">
-              <div class="flex gap-x-2">
-                <button
-                  v-for="cmlId in cmlData.cmlIds"
-                  :key="cmlId"
-                  @click="cmlData.selectCml(cmlId)"
-                  @dblclick.stop="cmlData.removeCml(cmlId)"
-                  class="inline-block cursor-pointer rounded-md px-4 py-1 text-sm font-medium"
-                  :class="
-                    cmlId === cmlData.selectedCmlId
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  "
-                >
-                  Link ID: {{ cmlId }}
-                </button>
-              </div>
-            </div>
-            <button
-              v-if="cmlData.cmlIds.length > 0"
-              @click="cmlData.clear()"
-              class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-        <!-- plot end -->
+        <DataPlotting :start="start" :end="end" />
       </div>
     </main>
   </div>

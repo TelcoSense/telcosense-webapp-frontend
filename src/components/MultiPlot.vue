@@ -42,6 +42,8 @@ const props = defineProps<{
   topRightAxisName?: string
   bottomLeftAxisName?: string
   bottomRightAxisName?: string
+  thirdLeftAxisName?: string
+  thirdRightAxisName?: string
 }>()
 
 const chartOptions = ref<EChartsOption>({})
@@ -113,6 +115,25 @@ const buildOptions = () => {
     },
   })
 
+  series.push({
+    id: 'cursor-markline-third',
+    type: 'line',
+    data: [],
+    xAxisIndex: 2,
+    yAxisIndex: 4,
+    silent: true,
+    markLine: {
+      symbol: 'none',
+      label: { show: false },
+      lineStyle: {
+        type: 'solid',
+        color: '#FF0000',
+        width: 1.5,
+      },
+      data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
+    },
+  })
+
   chartOptions.value = {
     useUTC: true,
     backgroundColor: '#1f2937',
@@ -122,9 +143,10 @@ const buildOptions = () => {
       color: '#ffffff',
     },
     axisPointer: {
+      animation: false,
       link: [
         {
-          xAxisIndex: [0, 1], // link both x-axes
+          xAxisIndex: [0, 1, 2], // link both x-axes
         },
       ],
       label: {
@@ -161,8 +183,9 @@ const buildOptions = () => {
       itemGap: 15,
     },
     grid: [
-      { left: '5%', right: '5%', top: '15%', height: '35%' },
-      { left: '5%', right: '5%', top: '55%', height: '35%' },
+      { left: '5%', right: '5%', top: '10%', height: '22%' },
+      { left: '5%', right: '5%', top: '40%', height: '22%' },
+      { left: '5%', right: '5%', top: '70%', height: '22%' },
     ],
     xAxis: [
       {
@@ -187,6 +210,25 @@ const buildOptions = () => {
       {
         type: 'time',
         gridIndex: 1,
+        min: props.xMin,
+        max: props.xMax,
+        axisLabel: {
+          show: false,
+        },
+        axisLine: { lineStyle: { color: '#6b7280' } },
+        splitLine: {
+          show: true,
+          lineStyle: { color: '#374151' },
+        },
+        axisPointer: {
+          label: {
+            show: false,
+          },
+        },
+      },
+      {
+        type: 'time',
+        gridIndex: 2,
         min: props.xMin,
         max: props.xMax,
         axisLabel: {
@@ -279,12 +321,50 @@ const buildOptions = () => {
         min: 'dataMin',
         max: 'dataMax',
       },
+      {
+        type: 'value',
+        name: props.thirdLeftAxisName ?? 'Third left',
+        gridIndex: 2,
+        position: 'left',
+        nameRotate: 90,
+        nameLocation: 'middle',
+        nameGap: 45,
+        axisLabel: {
+          color: '#ffffff',
+          fontFamily: 'Chivo Mono, monospace',
+          formatter: (value: number) =>
+            Number.isInteger(value) ? value.toString() : value.toFixed(1),
+        },
+        axisLine: { lineStyle: { color: '#6b7280' } },
+        splitLine: { show: false },
+        min: 'dataMin',
+        max: 'dataMax',
+      },
+      // {
+      //   type: 'value',
+      //   name: props.thirdRightAxisName ?? 'Third right',
+      //   gridIndex: 2,
+      //   position: 'right',
+      //   nameRotate: 90,
+      //   nameLocation: 'middle',
+      //   nameGap: 45,
+      //   axisLabel: {
+      //     color: '#ffffff',
+      //     fontFamily: 'Chivo Mono, monospace',
+      //     formatter: (value: number) =>
+      //       Number.isInteger(value) ? value.toString() : value.toFixed(1),
+      //   },
+      //   axisLine: { lineStyle: { color: '#6b7280' } },
+      //   splitLine: { show: false },
+      //   min: 'dataMin',
+      //   max: 'dataMax',
+      // },
     ],
     series,
     dataZoom: [
       {
         type: 'inside',
-        xAxisIndex: [0, 1],
+        xAxisIndex: [0, 1, 2],
         filterMode: 'none',
         zoomOnMouseWheel: true,
         moveOnMouseMove: true,
@@ -360,6 +440,24 @@ watch(
           data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
         },
       },
+      {
+        id: 'cursor-markline-third',
+        type: 'line',
+        data: [],
+        xAxisIndex: 2,
+        yAxisIndex: 4,
+        silent: true,
+        markLine: {
+          symbol: 'none',
+          label: { show: false },
+          lineStyle: {
+            type: 'solid',
+            color: '#FF0000',
+            width: 1.5,
+          },
+          data: props.cursorTime ? [{ xAxis: props.cursorTime }] : [],
+        },
+      },
     )
     chart.setOption(
       {
@@ -389,6 +487,12 @@ watch(
           },
           {
             id: 'cursor-markline-bottom',
+            markLine: {
+              data: cursor ? [{ xAxis: cursor }] : [],
+            },
+          },
+          {
+            id: 'cursor-markline-third',
             markLine: {
               data: cursor ? [{ xAxis: cursor }] : [],
             },

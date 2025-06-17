@@ -2,6 +2,8 @@ import { api } from '@/api'
 import L from 'leaflet'
 import { markRaw, ref, shallowRef } from 'vue'
 
+
+
 export interface Frame {
   timestamp: string
   url: string
@@ -46,7 +48,8 @@ export function useImageSequenceLayer(config: {
     }
   }
 
-  async function fetchList(start: string, end: string) {
+  async function fetchList(start: string | null, end: string | null) {
+    if (!start || !end) return
     loading.value = true
     error.value = null
     try {
