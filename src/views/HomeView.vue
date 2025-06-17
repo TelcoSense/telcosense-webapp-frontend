@@ -191,6 +191,7 @@ function drawLinks() {
         tooltipOptions,
       )
       polyline.on('click', async () => {
+        polyline?.setTooltipContent('')
         await cmlData.fetchCmlData(
           start.value,
           end.value,
@@ -244,6 +245,7 @@ function drawStations() {
       )
       marker.on('click', async () => {
         const ghId = ws.gh_id
+        marker?.setTooltipContent('')
         await weatherData.fetchStationData(start.value, end.value, ghId)
       })
       marker.addTo(group as L.LayerGroup)
