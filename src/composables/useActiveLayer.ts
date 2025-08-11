@@ -1,6 +1,6 @@
-import type { ComputedRef, Ref } from 'vue';
-import { computed, ref, unref } from 'vue';
-import type { Frame } from './useImageSequenceLayer';
+import type { ComputedRef, Ref } from 'vue'
+import { computed, ref, unref } from 'vue'
+import type { Frame } from './useImageSequenceLayer'
 
 export interface ControllableLayer {
   name: string
@@ -9,8 +9,10 @@ export interface ControllableLayer {
   isPlaying: ComputedRef<boolean>
   frameLoading: ComputedRef<boolean>
   opacity: ComputedRef<number>
+  currentTimestamp: ComputedRef<string | null>
 
   showFrame(index: number): void
+  showNearestTimestamp(ts: string): Promise<void>
   play(): void
   pause(): void
   toggle(): void
@@ -26,15 +28,17 @@ function toComputed<T>(source: Ref<T> | T): ComputedRef<T> {
 }
 
 export function useActiveLayer() {
-  function setLayer(
+  async function setLayer(
     store: {
       frames: Ref<Frame[]> | Frame[]
       currentIndex: Ref<number> | number
       isPlaying: Ref<boolean> | boolean
       frameLoading: Ref<boolean> | boolean
       opacity: Ref<number> | number
+      currentTimestamp: Ref<string | null> | string | null
 
       showFrame(index: number): void
+      showNearestTimestamp(ts: string): Promise<void>
       play(): void
       pause(): void
       toggle(): void
@@ -42,8 +46,13 @@ export function useActiveLayer() {
       setVisible(visible: boolean): void
       setOpacity(value: number): void
     },
-    name = 'Unnamed Layer'
+    name = 'Unnamed Layer',
+    // showLatestFrame: Ref<boolean, boolean>,
   ) {
+
+    const prevTs = activeLayer.value?.currentTimestamp ?? null
+    const prevOpacity = activeLayer.value?.opacity
+
     activeLayer.value?.pause()
     activeLayer.value?.setVisible(false)
 
@@ -54,18 +63,29 @@ export function useActiveLayer() {
       isPlaying: toComputed(store.isPlaying),
       frameLoading: toComputed(store.frameLoading),
       opacity: toComputed(store.opacity),
+      currentTimestamp: toComputed(store.currentTimestamp),
 
       showFrame: store.showFrame.bind(store),
+      showNearestTimestamp: store.showNearestTimestamp.bind(store),
       play: store.play.bind(store),
       pause: store.pause.bind(store),
       toggle: store.toggle.bind(store),
       changeFrame: store.changeFrame.bind(store),
       setVisible: store.setVisible.bind(store),
-      setOpacity: store.setOpacity.bind(store)
+      setOpacity: store.setOpacity.bind(store),
     }
+
+    activeLayer.value?.setVisible(true)
+
+    if (prevOpacity != null) activeLayer.value?.setOpacity(prevOpacity)
+
     if (activeLayer.value) {
-      activeLayer.value.setVisible(true)
-      activeLayer.value.showFrame(0)
+      if (prevTs) {
+        await activeLayer.value.showNearestTimestamp(prevTs)
+      }
+      else {
+        activeLayer.value?.showFrame(activeLayer.value.frames.length - 1)
+      }
     }
   }
 
@@ -75,9 +95,5 @@ export function useActiveLayer() {
     activeLayer.value = null
   }
 
-  return {
-    activeLayer,
-    setLayer,
-    clearLayer,
-  }
+  return { activeLayer, setLayer, clearLayer }
 }

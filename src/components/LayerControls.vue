@@ -54,6 +54,7 @@ const sliderLabel = computed(() =>
         v-model.number="sliderIndex"
         @change="onSliderChanged"
         :disabled="activeLayer.isPlaying || activeLayer.frameLoading"
+        :key="activeLayer.name"
         class="w-[480px]"
       />
       <span class="font-chivo text-nowrap">

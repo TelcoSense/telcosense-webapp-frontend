@@ -47,7 +47,7 @@ const isCustomRangeUnset = computed(() => {
 </script>
 
 <template>
-  <div class="absolute top-20 left-6 w-[130px] rounded-md bg-gray-800 p-3 text-sm">
+  <div class="absolute top-20 left-6 w-[160px] rounded-md bg-gray-800 p-3 text-sm">
     <span class="flex border-b border-gray-700 pb-1.5 text-white">Map layers</span>
 
     <span class="my-1.5 flex text-white">CHMI</span>
@@ -85,5 +85,15 @@ const isCustomRangeUnset = computed(() => {
         <div :class="layer.frames.value.length > 0 ? 'text-green-600' : 'text-red-600'">●</div>
       </button>
     </div>
+
+    <!-- <button
+      class="mt-4 cursor-pointer rounded px-2 py-1 text-sm"
+      :class="
+        showLatestFrame ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+      "
+      @click="showLatestFrame = !showLatestFrame"
+    >
+      Show latest frame
+    </button> -->
   </div>
 </template>

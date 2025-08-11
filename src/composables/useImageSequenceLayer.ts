@@ -1,6 +1,6 @@
 import { api } from '@/api'
 import L from 'leaflet'
-import { markRaw, ref, shallowRef } from 'vue'
+import { computed, markRaw, ref, shallowRef } from 'vue'
 
 
 
@@ -28,6 +28,8 @@ export function useImageSequenceLayer(config: {
   const error = ref<string | null>(null)
   const frameLoading = ref(false)
   const opacity = ref(0.5)
+
+  const currentTimestamp = computed(() => frames.value[currentIndex.value]?.timestamp ?? null)
 
   let preloadInProgress = false
   let currentAbort: AbortController | null = null
@@ -102,7 +104,7 @@ export function useImageSequenceLayer(config: {
     }
   }
 
-  async function preloadWindow(centerIndex: number, range = 25) {
+  async function preloadWindow(centerIndex: number, range = 100) {
     preloadInProgress = true
 
     const start = Math.max(0, centerIndex - range)
@@ -207,6 +209,30 @@ export function useImageSequenceLayer(config: {
     blobCache.clear()
   }
 
+  function findClosestIndex(ts: string) {
+    if (!frames.value.length) return -1
+    const target = new Date(ts).getTime()
+    let lo = 0, hi = frames.value.length - 1
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1
+      const midTs = new Date(frames.value[mid].timestamp).getTime()
+      if (midTs === target) return mid
+      if (midTs < target) lo = mid + 1
+      else hi = mid - 1
+    }
+    if (lo >= frames.value.length) return frames.value.length - 1
+    if (hi < 0) return 0
+    const loDiff = Math.abs(new Date(frames.value[lo].timestamp).getTime() - target)
+    const hiDiff = Math.abs(new Date(frames.value[hi].timestamp).getTime() - target)
+    return loDiff < hiDiff ? lo : hi
+  }
+
+  async function showNearestTimestamp(ts: string) {
+    const idx = findClosestIndex(ts)
+    if (idx >= 0) await showFrame(idx)
+  }
+
+
   return {
     frames,
     currentIndex,
@@ -216,6 +242,7 @@ export function useImageSequenceLayer(config: {
     error,
     animationSpeed,
     opacity,
+    currentTimestamp,
 
     setMap,
     setVisible,
@@ -228,7 +255,8 @@ export function useImageSequenceLayer(config: {
     play,
     pause,
     toggle,
-    releaseBlobs
+    releaseBlobs,
+    showNearestTimestamp,
   }
 }
 

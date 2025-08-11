@@ -83,7 +83,7 @@ function initMap() {
   map.value = L.map('map', {
     preferCanvas: true,
     zoomControl: false,
-    renderer: L.canvas(),
+    renderer: L.canvas({ tolerance: 8 }),
   }).setView([49.74379, 15.33863], 8)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
