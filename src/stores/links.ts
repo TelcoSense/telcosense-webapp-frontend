@@ -23,22 +23,55 @@ export interface Link {
   length: number
 }
 
+const FILTER_KEY = 'linkFilters'
+
+function loadSavedFilters() {
+  try {
+    const saved = localStorage.getItem(FILTER_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveFilters(state: ReturnType<typeof useLinksStore>) {
+  const filters = {
+    hideAll: state.hideAll,
+    selectedGroups: state.selectedGroups,
+    selectedTechnologies: state.selectedTechnologies,
+    selectedPolarizations: state.selectedPolarizations,
+    manuallyDisabledLinkIds: state.manuallyDisabledLinkIds,
+    minDistance: state.minDistance,
+    maxDistance: state.maxDistance,
+    minFrequency: state.minFrequency,
+    maxFrequency: state.maxFrequency,
+  }
+  localStorage.setItem(FILTER_KEY, JSON.stringify(filters))
+}
+
 export const useLinksStore = defineStore('links', {
-  state: () => ({
-    links: [] as Link[],
-    loading: true,
-    error: null as string | null,
-    hideAll: false,
+  state: () => {
+    const saved = loadSavedFilters()
+    return {
+      links: [] as Link[],
+      loading: true,
+      error: null as string | null,
+      hideAll: saved.hideAll ?? false,
 
-    selectedGroups: [] as string[],
-    selectedTechnologies: [] as string[],
-    selectedPolarizations: ['V', 'H', 'X'] as ('V' | 'H' | 'X')[],
+      selectedGroups: saved.selectedGroups ?? [],
+      selectedTechnologies: saved.selectedTechnologies ?? [],
+      selectedPolarizations: saved.selectedPolarizations ?? ['V', 'H', 'X'],
+      manuallyDisabledLinkIds: saved.manuallyDisabledLinkIds ?? [],
 
-    minDistance: 0,
-    maxDistance: 100000,
-    minFrequency: 0,
-    maxFrequency: 100000,
-  }),
+      minDistance: saved.minDistance ?? 0,
+      maxDistance: saved.maxDistance ?? 100000,
+      minFrequency: saved.minFrequency ?? 0,
+      maxFrequency: saved.maxFrequency ?? 100000,
+
+      showLinkTable: false,
+      linkFilterVisible: true
+    }
+  },
 
   actions: {
     async fetchLinks() {
@@ -47,26 +80,51 @@ export const useLinksStore = defineStore('links', {
       try {
         const res = await api.get<Link[]>('/links', getSecureConfig())
         this.links = res.data
-        this.selectedTechnologies = this.allTechnologies
-      } catch (err) {
-        if (err instanceof Error) {
-          this.error = err.message
-          console.error('Error loading links:', err.message)
-        } else {
-          this.error = 'Unknown error'
-          console.error('Unknown error:', err)
+        if (this.selectedTechnologies.length === 0) {
+          this.selectedTechnologies = this.allTechnologies
         }
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Unknown error'
+        console.error('Error loading links:', err)
       } finally {
         this.loading = false
+        saveFilters(this)
       }
     },
+
+    toggleManualLinkDisable(id: number) {
+      const index = this.manuallyDisabledLinkIds.indexOf(id)
+      if (index === -1) {
+        this.manuallyDisabledLinkIds.push(id)
+      } else {
+        this.manuallyDisabledLinkIds.splice(index, 1)
+      }
+      saveFilters(this)
+    },
+
     resetLengthFilter() {
       this.minDistance = 0
       this.maxDistance = 100000
+      saveFilters(this)
     },
+
     resetFrequencyFilter() {
       this.minFrequency = 0
       this.maxFrequency = 100000
+      saveFilters(this)
+    },
+
+    resetAllFilters() {
+      this.hideAll = false
+      this.selectedGroups = []
+      this.selectedTechnologies = this.allTechnologies
+      this.selectedPolarizations = ['V', 'H', 'X']
+      this.manuallyDisabledLinkIds = []
+      this.minDistance = 0
+      this.maxDistance = 100000
+      this.minFrequency = 0
+      this.maxFrequency = 100000
+      saveFilters(this)
     },
   },
 
@@ -85,9 +143,11 @@ export const useLinksStore = defineStore('links', {
       }
       return grouped
     },
+
     allGroups(state): string[] {
       return [...new Set(state.links.map((link) => link.influx_mapping))]
     },
+
     allTechnologies(state): string[] {
       return [...new Set(state.links.map((link) => link.technology))]
     },
@@ -113,7 +173,9 @@ export const useLinksStore = defineStore('links', {
           link.frequency_B >= minFreq &&
           link.frequency_B <= maxFreq
 
-        return inTech && inPol && inLength && inFreq
+        const isDisabled = state.manuallyDisabledLinkIds.includes(link.id)
+
+        return inTech && inPol && inLength && inFreq && !isDisabled
       })
     },
 

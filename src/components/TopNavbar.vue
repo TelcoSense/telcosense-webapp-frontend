@@ -9,6 +9,7 @@ import { useTokenCountdown } from '@/composables/useTokenCountdown'
 
 import { useAuthStore } from '@/stores/auth'
 import { useCmlDataStore } from '@/stores/cmlData'
+import { useConfigStore } from '@/stores/config'
 import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
@@ -24,6 +25,7 @@ const weatherStations = useWeatherStationsStore()
 const links = useLinksStore()
 const weatherData = useWeatherDataStore()
 const cmlData = useCmlDataStore()
+const config = useConfigStore()
 
 const { clearLayer } = useActiveLayer()
 const { remainingTime } = useTokenCountdown()
@@ -49,6 +51,7 @@ async function logout() {
       weatherData.$reset()
       links.$reset()
       cmlData.$reset()
+      config.$reset()
 
       // reset map layer
       clearLayer()
@@ -89,11 +92,6 @@ watch(remainingTime, (newVal) => {
     </div>
 
     <div class="flex items-center gap-x-3 rounded-md text-white">
-      <span
-        class="flex h-8 items-center rounded-md border border-gray-700 bg-gray-300 px-3 font-semibold text-nowrap text-gray-800"
-      >
-        {{ `${auth.username} (${auth.org})` }}
-      </span>
       <!-- time left -->
       <div
         v-if="formattedTime"
@@ -105,6 +103,12 @@ watch(remainingTime, (newVal) => {
         </div>
       </div>
       <!-- time left end -->
+      <span
+        class="flex h-8 items-center rounded-md border border-gray-700 bg-gray-300 px-3 font-semibold text-nowrap text-gray-800"
+      >
+        {{ `${auth.username} (${auth.org})` }}
+      </span>
+
       <button
         @click="logout()"
         class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-white hover:bg-cyan-700"

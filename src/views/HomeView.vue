@@ -2,6 +2,9 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+import Datepicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css'
+
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
 import type { Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
@@ -10,6 +13,7 @@ import DataPlotting from '@/components/DataPlotting.vue'
 import LayerControls from '@/components/LayerControls.vue'
 import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
+import LinkTable from '@/components/LinkTable.vue'
 import PrecipitationBar from '@/components/PrecipitationBar.vue'
 import ReflectivityBar from '@/components/ReflectivityBar.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
@@ -62,6 +66,51 @@ const { onMapMouseDown } = useLinkSelection({
   drawLinks,
 })
 
+const selectedStart = ref<Date | null>(null)
+const selectedEnd = ref<Date | null>(null)
+const timeRangeVisible = ref<boolean>(false)
+
+function toUtcDate(dateLike: Date | string): Date {
+  const localDate = typeof dateLike === 'string' ? new Date(dateLike) : dateLike
+  return new Date(
+    Date.UTC(
+      localDate.getFullYear(),
+      localDate.getMonth(),
+      localDate.getDate(),
+      localDate.getHours(),
+      localDate.getMinutes(),
+      localDate.getSeconds(),
+    ),
+  )
+}
+
+function applyCustomRange() {
+  if (selectedStart.value && selectedEnd.value) {
+    clearLayer()
+
+    const startUtc = toUtcDate(selectedStart.value)
+    const endUtc = toUtcDate(selectedEnd.value)
+
+    config.start = startUtc.toISOString()
+    config.end = endUtc.toISOString()
+
+    maxz.fetchList(config.start, config.end)
+    merge1h.fetchList(config.start, config.end)
+    raincz.fetchList(config.start, config.end)
+
+    weatherData.refresh(config.start, config.end)
+    cmlData.refresh(config.start, config.end)
+  }
+}
+
+const isTimeRangeValid = computed(() => {
+  return (
+    selectedStart.value !== null &&
+    selectedEnd.value !== null &&
+    selectedStart.value < selectedEnd.value
+  )
+})
+
 // const { onMapMouseDown: onStationMouseDown } = useStationSelection({
 //   map: map as Ref<L.Map | null>,
 //   dragBox,
@@ -83,7 +132,7 @@ function initMap() {
   map.value = L.map('map', {
     preferCanvas: true,
     zoomControl: false,
-    renderer: L.canvas({ tolerance: 8 }),
+    renderer: L.canvas({ tolerance: 6 }),
   }).setView([49.74379, 15.33863], 8)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
@@ -119,9 +168,9 @@ async function initLayer(layer: ImageSequenceLayer, map: L.Map, start: string, e
 onMounted(async () => {
   initMap()
   weatherStations.fetchWeatherStations()
-  links.fetchLinks()
-  dragBox.value = document.getElementById('drag-box') as HTMLDivElement
+  await links.fetchLinks()
 
+  dragBox.value = document.getElementById('drag-box') as HTMLDivElement
   const mapObject = map.value as L.Map
 
   mapObject.on('mousedown', (e: L.LeafletMouseEvent) => {
@@ -174,13 +223,13 @@ function drawLinks() {
         { color, weight: 2 },
       )
       polyline.bindTooltip(
-        `<div class="font-inter text-black">
-            <div class="mb-1 border-b text-base font-semibold border-gray-300">Link ID: ${link.id}</div>
-            <div class="text-base">
+        `<div class="font-inter text-black text-sm">
+            <div class="mb-1 border-b font-semibold border-gray-300">Link ID: ${link.id}</div>
+            <div>
               Site A: ${link.site_A.name}<br />
               Site B: ${link.site_B.name}<br />
-              IP Address A: ${link.ip_address_A}<br />
-              IP Address B: ${link.ip_address_B}<br />
+              IP A: ${link.ip_address_A}<br />
+              IP B: ${link.ip_address_B}<br />
               Frequency A: ${(link.frequency_A / 1000).toFixed(2)} GHz<br />
               Frequency B: ${(link.frequency_B / 1000).toFixed(2)} GHz<br />
               Length: ${link.length} m<br />
@@ -192,7 +241,7 @@ function drawLinks() {
       )
       polyline.on('click', async () => {
         polyline?.setTooltipContent('')
-        await cmlData.fetchCmlData(
+        cmlData.fetchCmlData(
           start.value,
           end.value,
           String(link.id),
@@ -232,9 +281,9 @@ function drawStations() {
         weight: 0.5,
       })
       marker.bindTooltip(
-        `<div class="font-inter text-black">
-            <div class="mb-1 border-b text-base border-gray-300 font-semibold">${ws.full_name}</div>
-            <div class="text-base">
+        `<div class="font-inter text-black text-sm">
+            <div class="mb-1 border-b border-gray-300 font-semibold">${ws.full_name}</div>
+            <div>
               GH ID: ${ws.gh_id}<br/>
               WSI: ${ws.wsi}<br/>
               Lat: ${ws.Y}, Lon: ${ws.X}<br/>
@@ -294,6 +343,10 @@ watch(
   () => config.realtime,
   (newVal) => {
     if (newVal) {
+      clearLayer()
+      weatherData.clear()
+      cmlData.clear()
+
       maxz.fetchList(start.value, end.value)
       merge1h.fetchList(start.value, end.value)
       raincz.fetchList(start.value, end.value)
@@ -305,6 +358,10 @@ watch(
     }
   },
 )
+
+function formatDateForDatepicker(date: Date): string {
+  return datetimeFormat(date.toISOString(), 'Europe/Prague')
+}
 </script>
 
 <template>
@@ -348,7 +405,7 @@ watch(
               ]"
               @click="config.setToRealtime()"
             >
-              Realtime
+              Realtime data
             </button>
 
             <button
@@ -360,7 +417,7 @@ watch(
               ]"
               @click="config.setToHistoric()"
             >
-              Historic
+              Historic data
             </button>
           </div>
           <button
@@ -369,7 +426,7 @@ watch(
             :class="{ 'bg-amber-300': !weatherStations.hideAll }"
             @click="weatherStations.hideAll = !weatherStations.hideAll"
           >
-            Weather stations
+            Stations
           </button>
           <button
             v-if="links.hasLinks"
@@ -389,6 +446,64 @@ watch(
         <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
 
         <DataPlotting :start="start" :end="end" />
+
+        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
+
+        <!-- timerange -->
+        <div
+          v-if="!config.realtime && timeRangeVisible"
+          class="absolute top-20 left-62 z-30 w-80 rounded-md bg-gray-800 p-3"
+        >
+          <div class="flex w-full justify-end text-sm">
+            <button
+              @click="timeRangeVisible = false"
+              class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
+            >
+              Close
+            </button>
+          </div>
+          <label class="mb-1 block text-sm text-white">Start</label>
+          <Datepicker
+            v-model="selectedStart"
+            utc
+            time-picker-inline
+            model-type="date"
+            :max-date="new Date()"
+            class="mb-3 w-full text-sm"
+            dark
+            :format="formatDateForDatepicker"
+          />
+
+          <label class="mb-1 block text-sm text-white">End</label>
+          <Datepicker
+            v-model="selectedEnd"
+            utc
+            time-picker-inline
+            model-type="date"
+            :max-date="new Date()"
+            class="mb-4 w-full text-sm"
+            dark
+            :format="formatDateForDatepicker"
+          />
+
+          <button
+            class="w-full rounded bg-blue-600 py-1 text-sm text-white hover:bg-blue-700 enabled:cursor-pointer disabled:bg-gray-700 disabled:text-gray-500"
+            :disabled="!isTimeRangeValid"
+            @click="applyCustomRange"
+          >
+            Apply time range
+          </button>
+        </div>
+        <div v-else class="absolute top-20 left-62 z-30 text-sm">
+          <button
+            v-show="!config.realtime"
+            @click="timeRangeVisible = true"
+            class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
+          >
+            Select time range
+          </button>
+        </div>
+        <!-- timerange end-->
       </div>
     </main>
   </div>
@@ -397,5 +512,19 @@ watch(
 <style>
 .leaflet-image-layer {
   image-rendering: pixelated !important;
+}
+
+.dp__theme_light,
+.dp__theme_dark {
+  --dp-font-size: 0.875rem;
+  --dp-font-family: 'Inter', sans-serif;
+  --dp-background-color: #1f2937;
+  --dp-text-color: #ffffff;
+  --dp-hover-color: #374151;
+  --dp-primary-color: #2563eb;
+  --dp-border-color: #374151;
+  --dp-menu-border-color: #374151;
+  --dp-inner-border-color: #374151;
+  --dp-hover-text-color: #ffffff;
 }
 </style>

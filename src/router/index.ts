@@ -7,7 +7,11 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
+      redirect: '/rain',
+    },
+    {
+      path: '/rain',
+      name: 'rain',
       component: () => import('../views/HomeView.vue'),
       meta: { requiresAuth: true },
     },
@@ -31,7 +35,7 @@ router.beforeEach(async (to) => {
     return { name: 'login' };
   }
   if (needsGuest && auth.isLoggedIn === true) {
-    return { name: 'home' };
+    return { name: 'rain' };
   }
 });
 

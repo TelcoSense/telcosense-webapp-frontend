@@ -92,6 +92,7 @@ export function useActiveLayer() {
   function clearLayer() {
     activeLayer.value?.pause()
     activeLayer.value?.setVisible(false)
+    activeLayer.value?.showFrame(0)
     activeLayer.value = null
   }
 

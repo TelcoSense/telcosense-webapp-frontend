@@ -47,7 +47,7 @@ const isCustomRangeUnset = computed(() => {
 </script>
 
 <template>
-  <div class="absolute top-20 left-6 w-[160px] rounded-md bg-gray-800 p-3 text-sm">
+  <div class="absolute top-20 left-6 w-[200px] rounded-md bg-gray-800 p-3 text-sm">
     <span class="flex border-b border-gray-700 pb-1.5 text-white">Map layers</span>
 
     <span class="my-1.5 flex text-white">CHMI</span>
@@ -65,24 +65,32 @@ const isCustomRangeUnset = computed(() => {
           :class="
             layer.frames.value.length > 0 && !isCustomRangeUnset ? 'text-green-600' : 'text-red-600'
           "
+          class="text-lg"
         >
           ●
         </div>
       </button>
     </div>
 
-    <span v-if="config.realtime" class="my-1.5 flex text-white">TelcoSense</span>
-    <div v-if="config.realtime" class="flex flex-col gap-y-3">
+    <span class="my-1.5 flex text-white">TelcoSense</span>
+    <div class="flex flex-col gap-y-3">
       <button
         v-for="{ id, label, layer } in layers.filter((l) => l.group === 'TelcoSense')"
         :key="id"
         @click="toggleLayer(id, layer)"
         class="flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-700 px-3 text-gray-500 enabled:cursor-pointer enabled:text-white enabled:hover:bg-gray-500"
         :class="isActive(id).value ? 'bg-gray-600' : 'border border-gray-700'"
-        :disabled="layer.frames.value.length === 0"
+        :disabled="layer.frames.value.length === 0 || isCustomRangeUnset"
       >
         <div>{{ label }}</div>
-        <div :class="layer.frames.value.length > 0 ? 'text-green-600' : 'text-red-600'">●</div>
+        <div
+          :class="
+            layer.frames.value.length > 0 && !isCustomRangeUnset ? 'text-green-600' : 'text-red-600'
+          "
+          class="text-lg"
+        >
+          ●
+        </div>
       </button>
     </div>
 

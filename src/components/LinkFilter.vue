@@ -3,7 +3,6 @@ import { useLinksStore } from '@/stores/links'
 import { ref, watch } from 'vue'
 
 const links = useLinksStore()
-const linkFilterVisible = ref<boolean>(true)
 
 function getTechnologiesForGroup(group: string): string[] {
   return [
@@ -32,7 +31,9 @@ function toggleGroup(event: Event, group: string) {
   if (willBeChecked) {
     links.selectedTechnologies = [...new Set([...links.selectedTechnologies, ...techs])]
   } else {
-    links.selectedTechnologies = links.selectedTechnologies.filter((tech) => !techs.includes(tech))
+    links.selectedTechnologies = links.selectedTechnologies.filter(
+      (tech: string) => !techs.includes(tech),
+    )
   }
 }
 
@@ -40,21 +41,20 @@ function toggleTech(group: string, tech: string) {
   const isSelected = links.selectedTechnologies.includes(tech)
 
   if (isSelected) {
-    links.selectedTechnologies = links.selectedTechnologies.filter((t) => t !== tech)
+    links.selectedTechnologies = links.selectedTechnologies.filter((t: string) => t !== tech)
   } else {
     links.selectedTechnologies.push(tech)
   }
 
-  // sync selectedGroups based on techs inside the group
   const techsInGroup = Object.keys(links.groupedLinksByMappingAndTechnology[group] || [])
-  const anyTechSelected = techsInGroup.some((t) => links.selectedTechnologies.includes(t))
+  const anyTechSelected = techsInGroup.some((t: string) => links.selectedTechnologies.includes(t))
 
   if (anyTechSelected) {
     if (!links.selectedGroups.includes(group)) {
       links.selectedGroups.push(group)
     }
   } else {
-    links.selectedGroups = links.selectedGroups.filter((g) => g !== group)
+    links.selectedGroups = links.selectedGroups.filter((g: string) => g !== group)
   }
 }
 
@@ -73,32 +73,51 @@ watch(
   },
   { immediate: true },
 )
+
+const FILTER_KEY = 'linkFilters'
+
+watch(
+  () => ({
+    hideAll: links.hideAll,
+    selectedGroups: links.selectedGroups,
+    selectedTechnologies: links.selectedTechnologies,
+    selectedPolarizations: links.selectedPolarizations,
+    manuallyDisabledLinkIds: links.manuallyDisabledLinkIds,
+    minDistance: links.minDistance,
+    maxDistance: links.maxDistance,
+    minFrequency: links.minFrequency,
+    maxFrequency: links.maxFrequency,
+  }),
+  (val) => {
+    localStorage.setItem(FILTER_KEY, JSON.stringify(val))
+  },
+  { deep: true },
+)
 </script>
 
 <template>
   <div
     v-if="!links.loading && links.hasLinks"
-    class="absolute top-20 right-6 z-20 rounded-md text-sm text-white"
-    :class="{ 'h-[660px] w-[300px] overflow-y-scroll bg-gray-800 p-3': linkFilterVisible }"
+    class="absolute top-20 right-6 z-20 flex flex-col rounded-md text-sm text-white"
+    :class="{ 'w-[300px] bg-gray-800 p-3': links.linkFilterVisible }"
   >
-    <button
-      @click="linkFilterVisible = !linkFilterVisible"
-      class="mb-1.5 h-8 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 hover:opacity-100"
-    >
-      Link filter
-    </button>
-
-    <div v-if="linkFilterVisible">
-      <div>
-        Showing
-        <span class="font-chivo">{{ links.filteredLinks.length }}/{{ links.links.length }}</span>
-        links
-      </div>
+    <div class="flex w-full justify-end">
+      <button
+        @click="links.linkFilterVisible = !links.linkFilterVisible"
+        class="mb-1.5 cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
+      >
+        {{ links.linkFilterVisible ? 'Hide link filter' : 'Show link filter' }}
+      </button>
+    </div>
+    <div v-if="links.linkFilterVisible">
       <!-- length filter -->
-      <div class="mt-1.5 mb-3 border border-gray-700 p-4">
+      <div class="mt-1.5 mb-3 border border-gray-700 px-4 py-2">
         <div class="flex justify-between">
           <label class="text-white">Length (m)</label>
-          <button @click="links.resetLengthFilter" class="cursor-pointer hover:underline">
+          <button
+            @click="links.resetLengthFilter"
+            class="cursor-pointer text-red-300 hover:underline"
+          >
             Reset
           </button>
         </div>
@@ -124,10 +143,13 @@ watch(
         </div>
       </div>
       <!-- freq filter-->
-      <div class="mb-3 border border-gray-700 p-4">
+      <div class="mb-3 border border-gray-700 px-4 py-2">
         <div class="flex justify-between">
           <label class="text-white">Frequency (GHz)</label>
-          <button @click="links.resetFrequencyFilter" class="cursor-pointer hover:underline">
+          <button
+            @click="links.resetFrequencyFilter"
+            class="cursor-pointer text-red-300 hover:underline"
+          >
             Reset
           </button>
         </div>
@@ -161,7 +183,7 @@ watch(
         </div>
       </div>
       <!-- polarization -->
-      <div class="mb-3 border border-gray-700 p-4">
+      <div class="mb-3 border border-gray-700 px-4 py-2">
         <span>Polarization: </span>
         <label v-for="p in ['V', 'H', 'X']" :key="p" class="mr-3 text-sm">
           <input type="checkbox" :value="p" v-model="links.selectedPolarizations" class="mr-1" />
@@ -170,7 +192,10 @@ watch(
       </div>
 
       <!-- actual groups and techs -->
-      <div class="flex flex-col gap-3">
+      <div
+        class="mb-2 flex h-[306px] flex-col gap-3 overflow-y-auto border border-gray-700 p-2"
+        style="scrollbar-gutter: stable; will-change: transform"
+      >
         <div
           v-for="(techs, group) in links.groupedLinksByMappingAndTechnology"
           :key="group"
@@ -216,6 +241,25 @@ watch(
           </div>
         </div>
       </div>
+      <!-- link table toggle -->
+      <div class="mb-2 flex flex-col gap-3 border border-gray-700 p-4">
+        <button
+          @click="links.showLinkTable = !links.showLinkTable"
+          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
+        >
+          {{ links.showLinkTable ? 'Hide link table' : 'Show link table' }}
+        </button>
+      </div>
+      <div>
+        Showing
+        <span class="font-chivo text-cyan-300"
+          >{{ links.filteredLinks.length }}/{{ links.links.length }}</span
+        >
+        links
+      </div>
+      <button @click="links.resetAllFilters" class="cursor-pointer text-red-300 hover:underline">
+        Reset all filters
+      </button>
     </div>
   </div>
 </template>
