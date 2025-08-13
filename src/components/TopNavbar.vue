@@ -14,7 +14,7 @@ import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 
 const SESSION_MAX_SECONDS = 1800 // 30 minutes
 
@@ -49,6 +49,7 @@ async function logout() {
       await auth.checkLogin()
       weatherStations.$reset()
       weatherData.$reset()
+
       links.$reset()
       cmlData.$reset()
       config.$reset()
@@ -67,17 +68,6 @@ async function logout() {
     }
   }
 }
-
-watch(remainingTime, (newVal) => {
-  if (newVal === 0) {
-    auth.reset()
-    weatherStations.$reset()
-    weatherData.$reset()
-    links.$reset()
-    cmlData.$reset()
-    router.push({ name: 'login' })
-  }
-})
 </script>
 
 <template>

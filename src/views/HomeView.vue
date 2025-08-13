@@ -40,8 +40,8 @@ const weatherData = useWeatherDataStore()
 const links = useLinksStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
-// realtime/historic bounds
 
+// realtime/historic bounds
 const start = ref<string | null>('')
 const end = ref<string | null>('')
 
