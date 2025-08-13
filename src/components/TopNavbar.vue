@@ -38,7 +38,8 @@ const formattedTime = computed(() => {
 const progressBarWidth = computed(() => {
   if (remainingTime.value === null) return '0%'
   const used = SESSION_MAX_SECONDS - remainingTime.value
-  const percentage = Math.min((used / SESSION_MAX_SECONDS) * 100, 100)
+  const percentage = Math.min(100 - (used / SESSION_MAX_SECONDS) * 100, 100)
+  console.log(percentage)
   return `${percentage}%`
 })
 
