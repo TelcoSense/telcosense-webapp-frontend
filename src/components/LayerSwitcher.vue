@@ -5,7 +5,7 @@ import { computed } from 'vue'
 
 import { useConfigStore } from '@/stores/config'
 
-const { activeLayer, setLayer, clearLayer } = useActiveLayer()
+const { activeLayer, setLayer, hideLayer } = useActiveLayer()
 const config = useConfigStore()
 
 const layers = [
@@ -31,7 +31,7 @@ const layers = [
 
 function toggleLayer(id: string, layer: ReturnType<typeof useImageLayer>) {
   if (activeLayer.value?.name === id) {
-    clearLayer()
+    hideLayer()
   } else {
     setLayer(layer, id)
   }

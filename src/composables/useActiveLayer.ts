@@ -92,6 +92,12 @@ export function useActiveLayer() {
     }
   }
 
+  function hideLayer() {
+    activeLayer.value?.pause()
+    activeLayer.value?.setVisible(false)
+    activeLayer.value = null
+  }
+
   function clearLayer() {
     activeLayer.value?.pause()
     activeLayer.value?.setVisible(false)
@@ -99,5 +105,5 @@ export function useActiveLayer() {
     activeLayer.value = null
   }
 
-  return { activeLayer, setLayer, clearLayer }
+  return { activeLayer, setLayer, clearLayer, hideLayer }
 }
