@@ -387,6 +387,8 @@ watch(
   () => config.realtime,
   (newVal) => {
     if (newVal) {
+      dataPlottingVisible.value = true
+
       if (start.value && end.value) {
         cmlData.refresh(start.value, end.value)
         weatherData.refresh(start.value, end.value)
