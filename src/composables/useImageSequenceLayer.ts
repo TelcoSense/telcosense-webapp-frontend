@@ -232,6 +232,24 @@ export function useImageSequenceLayer(config: {
     if (idx >= 0) await showFrame(idx)
   }
 
+  function clear() {
+    pause() // stop playback
+
+    // Remove overlay from map
+    if (overlay.value && map.value) {
+      map.value.removeLayer(overlay.value as L.ImageOverlay)
+    }
+
+    // Revoke and clear blobs
+    releaseBlobs()
+
+    // Reset everything
+    overlay.value = null
+    frames.value = []
+    currentIndex.value = 0
+    error.value = null
+  }
+
 
   return {
     frames,
@@ -257,6 +275,7 @@ export function useImageSequenceLayer(config: {
     toggle,
     releaseBlobs,
     showNearestTimestamp,
+    clear,
   }
 }
 

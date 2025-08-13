@@ -19,6 +19,7 @@ export interface ControllableLayer {
   changeFrame(delta: number): void
   setVisible(visible: boolean): void
   setOpacity(value: number): void
+  clear(): void
 }
 
 const activeLayer = ref<ControllableLayer | null>(null)
@@ -45,6 +46,7 @@ export function useActiveLayer() {
       changeFrame(delta: number): void
       setVisible(visible: boolean): void
       setOpacity(value: number): void
+      clear(): void
     },
     name = 'Unnamed Layer',
     // showLatestFrame: Ref<boolean, boolean>,
@@ -73,6 +75,7 @@ export function useActiveLayer() {
       changeFrame: store.changeFrame.bind(store),
       setVisible: store.setVisible.bind(store),
       setOpacity: store.setOpacity.bind(store),
+      clear: store.clear.bind(store),
     }
 
     activeLayer.value?.setVisible(true)
@@ -92,7 +95,7 @@ export function useActiveLayer() {
   function clearLayer() {
     activeLayer.value?.pause()
     activeLayer.value?.setVisible(false)
-    activeLayer.value?.showFrame(0)
+    activeLayer.value?.clear()
     activeLayer.value = null
   }
 

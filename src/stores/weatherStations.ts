@@ -11,6 +11,7 @@ export interface WeatherStation {
   X: number
   Y: number
   elevation: number
+  measurements: string[]
 }
 
 export const useWeatherStationsStore = defineStore('weatherStations', {
@@ -30,6 +31,7 @@ export const useWeatherStationsStore = defineStore('weatherStations', {
       }
       return state.stations;
     },
+
   },
   actions: {
     async fetchWeatherStations() {

@@ -41,8 +41,23 @@ const links = useLinksStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
 // realtime/historic bounds
-const start = computed(() => (config.realtime ? oneWeekAgoTimestamp.value : config.start))
-const end = computed(() => (config.realtime ? currentTimestamp.value : config.end))
+
+const start = ref<string | null>('')
+const end = ref<string | null>('')
+
+watch(
+  () => config.realtime,
+  (isRealtime) => {
+    if (isRealtime) {
+      start.value = oneWeekAgoTimestamp.value
+      end.value = currentTimestamp.value
+    } else {
+      start.value = config.start
+      end.value = config.end
+    }
+  },
+  { immediate: true },
+)
 
 // map initialization, link and station selection setup
 const map = ref<L.Map | null>(null)
@@ -69,6 +84,7 @@ const { onMapMouseDown } = useLinkSelection({
 const selectedStart = ref<Date | null>(null)
 const selectedEnd = ref<Date | null>(null)
 const timeRangeVisible = ref<boolean>(false)
+const dataPlottingVisible = ref<boolean>(true)
 
 function toUtcDate(dateLike: Date | string): Date {
   const localDate = typeof dateLike === 'string' ? new Date(dateLike) : dateLike
@@ -85,22 +101,33 @@ function toUtcDate(dateLike: Date | string): Date {
 }
 
 function applyCustomRange() {
-  if (selectedStart.value && selectedEnd.value) {
-    clearLayer()
+  if (!selectedStart.value || !selectedEnd.value) return
+  const startUtc = toUtcDate(selectedStart.value).toISOString()
+  const endUtc = toUtcDate(selectedEnd.value).toISOString()
 
-    const startUtc = toUtcDate(selectedStart.value)
-    const endUtc = toUtcDate(selectedEnd.value)
+  config.start = startUtc
+  config.end = endUtc
+  start.value = startUtc
+  end.value = endUtc
 
-    config.start = startUtc.toISOString()
-    config.end = endUtc.toISOString()
+  // weatherData.clear()
+  // cmlData.clear()
 
-    maxz.fetchList(config.start, config.end)
-    merge1h.fetchList(config.start, config.end)
-    raincz.fetchList(config.start, config.end)
+  clearLayer()
 
-    weatherData.refresh(config.start, config.end)
-    cmlData.refresh(config.start, config.end)
-  }
+  maxz.clear()
+  merge1h.clear()
+  raincz.clear()
+
+  maxz.fetchList(start.value, end.value)
+  merge1h.fetchList(start.value, end.value)
+  raincz.fetchList(start.value, end.value)
+
+  cmlData.refresh(start.value, end.value)
+  weatherData.refresh(start.value, end.value)
+
+  timeRangeVisible.value = false
+  dataPlottingVisible.value = true
 }
 
 const isTimeRangeValid = computed(() => {
@@ -167,6 +194,10 @@ async function initLayer(layer: ImageSequenceLayer, map: L.Map, start: string, e
 
 onMounted(async () => {
   initMap()
+
+  start.value = oneWeekAgoTimestamp.value
+  end.value = currentTimestamp.value
+
   weatherStations.fetchWeatherStations()
   await links.fetchLinks()
 
@@ -270,7 +301,20 @@ function drawStations() {
   weatherStations.filteredStations.forEach((ws) => {
     const isSelected =
       selectedStationIds.value.has(ws.id) || ws.gh_id === weatherData.selectedStationId
-    const color = isSelected ? 'red' : 'blue'
+    const hasTemperature = ws.measurements.includes('T')
+    const hasPrecipitation = ws.measurements.includes('SRA10M')
+
+    let color = 'gray'
+    if (isSelected) {
+      color = 'red'
+    } else if (hasTemperature && hasPrecipitation) {
+      color = 'purple'
+    } else if (hasTemperature) {
+      color = 'orange'
+    } else if (hasPrecipitation) {
+      color = 'blue'
+    }
+
     let marker = stationMarkers.get(ws.id)
     if (!marker) {
       marker = L.circleMarker([ws.Y, ws.X], {
@@ -343,18 +387,35 @@ watch(
   () => config.realtime,
   (newVal) => {
     if (newVal) {
+      if (start.value && end.value) {
+        cmlData.refresh(start.value, end.value)
+        weatherData.refresh(start.value, end.value)
+      }
       clearLayer()
-      weatherData.clear()
-      cmlData.clear()
+      maxz.clear()
+      merge1h.clear()
+      raincz.clear()
 
       maxz.fetchList(start.value, end.value)
       merge1h.fetchList(start.value, end.value)
       raincz.fetchList(start.value, end.value)
     } else {
       // do something when switching to historic calcs
+      dataPlottingVisible.value = false
+
       clearLayer()
-      weatherData.clear()
-      cmlData.clear()
+
+      if (start.value && end.value) {
+        cmlData.refresh(start.value, end.value)
+        weatherData.refresh(start.value, end.value)
+      }
+
+      maxz.clear()
+      merge1h.clear()
+      raincz.clear()
+
+      // weatherData.clear()
+      // cmlData.clear()
     }
   },
 )
@@ -445,7 +506,7 @@ function formatDateForDatepicker(date: Date): string {
         <PrecipitationBar v-if="activeLayer?.name == 'merge1h'" />
         <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
 
-        <DataPlotting :start="start" :end="end" />
+        <DataPlotting v-show="dataPlottingVisible" :start="start" :end="end" />
 
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
 
