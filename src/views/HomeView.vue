@@ -102,8 +102,18 @@ function toUtcDate(dateLike: Date | string): Date {
 
 function applyCustomRange() {
   if (!selectedStart.value || !selectedEnd.value) return
-  const startUtc = toUtcDate(selectedStart.value).toISOString()
-  const endUtc = toUtcDate(selectedEnd.value).toISOString()
+
+  const startUtc =
+    config.datetimeFormat === 'UTC'
+      ? toUtcDate(selectedStart.value).toISOString()
+      : new Date(selectedStart.value).toISOString()
+  const endUtc =
+    config.datetimeFormat === 'UTC'
+      ? toUtcDate(selectedEnd.value).toISOString()
+      : new Date(selectedEnd.value).toISOString()
+
+  // const startUtc = toUtcDate(selectedStart.value).toISOString()
+  // const endUtc = toUtcDate(selectedEnd.value).toISOString()
 
   config.start = startUtc
   config.end = endUtc
@@ -442,10 +452,11 @@ function formatDateForDatepicker(date: Date): string {
           <p v-if="!config.realtime" class="border-b border-gray-700">Historic bounds</p>
           <p v-if="start">
             Start:
-            <span class="font-chivo">{{ datetimeFormat(start, 'UTC') }} </span>
+            <span class="font-chivo">{{ datetimeFormat(start, config.datetimeFormat) }} </span>
           </p>
           <p v-if="end">
-            End: <span class="font-chivo">{{ datetimeFormat(end, 'UTC') }} </span>
+            End:
+            <span class="font-chivo">{{ datetimeFormat(end, config.datetimeFormat) }} </span>
           </p>
           <!-- <p>
               Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>

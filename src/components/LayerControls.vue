@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useActiveLayer } from '@/composables/useActiveLayer'
+import { useConfigStore } from '@/stores/config'
 import { datetimeFormat } from '@/utils'
 import { computed, ref, watch } from 'vue'
 
 const { activeLayer } = useActiveLayer()
+const config = useConfigStore()
 
 const disablePrev = computed(
   () => !activeLayer.value || activeLayer.value.currentIndex <= 0 || activeLayer.value.isPlaying,
@@ -44,7 +46,7 @@ const sliderLabel = computed(() =>
   <div v-if="activeLayer" class="absolute bottom-6 rounded-md bg-gray-800 p-3 text-sm text-white">
     <div class="flex items-center gap-x-3 pb-2">
       <span class="font-chivo text-nowrap">
-        {{ datetimeFormat(activeLayer.frames[0]?.timestamp, 'UTC') ?? '—' }}
+        {{ datetimeFormat(activeLayer.frames[0]?.timestamp, config.datetimeFormat) ?? '—' }}
       </span>
       <input
         v-if="activeLayer.frames.length"
@@ -59,7 +61,10 @@ const sliderLabel = computed(() =>
       />
       <span class="font-chivo text-nowrap">
         {{
-          datetimeFormat(activeLayer.frames[activeLayer.frames.length - 1]?.timestamp, 'UTC') ?? '—'
+          datetimeFormat(
+            activeLayer.frames[activeLayer.frames.length - 1]?.timestamp,
+            config.datetimeFormat,
+          ) ?? '—'
         }}
       </span>
     </div>
@@ -99,7 +104,9 @@ const sliderLabel = computed(() =>
       <p>
         Current frame:
         <span class="font-chivo">
-          {{ datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, 'UTC') ?? '—' }}
+          {{
+            datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, config.datetimeFormat) ?? '—'
+          }}
         </span>
         <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
       </p>

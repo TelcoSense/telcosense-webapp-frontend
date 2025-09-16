@@ -4,6 +4,7 @@ interface ConfigState {
   realtime: boolean;
   start: string | null;
   end: string | null;
+  datetimeFormat: 'UTC' | 'Europe/Prague';
 }
 
 export const useConfigStore = defineStore('config', {
@@ -11,6 +12,7 @@ export const useConfigStore = defineStore('config', {
     realtime: true,
     start: null,
     end: null,
+    datetimeFormat: 'UTC',
   }),
 
   actions: {
@@ -22,6 +24,10 @@ export const useConfigStore = defineStore('config', {
 
     setToHistoric() {
       this.realtime = false;
+    },
+
+    toggleDatetimeFormat() {
+      this.datetimeFormat = this.datetimeFormat === 'UTC' ? 'Europe/Prague' : 'UTC';
     }
   },
 });

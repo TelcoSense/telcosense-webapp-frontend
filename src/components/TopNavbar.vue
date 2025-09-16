@@ -16,6 +16,8 @@ import { useWeatherStationsStore } from '@/stores/weatherStations'
 
 import { computed } from 'vue'
 
+import DatetimeToggle from '@/components/DatetimeToggle.vue'
+
 const SESSION_MAX_SECONDS = 1800 // 30 minutes
 
 const router = useRouter()
@@ -82,6 +84,7 @@ async function logout() {
     </div>
 
     <div class="flex items-center gap-x-3 rounded-md text-white">
+      <DatetimeToggle />
       <!-- time left -->
       <div
         v-if="formattedTime"
