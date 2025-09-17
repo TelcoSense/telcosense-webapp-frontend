@@ -15,6 +15,8 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ECharts from 'vue-echarts'
 
+import { useConfigStore } from '@/stores/config'
+
 use([
   LineChart,
   GridComponent,
@@ -26,6 +28,8 @@ use([
   MarkLineComponent,
   GraphicComponent,
 ])
+
+const config = useConfigStore()
 
 const props = defineProps<{
   seriesData: Array<{
@@ -168,7 +172,7 @@ const buildOptions = () => {
   })
 
   chartOptions.value = {
-    useUTC: true,
+    useUTC: config.datetimeFormat == 'UTC' ? true : false,
     backgroundColor: '#1f2937',
     animation: false,
     textStyle: {
@@ -332,6 +336,13 @@ watch(
     }
 
     chart.setOption({ series: updates }, { notMerge: false })
+  },
+)
+
+watch(
+  () => config.datetimeFormat,
+  () => {
+    buildOptions()
   },
 )
 </script>
