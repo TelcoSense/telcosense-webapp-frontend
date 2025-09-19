@@ -5,7 +5,10 @@ import 'leaflet/dist/leaflet.css'
 import Datepicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 
+import { api } from '@/api'
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
+import getSecureConfig from '@/cookies'
+import axios from 'axios'
 import type { Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -435,6 +438,24 @@ watch(
 function formatDateForDatepicker(date: Date): string {
   return datetimeFormat(date.toISOString(), 'Europe/Prague')
 }
+
+async function startRainCalculation(name: string) {
+  try {
+    const res = await api.post(
+      '/start-rain-calculation',
+      { name }, // POST body
+      getSecureConfig(), // auth headers
+    )
+    console.log('Started calculation:', res.data)
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response) {
+      console.error('Caught error:', err.response.data.message)
+      alert(err.response.data.message)
+    } else {
+      console.error('Unknown error:', err)
+    }
+  }
+}
 </script>
 
 <template>
@@ -492,6 +513,13 @@ function formatDateForDatepicker(date: Date): string {
               @click="config.setToHistoric()"
             >
               Historic data
+            </button>
+
+            <button
+              class="h-8 cursor-pointer rounded-md bg-amber-200 px-3 hover:bg-amber-300"
+              @click="startRainCalculation('Test calc 1')"
+            >
+              Run historic
             </button>
           </div>
           <button
