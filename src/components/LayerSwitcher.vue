@@ -47,7 +47,7 @@ const isCustomRangeUnset = computed(() => {
 </script>
 
 <template>
-  <div class="absolute top-20 left-6 w-[200px] rounded-md bg-gray-800 p-3 text-sm">
+  <div class="absolute top-20 left-6 w-[150px] rounded-md bg-gray-800 p-3 text-sm">
     <span class="flex border-b border-gray-700 pb-1.5 text-white">Map layers</span>
 
     <span class="my-1.5 flex text-white">CHMI</span>

@@ -5,10 +5,7 @@ import 'leaflet/dist/leaflet.css'
 import Datepicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 
-import { api } from '@/api'
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
-import getSecureConfig from '@/cookies'
-import axios from 'axios'
 import type { Ref } from 'vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -18,6 +15,7 @@ import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import LinkTable from '@/components/LinkTable.vue'
 import PrecipitationBar from '@/components/PrecipitationBar.vue'
+import RainHistoric from '@/components/RainHistoric.vue'
 import ReflectivityBar from '@/components/ReflectivityBar.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
@@ -31,8 +29,9 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
 import { useLinkSelection } from '@/composables/useLinkSelection'
 import { useRealtime } from '@/composables/useRealtime'
+
+import { datetimeFormat, toUtcDate } from '@/utils'
 // import { useStationSelection } from '@/composables/useStationSelection'
-import { datetimeFormat } from '@/utils'
 
 // realtime composable
 const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
@@ -88,20 +87,6 @@ const selectedStart = ref<Date | null>(null)
 const selectedEnd = ref<Date | null>(null)
 const timeRangeVisible = ref<boolean>(false)
 const dataPlottingVisible = ref<boolean>(true)
-
-function toUtcDate(dateLike: Date | string): Date {
-  const localDate = typeof dateLike === 'string' ? new Date(dateLike) : dateLike
-  return new Date(
-    Date.UTC(
-      localDate.getFullYear(),
-      localDate.getMonth(),
-      localDate.getDate(),
-      localDate.getHours(),
-      localDate.getMinutes(),
-      localDate.getSeconds(),
-    ),
-  )
-}
 
 function applyCustomRange() {
   if (!selectedStart.value || !selectedEnd.value) return
@@ -438,24 +423,6 @@ watch(
 function formatDateForDatepicker(date: Date): string {
   return datetimeFormat(date.toISOString(), 'Europe/Prague')
 }
-
-async function startRainCalculation(name: string) {
-  try {
-    const res = await api.post(
-      '/start-rain-calculation',
-      { name }, // POST body
-      getSecureConfig(), // auth headers
-    )
-    console.log('Started calculation:', res.data)
-  } catch (err) {
-    if (axios.isAxiosError(err) && err.response) {
-      console.error('Caught error:', err.response.data.message)
-      alert(err.response.data.message)
-    } else {
-      console.error('Unknown error:', err)
-    }
-  }
-}
 </script>
 
 <template>
@@ -514,13 +481,6 @@ async function startRainCalculation(name: string) {
             >
               Historic data
             </button>
-
-            <button
-              class="h-8 cursor-pointer rounded-md bg-amber-200 px-3 hover:bg-amber-300"
-              @click="startRainCalculation('Test calc 1')"
-            >
-              Run historic
-            </button>
           </div>
           <button
             v-if="weatherStations.hasStations"
@@ -548,13 +508,13 @@ async function startRainCalculation(name: string) {
         <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
 
         <DataPlotting v-show="dataPlottingVisible" :start="start" :end="end" />
-
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
+        <RainHistoric :link-ids="selectedLinkIds" />
 
         <!-- timerange -->
         <div
           v-if="!config.realtime && timeRangeVisible"
-          class="absolute top-20 left-62 z-30 w-80 rounded-md bg-gray-800 p-3"
+          class="absolute top-20 left-46 z-30 w-64 rounded-md bg-gray-800 p-3"
         >
           <div class="flex w-full justify-end text-sm">
             <button
@@ -574,6 +534,7 @@ async function startRainCalculation(name: string) {
             class="mb-3 w-full text-sm"
             dark
             :format="formatDateForDatepicker"
+            :timezone="config.datetimeFormat"
           />
 
           <label class="mb-1 block text-sm text-white">End</label>
@@ -586,6 +547,7 @@ async function startRainCalculation(name: string) {
             class="mb-4 w-full text-sm"
             dark
             :format="formatDateForDatepicker"
+            :timezone="config.datetimeFormat"
           />
 
           <button
@@ -596,13 +558,13 @@ async function startRainCalculation(name: string) {
             Apply time range
           </button>
         </div>
-        <div v-else class="absolute top-20 left-62 z-30 text-sm">
+        <div v-else class="absolute top-20 left-46 z-30 text-sm">
           <button
             v-show="!config.realtime"
             @click="timeRangeVisible = true"
             class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
           >
-            Select time range
+            Previous realtime data
           </button>
         </div>
         <!-- timerange end-->
@@ -628,5 +590,10 @@ async function startRainCalculation(name: string) {
   --dp-menu-border-color: #374151;
   --dp-inner-border-color: #374151;
   --dp-hover-text-color: #ffffff;
+}
+
+.dp__theme_light .dp__calendar_header,
+.dp__theme_dark .dp__calendar_header {
+  font-weight: 500;
 }
 </style>

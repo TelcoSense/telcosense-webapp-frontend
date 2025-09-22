@@ -14,3 +14,17 @@ export function datetimeFormat(datetimeStr: string, timeZone: 'UTC' | 'Europe/Pr
   )
   return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`
 }
+
+export function toUtcDate(dateLike: Date | string): Date {
+  const localDate = typeof dateLike === 'string' ? new Date(dateLike) : dateLike
+  return new Date(
+    Date.UTC(
+      localDate.getFullYear(),
+      localDate.getMonth(),
+      localDate.getDate(),
+      localDate.getHours(),
+      localDate.getMinutes(),
+      localDate.getSeconds(),
+    ),
+  )
+}
