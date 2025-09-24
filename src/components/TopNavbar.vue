@@ -75,7 +75,7 @@ async function logout() {
 <template>
   <nav class="absolute top-6 z-10 flex w-full items-end justify-between px-6">
     <span
-      class="flex h-8 items-center justify-center rounded-md bg-gray-800 px-3 text-xl text-white select-none"
+      class="flex h-8 items-center justify-center rounded-md px-3 text-xl font-semibold text-gray-800 select-none"
       >TelcoSense</span
     >
 

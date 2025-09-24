@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
-import { computed } from 'vue'
-
 import { useConfigStore } from '@/stores/config'
+
+import L from 'leaflet'
+import { computed } from 'vue'
 
 const { activeLayer, setLayer, hideLayer } = useActiveLayer()
 const config = useConfigStore()
+
+const rainHistoric = useImageLayer('user-calc', {
+  apiUrl: '/placeholder', // dummy, updated later
+  bounds: L.latLngBounds([0, 0], [0, 0]),
+})
 
 const layers = [
   {
@@ -26,6 +32,12 @@ const layers = [
     label: 'Rain CZ',
     group: 'TelcoSense',
     layer: useImageLayer('raincz'),
+  },
+  {
+    id: 'user-calc',
+    label: 'User calc',
+    group: 'TelcoSense',
+    layer: rainHistoric,
   },
 ]
 
@@ -75,7 +87,9 @@ const isCustomRangeUnset = computed(() => {
     <span class="my-1.5 flex text-white">TelcoSense</span>
     <div class="flex flex-col gap-y-3">
       <button
-        v-for="{ id, label, layer } in layers.filter((l) => l.group === 'TelcoSense')"
+        v-for="{ id, label, layer } in layers.filter(
+          (l) => l.group === 'TelcoSense' && (l.id !== 'user-calc' || !config.realtime),
+        ) as { id: string; label: string; layer: any }[]"
         :key="id"
         @click="toggleLayer(id, layer)"
         class="flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-700 px-3 text-gray-500 enabled:cursor-pointer enabled:text-white enabled:hover:bg-gray-500"
@@ -84,9 +98,10 @@ const isCustomRangeUnset = computed(() => {
       >
         <div>{{ label }}</div>
         <div
-          :class="
-            layer.frames.value.length > 0 && !isCustomRangeUnset ? 'text-green-600' : 'text-red-600'
-          "
+          :class="{
+            'text-green-600': layer.frames.value.length > 0 && !isCustomRangeUnset,
+            'text-red-600': layer.frames.value.length === 0 || isCustomRangeUnset,
+          }"
           class="text-lg"
         >
           ●

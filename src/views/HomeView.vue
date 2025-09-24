@@ -28,13 +28,17 @@ import { useWeatherStationsStore } from '@/stores/weatherStations'
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
 import { useLinkSelection } from '@/composables/useLinkSelection'
+import { useMap } from '@/composables/useMap'
 import { useRealtime } from '@/composables/useRealtime'
-
 import { datetimeFormat, toUtcDate } from '@/utils'
 // import { useStationSelection } from '@/composables/useStationSelection'
 
+// TODO: playback speed, select proper time range for the rest of the layers when using user calculation
+// when deleting selected calc check if it isnt selected
+
 // realtime composable
 const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
+const { map } = useMap()
 
 // store definitions
 const weatherStations = useWeatherStationsStore()
@@ -62,7 +66,7 @@ watch(
 )
 
 // map initialization, link and station selection setup
-const map = ref<L.Map | null>(null)
+// const map = ref<L.Map | null>(null)
 
 const stationsGroup = ref<L.LayerGroup>(L.layerGroup())
 const linksGroup = ref<L.LayerGroup>(L.layerGroup())

@@ -51,7 +51,7 @@ function cellClass(id: number, truncate = false) {
 
 <template>
   <div
-    class="absolute top-20 right-88 w-full max-w-screen-xl rounded-md bg-gray-800 p-3 text-white"
+    class="absolute top-20 right-84 w-full max-w-screen-xl rounded-md bg-gray-800 p-3 text-white"
   >
     <div class="mb-2 flex flex-row items-center justify-between gap-x-2">
       <input

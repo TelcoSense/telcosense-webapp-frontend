@@ -28,3 +28,24 @@ export function toUtcDate(dateLike: Date | string): Date {
     ),
   )
 }
+
+export const coordsCzechia = {
+  xMin: 12.0905,
+  xMax: 18.8591,
+  yMin: 48.5525,
+  yMax: 51.0557,
+}
+
+export const coordsBrno = {
+  xMin: 16.4486,
+  xMax: 16.7706,
+  yMin: 49.0849,
+  yMax: 49.3014,
+}
+
+export const coordsPraha = {
+  xMin: 14.1785,
+  xMax: 14.7498,
+  yMin: 49.8946,
+  yMax: 50.2433,
+}

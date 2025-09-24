@@ -10,10 +10,13 @@ export interface Frame {
   objectUrl: string | null
 }
 
-export function useImageSequenceLayer(config: {
+export function useImageSequenceLayer(initialConfig: {
   apiUrl: string
   bounds: L.LatLngBounds
 }) {
+  const apiUrl = ref(initialConfig.apiUrl)
+  const bounds = ref(initialConfig.bounds)
+
   const frames = shallowRef<Frame[]>([])
   const blobCache = new Map<string, string>()
 
@@ -33,6 +36,17 @@ export function useImageSequenceLayer(config: {
 
   let preloadInProgress = false
   let currentAbort: AbortController | null = null
+
+  function setApiUrl(newUrl: string) {
+    apiUrl.value = newUrl
+  }
+
+  function setBounds(newBounds: L.LatLngBounds) {
+    bounds.value = newBounds
+    if (overlay.value) {
+      overlay.value.setBounds(newBounds)
+    }
+  }
 
   function setMap(newMap: L.Map) {
     map.value = markRaw(newMap)
@@ -55,7 +69,7 @@ export function useImageSequenceLayer(config: {
     loading.value = true
     error.value = null
     try {
-      const res = await api.get<Frame[]>(config.apiUrl, {
+      const res = await api.get<Frame[]>(apiUrl.value, {
         params: { start, end }
       })
       frames.value = res.data
@@ -85,7 +99,7 @@ export function useImageSequenceLayer(config: {
 
       if (!overlay.value) {
         overlay.value = markRaw(
-          L.imageOverlay(objectUrl, config.bounds, { opacity: opacity.value }).addTo(map.value as L.Map)
+          L.imageOverlay(objectUrl, bounds.value, { opacity: opacity.value }).addTo(map.value as L.Map)
         )
       } else {
         overlay.value.setUrl(objectUrl)
@@ -146,7 +160,7 @@ export function useImageSequenceLayer(config: {
       currentAbort?.abort()
       currentAbort = new AbortController()
 
-      const res = await api.get<Frame[]>(config.apiUrl, {
+      const res = await api.get<Frame[]>(apiUrl.value, {
         params: { start: newTimestamp, end: newTimestamp },
         signal: currentAbort.signal
       })
@@ -276,6 +290,8 @@ export function useImageSequenceLayer(config: {
     releaseBlobs,
     showNearestTimestamp,
     clear,
+    setApiUrl,
+    setBounds,
   }
 }
 
