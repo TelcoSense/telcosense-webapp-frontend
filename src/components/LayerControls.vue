@@ -44,7 +44,39 @@ const sliderLabel = computed(() =>
 
 <template>
   <div v-if="activeLayer" class="absolute bottom-6 rounded-md bg-gray-800 p-3 text-sm text-white">
-    <div class="flex items-center gap-x-3 pb-2">
+    <div class="flex items-center gap-x-3">
+      <button
+        @click="activeLayer.changeFrame(-1)"
+        :disabled="disablePrev"
+        class="h-8 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 disabled:cursor-default disabled:opacity-40"
+      >
+        Prev
+      </button>
+      <button
+        @click="activeLayer.changeFrame(1)"
+        :disabled="disableNext"
+        class="h-8 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 disabled:cursor-default disabled:opacity-40"
+      >
+        Next
+      </button>
+      <button
+        @click="togglePlayback"
+        class="h-8 cursor-pointer rounded bg-blue-600 px-3 text-white hover:bg-blue-500"
+      >
+        Play/Pause
+      </button>
+
+      <p>
+        Current frame:
+        <span class="font-chivo">
+          {{
+            datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, config.datetimeFormat) ?? '—'
+          }}
+        </span>
+        <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
+      </p>
+    </div>
+    <div class="flex items-center gap-x-3 py-2">
       <span class="font-chivo text-nowrap">
         {{ datetimeFormat(activeLayer.frames[0]?.timestamp, config.datetimeFormat) ?? '—' }}
       </span>
@@ -80,36 +112,23 @@ const sliderLabel = computed(() =>
         @input="(e) => activeLayer?.setOpacity(parseFloat((e.target as HTMLInputElement).value))"
         class="w-20"
       />
-      <button
-        @click="activeLayer.changeFrame(-1)"
-        :disabled="disablePrev"
-        class="h-8 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 disabled:cursor-default disabled:opacity-40"
-      >
-        Prev
-      </button>
-      <button
-        @click="activeLayer.changeFrame(1)"
-        :disabled="disableNext"
-        class="h-8 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 disabled:cursor-default disabled:opacity-40"
-      >
-        Next
-      </button>
-      <button
-        @click="togglePlayback"
-        class="h-8 cursor-pointer rounded bg-blue-600 px-3 text-white hover:bg-blue-500"
-      >
-        Play/Pause
-      </button>
 
-      <p>
-        Current frame:
-        <span class="font-chivo">
-          {{
-            datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, config.datetimeFormat) ?? '—'
-          }}
-        </span>
-        <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
-      </p>
+      <span>Playback speed:</span>
+      <input
+        type="range"
+        min="0.1"
+        max="10"
+        step="0.1"
+        :value="1000 / activeLayer.animationSpeed"
+        @input="
+          (e) => {
+            const fps = parseFloat((e.target as HTMLInputElement).value)
+            activeLayer?.setAnimationSpeed(1000 / fps)
+          }
+        "
+        class="w-20"
+      />
+      <span class="font-chivo">{{ (1000 / activeLayer.animationSpeed).toFixed(1) }} fps</span>
     </div>
   </div>
 </template>

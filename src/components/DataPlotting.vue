@@ -86,7 +86,7 @@ const seriesData = computed(() => {
 <template>
   <div
     v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) && dataPlottingVisible"
-    class="absolute bottom-33 flex h-[450px] w-[1250px] flex-col gap-2"
+    class="absolute bottom-38 flex h-[450px] w-[1250px] flex-col gap-2"
   >
     <div class="flex h-8 items-center justify-between gap-2">
       <div class="rounded-md bg-gray-800/50 px-3 py-1 text-sm text-white backdrop-blur-xs">
@@ -180,7 +180,7 @@ const seriesData = computed(() => {
       </button>
     </div>
   </div>
-  <div v-else class="absolute bottom-33 flex flex-col gap-2 text-sm">
+  <div v-else class="absolute bottom-38 flex flex-col gap-2 text-sm">
     <button
       v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0"
       @click="dataPlottingVisible = !dataPlottingVisible"

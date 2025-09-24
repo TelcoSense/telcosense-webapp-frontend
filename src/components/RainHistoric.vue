@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { api } from '@/api'
-import { useImageLayer } from '@/composables/useImageLayer'
-import { useMap } from '@/composables/useMap'
-import getSecureConfig from '@/cookies'
-import { useConfigStore } from '@/stores/config'
-import { coordsBrno, coordsCzechia, coordsPraha, datetimeFormat, toUtcDate } from '@/utils'
 import Datepicker from '@vuepic/vue-datepicker'
 import axios from 'axios'
 import L from 'leaflet'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+
+import { api } from '@/api'
+import getSecureConfig from '@/cookies'
+import { coordsBrno, coordsCzechia, coordsPraha, datetimeFormat, toUtcDate } from '@/utils'
+
+import { useConfigStore } from '@/stores/config'
+import { useLayersStore } from '@/stores/layers'
+
+import { useActiveLayer } from '@/composables/useActiveLayer'
+import { useImageLayer } from '@/composables/useImageLayer'
+import { useMap } from '@/composables/useMap'
 
 const { map } = useMap()
 
@@ -42,8 +47,10 @@ interface Calculation {
 }
 
 const userCalcLayer = useImageLayer('user-calc')
+const { clearLayer } = useActiveLayer()
 
 const config = useConfigStore()
+const layers = useLayersStore()
 
 const selectedStart = ref<Date | null>(null)
 const selectedEnd = ref<Date | null>(null)
@@ -172,6 +179,14 @@ async function deleteCalculation(id: number) {
     await api.delete(`/rain-calculations/${id}`, getSecureConfig())
     // remove it from the list locally without waiting for the next poll
     calculations.value = calculations.value.filter((c) => c.id !== id)
+    clearLayer()
+
+    layers.maxz.clear()
+    layers.merge1h.clear()
+    layers.raincz.clear()
+
+    config.start = null
+    config.end = null
   } catch (err) {
     console.error('Failed to delete calculation:', err)
     alert('Failed to delete calculation')
@@ -185,35 +200,27 @@ function formatDateForDatepicker(date: Date): string {
 function applyCustomRange(start: string, end: string) {
   if (!start || !end) return
 
-  const startUtc =
-    config.datetimeFormat === 'UTC' ? toUtcDate(start).toISOString() : new Date(start).toISOString()
-  const endUtc =
-    config.datetimeFormat === 'UTC' ? toUtcDate(end).toISOString() : new Date(end).toISOString()
-
-  config.start = startUtc
-  config.end = endUtc
-
-  // start.value = startUtc
-  // end.value = endUtc
+  config.start = new Date(start).toISOString()
+  config.end = new Date(end).toISOString()
 
   // weatherData.clear()
   // cmlData.clear()
 
-  // clearLayer()
+  clearLayer()
 
-  // maxz.clear()
-  // merge1h.clear()
-  // raincz.clear()
+  layers.maxz.clear()
+  layers.merge1h.clear()
+  layers.raincz.clear()
 
-  // maxz.fetchList(start.value, end.value)
-  // merge1h.fetchList(start.value, end.value)
-  // raincz.fetchList(start.value, end.value)
+  layers.maxz.fetchList(config.start, config.end)
+  layers.merge1h.fetchList(config.start, config.end)
+  layers.raincz.fetchList(config.start, config.end)
 
   // cmlData.refresh(start.value, end.value)
   // weatherData.refresh(start.value, end.value)
 
   // timeRangeVisible.value = false
-  // dataPlottingVisible.value = true
+  config.dataPlottingVisible = true
 }
 
 watch(showHistoric, (visible) => {
@@ -238,7 +245,7 @@ const canStart = computed(() => {
 
 <template>
   <div
-    v-if="showHistoric"
+    v-if="showHistoric && !config.realtime"
     class="absolute top-20 left-46 z-50 w-3xl rounded-md bg-gray-800 p-3 text-sm text-white"
   >
     <div class="mb-2 flex justify-between">
@@ -497,6 +504,13 @@ const canStart = computed(() => {
         <hr class="my-2 border-gray-700" />
       </div>
 
+      <div class="mb-2 flex gap-x-2">
+        <span>Selected links: {{ linkIds?.size }}</span>
+        <span class="text-red-600" v-if="linkIds?.size === 0"
+          >Please select links using the map.</span
+        >
+      </div>
+
       <div class="flex justify-between gap-x-3">
         <!-- submit -->
         <button
@@ -527,7 +541,7 @@ const canStart = computed(() => {
         <table class="min-w-full table-fixed text-left">
           <thead class="sticky top-0 z-10 bg-gray-900">
             <tr class="border-b border-gray-600">
-              <th class="w-[14%] truncate py-1 pr-2 font-normal">Name</th>
+              <th class="w-[14%] truncate py-1 pr-2 pl-1 font-normal">Name</th>
               <th class="w-[8%] py-1 pr-2 font-normal">Status</th>
               <th class="w-[8%] py-1 pr-2 font-normal">Elapsed</th>
               <th class="w-[16%] py-1 pr-2 font-normal">Created</th>
@@ -541,9 +555,10 @@ const canStart = computed(() => {
               v-for="calc in calculations"
               :key="calc.id"
               class="border-b border-gray-700 hover:bg-gray-700"
+              :class="{ 'cursor-pointer': calc.status === 'finished' }"
               @click="calc.status === 'finished' ? viewCalculation(calc) : null"
             >
-              <td class="truncate py-1 pr-2" :title="calc.name">
+              <td class="max-w-0 truncate py-1 pr-2 pl-1" :title="calc.name">
                 {{ calc.name }}
               </td>
               <td class="py-1 pr-2 whitespace-nowrap">
@@ -562,13 +577,13 @@ const canStart = computed(() => {
                 <span v-if="calc.elapsed !== null">{{ (calc.elapsed / 60).toFixed(1) }} min</span>
                 <span v-else class="text-gray-500">–</span>
               </td>
-              <td class="py-1 pr-2 whitespace-nowrap">
+              <td class="font-chivo pt-0.5 pr-2 whitespace-nowrap">
                 {{ datetimeFormat(calc.created_at, config.datetimeFormat) }}
               </td>
-              <td class="py-1 pr-2 whitespace-nowrap">
+              <td class="font-chivo pt-0.5 pr-2 whitespace-nowrap">
                 {{ datetimeFormat(calc.start, config.datetimeFormat) }}
               </td>
-              <td class="py-1 pr-2 whitespace-nowrap">
+              <td class="font-chivo pt-0.5 pr-2 whitespace-nowrap">
                 {{ datetimeFormat(calc.end, config.datetimeFormat) }}
               </td>
               <td class="py-1 pr-2">

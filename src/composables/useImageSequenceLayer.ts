@@ -26,7 +26,7 @@ export function useImageSequenceLayer(initialConfig: {
   const currentIndex = ref(0)
   const isPlaying = ref(false)
   const playbackTimer = ref<number | null>(null)
-  const animationSpeed = ref(150)
+  const animationSpeed = ref(250)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const frameLoading = ref(false)
@@ -55,6 +55,15 @@ export function useImageSequenceLayer(initialConfig: {
   function setOpacity(value: number) {
     opacity.value = value
     overlay.value?.setOpacity(value)
+  }
+
+  function setAnimationSpeed(value: number) {
+    animationSpeed.value = value
+    // need to pause/play to make it work during playback
+    if (isPlaying.value) {
+      pause()
+      play()
+    }
   }
 
   function setVisible(visible: boolean) {
@@ -279,6 +288,7 @@ export function useImageSequenceLayer(initialConfig: {
     setMap,
     setVisible,
     setOpacity,
+    setAnimationSpeed,
     fetchList,
     showFrame,
     changeFrame,

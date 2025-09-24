@@ -12,7 +12,13 @@ const router = createRouter({
     {
       path: '/rain',
       name: 'rain',
-      component: () => import('../views/HomeView.vue'),
+      component: () => import('../views/RainView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/temp',
+      name: 'temp',
+      component: () => import('../views/TempView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -35,7 +41,7 @@ router.beforeEach(async (to) => {
     return { name: 'login' };
   }
   if (needsGuest && auth.isLoggedIn === true) {
-    return { name: 'rain' };
+    return { name: 'temp' };
   }
 });
 

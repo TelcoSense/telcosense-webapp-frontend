@@ -3,16 +3,13 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
 import { useConfigStore } from '@/stores/config'
 
-import L from 'leaflet'
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 const { activeLayer, setLayer, hideLayer } = useActiveLayer()
 const config = useConfigStore()
 
-const rainHistoric = useImageLayer('user-calc', {
-  apiUrl: '/placeholder', // dummy, updated later
-  bounds: L.latLngBounds([0, 0], [0, 0]),
-})
+const route = useRoute()
 
 const layers = [
   {
@@ -20,24 +17,36 @@ const layers = [
     label: 'Max Z',
     group: 'CHMI',
     layer: useImageLayer('maxz'),
+    showOnRoutes: ['rain'],
   },
   {
     id: 'merge1h',
     label: 'Merge 1h',
     group: 'CHMI',
     layer: useImageLayer('merge1h'),
+    showOnRoutes: ['rain'],
   },
   {
     id: 'raincz',
     label: 'Rain CZ',
     group: 'TelcoSense',
     layer: useImageLayer('raincz'),
+    showOnRoutes: ['rain'],
   },
   {
     id: 'user-calc',
     label: 'User calc',
     group: 'TelcoSense',
-    layer: rainHistoric,
+    layer: useImageLayer('user-calc'),
+    showOnRoutes: ['rain'],
+  },
+  // telcotemp
+  {
+    id: 'tempcz',
+    label: 'Temp CZ',
+    group: 'TelcoSense',
+    layer: useImageLayer('tempcz'),
+    showOnRoutes: ['temp'],
   },
 ]
 
@@ -56,16 +65,29 @@ function isActive(id: string) {
 const isCustomRangeUnset = computed(() => {
   return !config.start && !config.end && !config.realtime
 })
+
+const chmiLayers = computed(() =>
+  layers.filter((l) => l.group === 'CHMI' && l.showOnRoutes?.includes(route.name as string)),
+)
+
+const telcoLayers = computed(() =>
+  layers.filter(
+    (l) =>
+      l.group === 'TelcoSense' &&
+      l.showOnRoutes?.includes(route.name as string) &&
+      (l.id !== 'user-calc' || !config.realtime),
+  ),
+)
 </script>
 
 <template>
   <div class="absolute top-20 left-6 w-[150px] rounded-md bg-gray-800 p-3 text-sm">
     <span class="flex border-b border-gray-700 pb-1.5 text-white">Map layers</span>
 
-    <span class="my-1.5 flex text-white">CHMI</span>
+    <span v-if="chmiLayers.length > 0" class="my-1.5 flex text-white">CHMI</span>
     <div class="flex flex-col gap-y-3">
       <button
-        v-for="{ id, label, layer } in layers.filter((l) => l.group === 'CHMI')"
+        v-for="{ id, label, layer } in chmiLayers"
         :key="id"
         @click="toggleLayer(id, layer)"
         class="flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-700 px-3 text-gray-500 enabled:cursor-pointer enabled:text-white enabled:hover:bg-gray-500"
@@ -87,9 +109,7 @@ const isCustomRangeUnset = computed(() => {
     <span class="my-1.5 flex text-white">TelcoSense</span>
     <div class="flex flex-col gap-y-3">
       <button
-        v-for="{ id, label, layer } in layers.filter(
-          (l) => l.group === 'TelcoSense' && (l.id !== 'user-calc' || !config.realtime),
-        ) as { id: string; label: string; layer: any }[]"
+        v-for="{ id, label, layer } in telcoLayers"
         :key="id"
         @click="toggleLayer(id, layer)"
         class="flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-700 px-3 text-gray-500 enabled:cursor-pointer enabled:text-white enabled:hover:bg-gray-500"

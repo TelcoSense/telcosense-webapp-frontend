@@ -21,12 +21,12 @@ import TopNavbar from '@/components/TopNavbar.vue'
 
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
+import { useLayersStore } from '@/stores/layers'
 import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
 import { useActiveLayer } from '@/composables/useActiveLayer'
-import { useImageLayer } from '@/composables/useImageLayer'
 import { useLinkSelection } from '@/composables/useLinkSelection'
 import { useMap } from '@/composables/useMap'
 import { useRealtime } from '@/composables/useRealtime'
@@ -46,24 +46,32 @@ const weatherData = useWeatherDataStore()
 const links = useLinksStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
+const layers = useLayersStore()
 
 // realtime/historic bounds
-const start = ref<string | null>('')
-const end = ref<string | null>('')
+// const start = ref<string | null>('')
+// const end = ref<string | null>('')
 
 watch(
   () => config.realtime,
   (isRealtime) => {
     if (isRealtime) {
-      start.value = oneWeekAgoTimestamp.value
-      end.value = currentTimestamp.value
+      config.start = oneWeekAgoTimestamp.value
+      config.end = currentTimestamp.value
     } else {
-      start.value = config.start
-      end.value = config.end
+      config.start = null
+      config.end = null
     }
   },
   { immediate: true },
 )
+
+watch([currentTimestamp, oneWeekAgoTimestamp], ([end, start]) => {
+  if (config.realtime) {
+    config.start = start
+    config.end = end
+  }
+})
 
 // map initialization, link and station selection setup
 // const map = ref<L.Map | null>(null)
@@ -79,7 +87,7 @@ const selectedStationIds = ref<Set<number>>(new Set())
 
 const dragBox = ref<HTMLDivElement | null>(null)
 
-const { onMapMouseDown } = useLinkSelection({
+const { onMapMouseDown, selectionInProgress } = useLinkSelection({
   map: map as Ref<L.Map | null>,
   dragBox,
   links,
@@ -90,7 +98,6 @@ const { onMapMouseDown } = useLinkSelection({
 const selectedStart = ref<Date | null>(null)
 const selectedEnd = ref<Date | null>(null)
 const timeRangeVisible = ref<boolean>(false)
-const dataPlottingVisible = ref<boolean>(true)
 
 function applyCustomRange() {
   if (!selectedStart.value || !selectedEnd.value) return
@@ -109,27 +116,28 @@ function applyCustomRange() {
 
   config.start = startUtc
   config.end = endUtc
-  start.value = startUtc
-  end.value = endUtc
+  // start.value = startUtc
+  // end.value = endUtc
 
   // weatherData.clear()
   // cmlData.clear()
 
   clearLayer()
 
-  maxz.clear()
-  merge1h.clear()
-  raincz.clear()
+  layers.maxz.clear()
+  layers.merge1h.clear()
+  layers.raincz.clear()
+  layers.userCalc.clear()
 
-  maxz.fetchList(start.value, end.value)
-  merge1h.fetchList(start.value, end.value)
-  raincz.fetchList(start.value, end.value)
+  layers.maxz.fetchList(config.start, config.end)
+  layers.merge1h.fetchList(config.start, config.end)
+  layers.raincz.fetchList(config.start, config.end)
 
-  cmlData.refresh(start.value, end.value)
-  weatherData.refresh(start.value, end.value)
+  cmlData.refresh(config.start, config.end)
+  weatherData.refresh(config.start, config.end)
 
   timeRangeVisible.value = false
-  dataPlottingVisible.value = true
+  config.dataPlottingVisible = true
 }
 
 const isTimeRangeValid = computed(() => {
@@ -173,32 +181,24 @@ function initMap() {
 // map layers setup
 const { activeLayer, clearLayer } = useActiveLayer()
 
-const maxz = useImageLayer('maxz', {
-  apiUrl: '/maxz/list',
-  bounds: L.latLngBounds(L.latLng(48.047, 11.267), L.latLng(51.458, 19.624)),
-})
-
-const merge1h = useImageLayer('merge1h', {
-  apiUrl: '/merge1h/list',
-  bounds: L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
-})
-
-const raincz = useImageLayer('raincz', {
-  apiUrl: '/raincz/list',
-  bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
-})
-
-async function initLayer(layer: ImageSequenceLayer, map: L.Map, start: string, end: string) {
+async function initLayer(
+  layer: ImageSequenceLayer,
+  map: L.Map,
+  start: string,
+  end: string,
+  fetch: boolean = true,
+) {
   layer.releaseBlobs()
   layer.setMap(map)
-  await layer.fetchList(start, end)
+
+  if (fetch) await layer.fetchList(start, end)
 }
 
 onMounted(async () => {
   initMap()
 
-  start.value = oneWeekAgoTimestamp.value
-  end.value = currentTimestamp.value
+  config.start = oneWeekAgoTimestamp.value
+  config.end = currentTimestamp.value
 
   weatherStations.fetchWeatherStations()
   await links.fetchLinks()
@@ -214,9 +214,7 @@ onMounted(async () => {
   window.addEventListener('keydown', onKeyDown)
 
   await Promise.all([
-    initLayer(maxz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
-    initLayer(merge1h, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
-    initLayer(raincz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
+    initLayer(layers.tempcz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
   ])
 })
 
@@ -273,10 +271,11 @@ function drawLinks() {
         tooltipOptions,
       )
       polyline.on('click', async () => {
+        if (selectionInProgress.value) return
         polyline?.setTooltipContent('')
         cmlData.fetchCmlData(
-          start.value,
-          end.value,
+          config.start,
+          config.end,
           String(link.id),
           link.ip_address_A,
           link.ip_address_B,
@@ -339,9 +338,10 @@ function drawStations() {
         tooltipOptions,
       )
       marker.on('click', async () => {
+        if (selectionInProgress.value) return
         const ghId = ws.gh_id
         marker?.setTooltipContent('')
-        await weatherData.fetchStationData(start.value, end.value, ghId)
+        await weatherData.fetchStationData(config.start, config.end, ghId)
       })
       marker.addTo(group as L.LayerGroup)
       stationMarkers.set(ws.id, marker)
@@ -385,47 +385,62 @@ watch(
 )
 
 // watcher for historic/realtime switching
-watch(
-  () => config.realtime,
-  (newVal) => {
-    if (newVal) {
-      dataPlottingVisible.value = true
+// watch(
+//   () => config.realtime,
+//   (newVal) => {
+//     if (newVal) {
+//       config.dataPlottingVisible = true
 
-      if (start.value && end.value) {
-        cmlData.refresh(start.value, end.value)
-        weatherData.refresh(start.value, end.value)
-      }
-      clearLayer()
-      maxz.clear()
-      merge1h.clear()
-      raincz.clear()
+//       if (config.start && config.end) {
+//         cmlData.refresh(config.start, config.end)
+//         weatherData.refresh(config.start, config.end)
+//       }
+//       clearLayer()
+//       layers.maxz.clear()
+//       layers.merge1h.clear()
+//       layers.raincz.clear()
 
-      maxz.fetchList(start.value, end.value)
-      merge1h.fetchList(start.value, end.value)
-      raincz.fetchList(start.value, end.value)
-    } else {
-      // do something when switching to historic calcs
-      dataPlottingVisible.value = false
+//       layers.maxz.fetchList(config.start, config.end)
+//       layers.merge1h.fetchList(config.start, config.end)
+//       layers.raincz.fetchList(config.start, config.end)
+//     } else {
+//       // do something when switching to historic calcs
+//       config.dataPlottingVisible = false
 
-      clearLayer()
+//       clearLayer()
 
-      if (start.value && end.value) {
-        cmlData.refresh(start.value, end.value)
-        weatherData.refresh(start.value, end.value)
-      }
+//       if (config.start && config.end) {
+//         cmlData.refresh(config.start, config.end)
+//         weatherData.refresh(config.start, config.end)
+//       }
 
-      maxz.clear()
-      merge1h.clear()
-      raincz.clear()
+//       layers.maxz.clear()
+//       layers.merge1h.clear()
+//       layers.raincz.clear()
+//       layers.userCalc.clear()
 
-      // weatherData.clear()
-      // cmlData.clear()
-    }
-  },
-)
+//       // weatherData.clear()
+//       // cmlData.clear()
+//     }
+//   },
+// )
 
 function formatDateForDatepicker(date: Date): string {
   return datetimeFormat(date.toISOString(), 'Europe/Prague')
+}
+
+async function copySelectedLinksToClipboard() {
+  if (selectedLinkIds.value.size === 0) {
+    // console.warn("No links selected")
+    return
+  }
+  const text = Array.from(selectedLinkIds.value).join(', ')
+  try {
+    await navigator.clipboard.writeText(text)
+    // console.log("Copied:", text)
+  } catch (err) {
+    console.error('Failed to copy:', err)
+  }
 }
 </script>
 
@@ -436,19 +451,21 @@ function formatDateForDatepicker(date: Date): string {
         <div id="map" class="leaflet-container z-0 h-full w-full"></div>
 
         <div
-          v-if="start && end"
+          v-if="config.start && config.end"
           id="timestamps"
           class="absolute right-6 bottom-6 z-10 flex flex-col rounded-md bg-gray-800 p-2 text-sm text-white select-none"
         >
           <p v-if="config.realtime" class="border-b border-gray-700">Realtime bounds</p>
           <p v-if="!config.realtime" class="border-b border-gray-700">Historic bounds</p>
-          <p v-if="start">
+          <p v-if="config.start">
             Start:
-            <span class="font-chivo">{{ datetimeFormat(start, config.datetimeFormat) }} </span>
+            <span class="font-chivo"
+              >{{ datetimeFormat(config.start, config.datetimeFormat) }}
+            </span>
           </p>
-          <p v-if="end">
+          <p v-if="config.end">
             End:
-            <span class="font-chivo">{{ datetimeFormat(end, config.datetimeFormat) }} </span>
+            <span class="font-chivo">{{ datetimeFormat(config.end, config.datetimeFormat) }} </span>
           </p>
           <!-- <p>
               Next update in: <span class="font-chivo">{{ formattedCountdown }}</span>
@@ -462,7 +479,7 @@ function formatDateForDatepicker(date: Date): string {
 
         <TopNavbar>
           <div class="mr-32 flex gap-x-3">
-            <button
+            <!-- <button
               :class="[
                 'h-8 cursor-pointer rounded-md px-3 text-gray-300',
                 config.realtime
@@ -472,9 +489,9 @@ function formatDateForDatepicker(date: Date): string {
               @click="config.setToRealtime()"
             >
               Realtime data
-            </button>
+            </button> -->
 
-            <button
+            <!-- <button
               :class="[
                 'h-8 cursor-pointer rounded-md px-3 text-gray-300',
                 !config.realtime
@@ -484,7 +501,7 @@ function formatDateForDatepicker(date: Date): string {
               @click="config.setToHistoric()"
             >
               Historic data
-            </button>
+            </button> -->
           </div>
           <button
             v-if="weatherStations.hasStations"
@@ -502,6 +519,14 @@ function formatDateForDatepicker(date: Date): string {
           >
             Links
           </button>
+          <button
+            v-if="links.hasLinks"
+            class="disabled: h-8 rounded-md border border-black bg-amber-200 px-3 hover:bg-amber-300 enabled:cursor-pointer disabled:opacity-50 disabled:hover:bg-amber-200"
+            :disabled="selectedLinkIds.size === 0"
+            @click="copySelectedLinksToClipboard"
+          >
+            Copy link IDs
+          </button>
         </TopNavbar>
 
         <LinkFilter />
@@ -509,9 +534,15 @@ function formatDateForDatepicker(date: Date): string {
         <LayerSwitcher />
 
         <PrecipitationBar v-if="activeLayer?.name == 'merge1h'" />
-        <ReflectivityBar v-if="activeLayer?.name == 'maxz' || activeLayer?.name == 'raincz'" />
+        <ReflectivityBar
+          v-if="
+            activeLayer?.name == 'maxz' ||
+            activeLayer?.name == 'raincz' ||
+            activeLayer?.name == 'user-calc'
+          "
+        />
 
-        <DataPlotting v-show="dataPlottingVisible" :start="start" :end="end" />
+        <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
         <RainHistoric :link-ids="selectedLinkIds" />
 

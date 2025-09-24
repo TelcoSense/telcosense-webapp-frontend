@@ -10,6 +10,7 @@ export interface ControllableLayer {
   frameLoading: ComputedRef<boolean>
   opacity: ComputedRef<number>
   currentTimestamp: ComputedRef<string | null>
+  animationSpeed: ComputedRef<number>
 
   showFrame(index: number): void
   showNearestTimestamp(ts: string): Promise<void>
@@ -19,6 +20,7 @@ export interface ControllableLayer {
   changeFrame(delta: number): void
   setVisible(visible: boolean): void
   setOpacity(value: number): void
+  setAnimationSpeed(value: number): void
   clear(): void
 }
 
@@ -36,6 +38,7 @@ export function useActiveLayer() {
       isPlaying: Ref<boolean> | boolean
       frameLoading: Ref<boolean> | boolean
       opacity: Ref<number> | number
+      animationSpeed: Ref<number> | number
       currentTimestamp: Ref<string | null> | string | null
 
       showFrame(index: number): void
@@ -46,6 +49,7 @@ export function useActiveLayer() {
       changeFrame(delta: number): void
       setVisible(visible: boolean): void
       setOpacity(value: number): void
+      setAnimationSpeed(value: number): void
       clear(): void
     },
     name = 'Unnamed Layer',
@@ -65,6 +69,7 @@ export function useActiveLayer() {
       isPlaying: toComputed(store.isPlaying),
       frameLoading: toComputed(store.frameLoading),
       opacity: toComputed(store.opacity),
+      animationSpeed: toComputed(store.animationSpeed),
       currentTimestamp: toComputed(store.currentTimestamp),
 
       showFrame: store.showFrame.bind(store),
@@ -75,6 +80,7 @@ export function useActiveLayer() {
       changeFrame: store.changeFrame.bind(store),
       setVisible: store.setVisible.bind(store),
       setOpacity: store.setOpacity.bind(store),
+      setAnimationSpeed: store.setAnimationSpeed.bind(store),
       clear: store.clear.bind(store),
     }
 

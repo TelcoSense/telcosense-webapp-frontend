@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 import { api } from '@/api'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useTokenCountdown } from '@/composables/useTokenCountdown'
@@ -21,6 +21,7 @@ import DatetimeToggle from '@/components/DatetimeToggle.vue'
 const SESSION_MAX_SECONDS = 1800 // 30 minutes
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 
 const weatherStations = useWeatherStationsStore()
@@ -70,14 +71,24 @@ async function logout() {
     }
   }
 }
+
+function toggleRoute() {
+  if (route.name === 'rain') {
+    router.push({ name: 'temp' })
+  } else {
+    router.push({ name: 'rain' })
+  }
+}
 </script>
 
 <template>
   <nav class="absolute top-6 z-10 flex w-full items-end justify-between px-6">
     <span
-      class="flex h-8 items-center justify-center rounded-md px-3 text-xl font-semibold text-gray-800 select-none"
-      >TelcoSense</span
+      class="flex h-8 cursor-pointer items-center justify-center rounded-md px-3 text-xl font-semibold text-gray-800 transition select-none hover:text-gray-700"
+      @click="toggleRoute"
     >
+      TelcoSense
+    </span>
 
     <div class="flex gap-x-3">
       <slot></slot>

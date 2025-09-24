@@ -3,6 +3,8 @@ import type { Ref } from 'vue'
 
 import type { Link } from '@/stores/links'
 
+import { ref } from 'vue'
+
 interface UseLinkSelectionOptions {
   map: Ref<L.Map | null>
   dragBox: Ref<HTMLDivElement | null>
@@ -20,6 +22,7 @@ export function useLinkSelection({
 }: UseLinkSelectionOptions) {
   let dragStart: L.Point | null = null
   let dragging = false
+  const selectionInProgress = ref(false)
 
   function onMapMouseDown(e: L.LeafletMouseEvent) {
     if (!e.originalEvent.ctrlKey || !map.value || !dragBox.value) return
@@ -29,6 +32,7 @@ export function useLinkSelection({
 
     dragStart = map.value.mouseEventToContainerPoint(e.originalEvent)
     dragging = true
+    selectionInProgress.value = true
 
     dragBox.value.style.left = `${dragStart.x}px`
     dragBox.value.style.top = `${dragStart.y}px`
@@ -81,6 +85,10 @@ export function useLinkSelection({
 
       drawLinks()
 
+      setTimeout(() => {
+        selectionInProgress.value = false
+      }, 0)
+
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
     }
@@ -89,5 +97,5 @@ export function useLinkSelection({
     document.addEventListener('mouseup', onMouseUp)
   }
 
-  return { onMapMouseDown }
+  return { onMapMouseDown, selectionInProgress }
 }

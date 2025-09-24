@@ -5,6 +5,7 @@ interface ConfigState {
   start: string | null;
   end: string | null;
   datetimeFormat: 'UTC' | 'Europe/Prague';
+  dataPlottingVisible: boolean;
 }
 
 export const useConfigStore = defineStore('config', {
@@ -13,6 +14,7 @@ export const useConfigStore = defineStore('config', {
     start: null,
     end: null,
     datetimeFormat: 'UTC',
+    dataPlottingVisible: true
   }),
 
   actions: {
