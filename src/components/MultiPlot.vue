@@ -16,6 +16,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ECharts from 'vue-echarts'
 
 import { useConfigStore } from '@/stores/config'
+import { useRoute } from 'vue-router'
 
 use([
   LineChart,
@@ -29,6 +30,7 @@ use([
   GraphicComponent,
 ])
 
+const route = useRoute()
 const config = useConfigStore()
 
 const props = defineProps<{
@@ -158,8 +160,17 @@ const buildOptions = () => {
 
   const seriesNames = props.seriesData.map((s) => s.name)
   const legendSelected: Record<string, boolean> = {}
-  const hiddenByDefault: Record<number, string[]> = {
-    1: ['temperature'],
+
+  let hiddenByDefault: Record<number, string[]>
+
+  if (route.name === 'rain') {
+    hiddenByDefault = {
+      1: ['temp'],
+    }
+  } else {
+    hiddenByDefault = {
+      1: ['trsl'],
+    }
   }
 
   seriesNames.forEach((name) => {

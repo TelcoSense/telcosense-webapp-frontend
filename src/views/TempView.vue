@@ -215,6 +215,7 @@ onMounted(async () => {
 
   await Promise.all([
     initLayer(layers.tempcz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
+    initLayer(layers.tempchmi, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
   ])
 })
 

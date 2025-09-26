@@ -6,6 +6,7 @@ import { computed, ref } from 'vue'
 import { useActiveLayer } from '@/composables/useActiveLayer'
 
 import MultiPlot from '@/components/MultiPlot.vue'
+import { useRoute } from 'vue-router'
 
 defineProps<{
   start: string | null
@@ -17,6 +18,10 @@ const cmlData = useCmlDataStore()
 const dataPlottingVisible = ref<boolean>(true)
 
 const { activeLayer } = useActiveLayer()
+const route = useRoute()
+
+const isRainRoute = computed(() => route.path.includes('rain'))
+const isTempRoute = computed(() => route.path.includes('temp'))
 
 const currentCursorTime = computed(() => {
   const frame = activeLayer.value?.frames[activeLayer.value.currentIndex]
@@ -28,21 +33,19 @@ function y(side: 'left' | 'right') {
 }
 
 const seriesData = computed(() => {
-  return [
+  const data = [
     {
       name: 'Weather station rainfall',
       data: weatherData.currentPrecipitation,
       subplotIndex: 0,
       yAxisSide: y('left'),
     },
-
     {
-      name: 'Weather station temperature',
+      name: 'Weather station temp',
       data: weatherData.currentTemperature,
       subplotIndex: 0,
       yAxisSide: y('right'),
     },
-
     {
       name: 'TRSL A',
       data: cmlData.selectedCmlId ? (cmlData.cmls.get(cmlData.selectedCmlId)?.trslA ?? []) : [],
@@ -56,7 +59,7 @@ const seriesData = computed(() => {
       yAxisSide: y('left'),
     },
     {
-      name: 'Temperature A',
+      name: 'HW temp A',
       data: cmlData.selectedCmlId
         ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureA ?? [])
         : [],
@@ -64,22 +67,45 @@ const seriesData = computed(() => {
       yAxisSide: y('right'),
     },
     {
-      name: 'Temperature B',
+      name: 'HW temp B',
       data: cmlData.selectedCmlId
         ? (cmlData.cmls.get(cmlData.selectedCmlId)?.temperatureB ?? [])
         : [],
       subplotIndex: 1,
       yAxisSide: y('right'),
     },
-    {
-      name: 'Link rain intensity',
+  ]
+
+  if (isRainRoute.value) {
+    data.push({
+      name: 'Rain intensity',
       data: cmlData.selectedCmlId
         ? (cmlData.cmls.get(cmlData.selectedCmlId)?.rainIntensity ?? [])
         : [],
       subplotIndex: 2,
       yAxisSide: y('left'),
-    },
-  ]
+    })
+  }
+
+  if (isTempRoute.value) {
+    data.push({
+      name: 'Pred temp A',
+      data: cmlData.selectedCmlId ? (cmlData.cmls.get(cmlData.selectedCmlId)?.tempPredA ?? []) : [],
+      subplotIndex: 2,
+      yAxisSide: y('left'),
+    })
+  }
+
+  if (isTempRoute.value) {
+    data.push({
+      name: 'Pred temp B',
+      data: cmlData.selectedCmlId ? (cmlData.cmls.get(cmlData.selectedCmlId)?.tempPredB ?? []) : [],
+      subplotIndex: 2,
+      yAxisSide: y('left'),
+    })
+  }
+
+  return data
 })
 </script>
 
@@ -136,7 +162,7 @@ const seriesData = computed(() => {
         Loading data...
       </div>
       <MultiPlot
-        v-else-if="weatherData.selectedStationId || cmlData.selectedCmlId"
+        v-else-if="(weatherData.selectedStationId || cmlData.selectedCmlId) && isRainRoute"
         :seriesData="seriesData"
         :xMin="start"
         :xMax="end"
@@ -146,6 +172,18 @@ const seriesData = computed(() => {
         :bottomLeftAxisName="'TRSL (dB)'"
         :bottomRightAxisName="'Temperature (°C)'"
         :thirdLeftAxisName="'Rain int. (mm/h)'"
+      />
+      <MultiPlot
+        v-else-if="(weatherData.selectedStationId || cmlData.selectedCmlId) && isTempRoute"
+        :seriesData="seriesData"
+        :xMin="start"
+        :xMax="end"
+        :cursorTime="currentCursorTime"
+        :topLeftAxisName="'Rainfall (mm)'"
+        :topRightAxisName="'Temperature (°C)'"
+        :bottomLeftAxisName="'TRSL (dB)'"
+        :bottomRightAxisName="'Temperature (°C)'"
+        :thirdLeftAxisName="'Temperature (°C)'"
       />
     </div>
 

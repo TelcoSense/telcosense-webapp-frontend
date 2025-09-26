@@ -26,7 +26,7 @@ export function useImageSequenceLayer(initialConfig: {
   const currentIndex = ref(0)
   const isPlaying = ref(false)
   const playbackTimer = ref<number | null>(null)
-  const animationSpeed = ref(250)
+  const animationSpeed = ref(1000)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const frameLoading = ref(false)

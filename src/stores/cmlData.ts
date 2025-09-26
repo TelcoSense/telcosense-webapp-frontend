@@ -15,6 +15,8 @@ export const useCmlDataStore = defineStore('cmlData', {
       trslA: DataPoint[]
       trslB: DataPoint[]
       rainIntensity: DataPoint[]
+      tempPredA: DataPoint[]
+      tempPredB: DataPoint[]
     }>(),
     cmlMeta: new Map<string, { ipA: string; ipB: string; tech: string }>(),
     selectedCmlId: null as string | null,
@@ -47,6 +49,9 @@ export const useCmlDataStore = defineStore('cmlData', {
           rain_intensity: Array<number | null>
           time: string[]
           rain_intensity_time: string[]
+          temp_pred_a: Array<number | null>
+          temp_pred_b: Array<number | null>
+          temp_pred_time: string[]
         }>(
           '/cmldata',
           { start, stop, ipA, ipB, tech, cmlId },
@@ -61,6 +66,9 @@ export const useCmlDataStore = defineStore('cmlData', {
           rain_intensity,
           time,
           rain_intensity_time,
+          temp_pred_a,
+          temp_pred_b,
+          temp_pred_time
         } = res.data
 
         const makeSeries = (values: Array<number | null>, timestamps: string[]): DataPoint[] =>
@@ -75,6 +83,8 @@ export const useCmlDataStore = defineStore('cmlData', {
           trslA: makeSeries(trsl_a, time),
           trslB: makeSeries(trsl_b, time),
           rainIntensity: makeSeries(rain_intensity, rain_intensity_time),
+          tempPredA: makeSeries(temp_pred_a, temp_pred_time),
+          tempPredB: makeSeries(temp_pred_b, temp_pred_time)
         })
 
         this.cmlMeta.set(cmlId, { ipA, ipB, tech })

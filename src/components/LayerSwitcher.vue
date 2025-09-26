@@ -48,6 +48,13 @@ const layers = [
     layer: useImageLayer('tempcz'),
     showOnRoutes: ['temp'],
   },
+  {
+    id: 'tempchmi',
+    label: 'Temp CHMI',
+    group: 'TelcoSense',
+    layer: useImageLayer('tempchmi'),
+    showOnRoutes: ['temp'],
+  },
 ]
 
 function toggleLayer(id: string, layer: ReturnType<typeof useImageLayer>) {

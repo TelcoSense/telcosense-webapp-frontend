@@ -39,5 +39,12 @@ export const useLayersStore = defineStore('layers', () => {
     }),
   )
 
-  return { maxz, merge1h, raincz, userCalc, tempcz }
+  const tempchmi = shallowRef(
+    useImageLayer('tempchmi', {
+      apiUrl: '/tempchmi/list',
+      bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
+    }),
+  )
+
+  return { maxz, merge1h, raincz, userCalc, tempcz, tempchmi }
 })
