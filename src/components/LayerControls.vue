@@ -45,7 +45,7 @@ const sliderLabel = computed(() =>
 <template>
   <div
     v-if="activeLayer && config.layerControlsVisible"
-    class="bottom-safe absolute w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm"
+    class="absolute bottom-14 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm lg:bottom-3"
   >
     <div class="flex items-center justify-center gap-x-3">
       <button
@@ -140,7 +140,7 @@ const sliderLabel = computed(() =>
   </div>
   <div
     v-else-if="activeLayer && !config.layerControlsVisible"
-    class="bottom-safe absolute rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm"
+    class="absolute bottom-14 rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm"
   >
     Current frame:
     <span class="font-chivo">
@@ -148,10 +148,3 @@ const sliderLabel = computed(() =>
     </span>
   </div>
 </template>
-
-<style scoped>
-.bottom-safe {
-  position: absolute;
-  bottom: calc(0.75rem + env(safe-area-inset-bottom));
-}
-</style>
