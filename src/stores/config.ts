@@ -6,6 +6,10 @@ interface ConfigState {
   end: string | null;
   datetimeFormat: 'UTC' | 'Europe/Prague';
   dataPlottingVisible: boolean;
+  layerSwitcherVisible: boolean;
+  layerControlsVisible: boolean;
+  linkFilterVisible: boolean;
+  barVisible: boolean;
 }
 
 export const useConfigStore = defineStore('config', {
@@ -14,7 +18,11 @@ export const useConfigStore = defineStore('config', {
     start: null,
     end: null,
     datetimeFormat: 'UTC',
-    dataPlottingVisible: true
+    dataPlottingVisible: true,
+    layerSwitcherVisible: false,
+    layerControlsVisible: false,
+    linkFilterVisible: false,
+    barVisible: false
   }),
 
   actions: {

@@ -45,6 +45,8 @@ function saveFilters(state: ReturnType<typeof useLinksStore>) {
     maxDistance: state.maxDistance,
     minFrequency: state.minFrequency,
     maxFrequency: state.maxFrequency,
+    manualIdFilterInput: state.manualIdFilterInput,
+    filteredIds: state.filteredIds,
   }
   localStorage.setItem(FILTER_KEY, JSON.stringify(filters))
 }
@@ -69,7 +71,10 @@ export const useLinksStore = defineStore('links', {
       maxFrequency: saved.maxFrequency ?? 100000,
 
       showLinkTable: false,
-      linkFilterVisible: true
+      linkFilterVisible: true,
+
+      manualIdFilterInput: saved.manualIdFilterInput ?? '',
+      filteredIds: saved.filteredIds ?? [],
     }
   },
 
@@ -90,6 +95,23 @@ export const useLinksStore = defineStore('links', {
         this.loading = false
         saveFilters(this)
       }
+    },
+
+    applyManualIdFilter(input: string) {
+      this.manualIdFilterInput = input
+      this.filteredIds = input
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => /^\d+$/.test(s))
+        .map((s) => parseInt(s, 10))
+
+      saveFilters(this)
+    },
+
+    resetManualIdFilter() {
+      this.manualIdFilterInput = ''
+      this.filteredIds = []
+      saveFilters(this)
     },
 
     toggleManualLinkDisable(id: number) {
@@ -124,6 +146,8 @@ export const useLinksStore = defineStore('links', {
       this.maxDistance = 100000
       this.minFrequency = 0
       this.maxFrequency = 100000
+      this.manualIdFilterInput = ''
+      this.filteredIds = []
       saveFilters(this)
     },
   },
@@ -174,8 +198,10 @@ export const useLinksStore = defineStore('links', {
           link.frequency_B <= maxFreq
 
         const isDisabled = state.manuallyDisabledLinkIds.includes(link.id)
+        const inManualIds =
+          state.filteredIds.length === 0 || state.filteredIds.includes(link.id)
 
-        return inTech && inPol && inLength && inFreq && !isDisabled
+        return inTech && inPol && inLength && inFreq && !isDisabled && inManualIds
       })
     },
 

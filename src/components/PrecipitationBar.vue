@@ -1,27 +1,27 @@
 <template>
   <div
-    class="font-chivo absolute bottom-6 left-6 flex flex-col items-end gap-y-1 rounded-md bg-gray-800/50 px-3 pt-1.5 pb-3 text-sm backdrop-blur-xs"
+    class="font-chivo absolute top-14 right-3 flex flex-col items-center gap-y-1 rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs backdrop-blur-xs md:text-sm"
   >
-    <div class="mr-3 text-white select-none">mm</div>
+    <div class="text-white select-none">mm</div>
     <div class="flex gap-x-2">
       <div class="flex flex-col-reverse">
-        <div class="h-6 w-6" style="background-color: #380070"></div>
-        <div class="h-6 w-6" style="background-color: #3000a8"></div>
-        <div class="h-6 w-6" style="background-color: #0000fc"></div>
-        <div class="h-6 w-6" style="background-color: #006cc0"></div>
-        <div class="h-6 w-6" style="background-color: #00a000"></div>
-        <div class="h-6 w-6" style="background-color: #00bc00"></div>
-        <div class="h-6 w-6" style="background-color: #34d800"></div>
-        <div class="h-6 w-6" style="background-color: #9cdc00"></div>
-        <div class="h-6 w-6" style="background-color: #e0dc00"></div>
-        <div class="h-6 w-6" style="background-color: #fcb000"></div>
-        <div class="h-6 w-6" style="background-color: #fc8400"></div>
-        <div class="h-6 w-6" style="background-color: #fc5800"></div>
-        <div class="h-6 w-6" style="background-color: #fc0000"></div>
-        <div class="h-6 w-6" style="background-color: #a00000"></div>
-        <div class="h-6 w-6" style="background-color: #fcfcfc"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #380070"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #3000a8"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #0000fc"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #006cc0"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #00a000"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #00bc00"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #34d800"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #9cdc00"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #e0dc00"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #fcb000"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #fc8400"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #fc5800"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #fc0000"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #a00000"></div>
+        <div class="h-4 w-2 md:h-6" style="background-color: #fcfcfc"></div>
       </div>
-      <div class="flex flex-col-reverse items-center justify-around text-sm text-white select-none">
+      <div class="flex flex-col-reverse items-center justify-around text-white select-none">
         <div>0.1</div>
         <div>0.3</div>
         <div>0.6</div>

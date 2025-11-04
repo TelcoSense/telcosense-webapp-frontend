@@ -12,6 +12,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import DataPlotting from '@/components/DataPlotting.vue'
 import LayerControls from '@/components/LayerControls.vue'
 import LayerSwitcher from '@/components/LayerSwitcher.vue'
+import LeftMenu from '@/components/LeftMenu.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import LinkTable from '@/components/LinkTable.vue'
 import PrecipitationBar from '@/components/PrecipitationBar.vue'
@@ -166,11 +167,13 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function initMap() {
+  const isMobile = window.innerWidth <= 768
+  const zoom = isMobile ? 6 : 8
   map.value = L.map('map', {
     preferCanvas: true,
     zoomControl: false,
     renderer: L.canvas({ tolerance: 6 }),
-  }).setView([49.74379, 15.33863], 8)
+  }).setView([49.74379, 15.33863], zoom)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(map.value as L.Map)
@@ -320,7 +323,7 @@ function drawStations() {
     let marker = stationMarkers.get(ws.id)
     if (!marker) {
       marker = L.circleMarker([ws.Y, ws.X], {
-        radius: 5,
+        radius: 3.5,
         color,
         fillColor: color,
         fillOpacity: 0.5,
@@ -454,10 +457,10 @@ async function copySelectedLinksToClipboard() {
         <div
           v-if="config.start && config.end"
           id="timestamps"
-          class="absolute right-6 bottom-6 z-10 flex flex-col rounded-md bg-gray-800 p-2 text-sm text-white select-none"
+          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 bg-gray-800/60 p-1 text-sm text-white backdrop-blur-xs select-none md:visible md:bottom-3 md:flex"
         >
-          <p v-if="config.realtime" class="border-b border-gray-700">Realtime bounds</p>
-          <p v-if="!config.realtime" class="border-b border-gray-700">Historic bounds</p>
+          <p v-if="config.realtime">Realtime bounds</p>
+          <p v-if="!config.realtime">Historic bounds</p>
           <p v-if="config.start">
             Start:
             <span class="font-chivo"
@@ -479,8 +482,8 @@ async function copySelectedLinksToClipboard() {
         ></div>
 
         <TopNavbar>
-          <div class="mr-32 flex gap-x-3">
-            <!-- <button
+          <!-- <div class="mr-32 flex gap-x-3">
+            <button
               :class="[
                 'h-8 cursor-pointer rounded-md px-3 text-gray-300',
                 config.realtime
@@ -490,9 +493,9 @@ async function copySelectedLinksToClipboard() {
               @click="config.setToRealtime()"
             >
               Realtime data
-            </button> -->
+            </button>
 
-            <!-- <button
+            <button
               :class="[
                 'h-8 cursor-pointer rounded-md px-3 text-gray-300',
                 !config.realtime
@@ -502,27 +505,11 @@ async function copySelectedLinksToClipboard() {
               @click="config.setToHistoric()"
             >
               Historic data
-            </button> -->
-          </div>
-          <button
-            v-if="weatherStations.hasStations"
-            class="h-8 cursor-pointer rounded-md border bg-amber-200 px-3 hover:bg-amber-300"
-            :class="{ 'bg-amber-300': !weatherStations.hideAll }"
-            @click="weatherStations.hideAll = !weatherStations.hideAll"
-          >
-            Stations
-          </button>
+            </button>
+          </div> -->
           <button
             v-if="links.hasLinks"
-            class="h-8 cursor-pointer rounded-md border bg-amber-200 px-3 hover:bg-amber-300"
-            :class="{ 'bg-amber-300': !links.hideAll }"
-            @click="links.hideAll = !links.hideAll"
-          >
-            Links
-          </button>
-          <button
-            v-if="links.hasLinks"
-            class="disabled: h-8 rounded-md border border-black bg-amber-200 px-3 hover:bg-amber-300 enabled:cursor-pointer disabled:opacity-50 disabled:hover:bg-amber-200"
+            class="hidden h-8 rounded-md border border-black bg-amber-200 px-3 hover:bg-amber-300 enabled:cursor-pointer disabled:opacity-50 disabled:hover:bg-amber-200 md:block"
             :disabled="selectedLinkIds.size === 0"
             @click="copySelectedLinksToClipboard"
           >
@@ -530,9 +517,10 @@ async function copySelectedLinksToClipboard() {
           </button>
         </TopNavbar>
 
+        <LeftMenu />
         <LinkFilter />
         <LayerControls />
-        <LayerSwitcher />
+        <LayerSwitcher v-if="config.layerSwitcherVisible" />
 
         <PrecipitationBar v-if="activeLayer?.name == 'merge1h'" />
         <ReflectivityBar

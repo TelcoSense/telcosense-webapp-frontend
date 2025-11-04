@@ -73,7 +73,7 @@ const data = ref({
   end: null,
   min_length: 0.5,
   max_length: 100,
-  is_mlp_enabled: true,
+  is_mlp_enabled: false,
   rolling_hours: 1.0,
   rolling_values: 10,
   wet_dry_deviation: 0.8,
@@ -246,7 +246,7 @@ const canStart = computed(() => {
 <template>
   <div
     v-if="showHistoric && !config.realtime"
-    class="absolute top-20 left-46 z-50 w-3xl rounded-md bg-gray-800 p-3 text-sm text-white"
+    class="absolute top-14 left-47 z-50 w-3xl rounded-md bg-gray-800 p-3 text-sm text-white"
   >
     <div class="mb-2 flex justify-between">
       <h2>User calculations</h2>
@@ -613,7 +613,7 @@ const canStart = computed(() => {
   <div v-else>
     <button
       v-if="!config.realtime"
-      class="absolute top-30 left-46 cursor-pointer rounded bg-gray-600 px-3 py-1 text-sm text-white hover:bg-gray-500"
+      class="absolute top-23 left-47 cursor-pointer rounded bg-gray-600 px-3 py-1 text-sm text-white hover:bg-gray-500"
       @click="showHistoric = true"
     >
       User calculations

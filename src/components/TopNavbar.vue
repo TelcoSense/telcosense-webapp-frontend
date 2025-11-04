@@ -14,9 +14,11 @@ import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
-import { computed } from 'vue'
-
 import DatetimeToggle from '@/components/DatetimeToggle.vue'
+
+import { Icon } from '@iconify/vue'
+import { onClickOutside } from '@vueuse/core'
+import { computed, ref, useTemplateRef } from 'vue'
 
 const SESSION_MAX_SECONDS = 1800 // 30 minutes
 
@@ -45,21 +47,21 @@ const progressBarWidth = computed(() => {
   return `${percentage}%`
 })
 
+function resetData() {
+  weatherStations.$reset()
+  weatherData.$reset()
+  links.$reset()
+  cmlData.$reset()
+  config.$reset()
+  clearLayer()
+}
+
 async function logout() {
   try {
     const res = await api.post('/logout')
     if (res.data.message === 'Logout successful') {
       await auth.checkLogin()
-      weatherStations.$reset()
-      weatherData.$reset()
-
-      links.$reset()
-      cmlData.$reset()
-      config.$reset()
-
-      // reset map layer
-      clearLayer()
-
+      resetData()
       router.push({ name: 'login' })
     }
   } catch (err) {
@@ -75,18 +77,27 @@ async function logout() {
 function toggleRoute() {
   if (route.name === 'rain') {
     config.realtime = true
+    resetData()
     router.push({ name: 'temp' })
   } else {
+    resetData()
     config.realtime = true
     router.push({ name: 'rain' })
   }
 }
+
+const menuVisible = ref(false)
+const profileMenuWrapper = useTemplateRef<HTMLElement>('profileMenuWrapper')
+
+onClickOutside(profileMenuWrapper, () => {
+  menuVisible.value = false
+})
 </script>
 
 <template>
-  <nav class="absolute top-6 z-10 flex w-full items-end justify-between px-6">
+  <nav class="absolute top-1 z-10 flex h-12 w-full items-center justify-between px-3">
     <span
-      class="flex h-8 cursor-pointer items-center justify-center rounded-md px-3 text-xl font-semibold text-gray-800 transition select-none hover:text-gray-700"
+      class="flex h-8 cursor-pointer items-center justify-center rounded-md text-xl font-semibold text-gray-900 transition select-none hover:text-gray-700"
       @click="toggleRoute"
     >
       TelcoSense
@@ -96,31 +107,48 @@ function toggleRoute() {
       <slot></slot>
     </div>
 
-    <div class="flex items-center gap-x-3 rounded-md text-white">
+    <div class="flex items-center gap-x-2 rounded-md text-white">
       <DatetimeToggle />
-      <!-- time left -->
-      <div
-        v-if="formattedTime"
-        class="flex h-8 flex-col items-center justify-center rounded-md bg-gray-800 px-2 text-nowrap"
-      >
-        <div class="text-center text-xs text-white">{{ formattedTime }} min left</div>
-        <div class="h-2 w-full overflow-hidden rounded bg-gray-600">
-          <div class="h-2 bg-blue-500" :style="{ width: progressBarWidth }"></div>
+
+      <div ref="profileMenuWrapper" class="relative">
+        <Icon
+          icon="iconamoon:profile-circle-light"
+          width="38"
+          height="38"
+          class="cursor-pointer text-gray-900 hover:text-gray-700"
+          @click="menuVisible = !menuVisible"
+        />
+
+        <div
+          v-if="menuVisible"
+          class="absolute top-12 right-0 z-50 flex w-58 flex-col gap-y-2 rounded-md border border-gray-600 bg-gray-800/60 p-2 backdrop-blur-xs"
+        >
+          <span
+            class="flex w-full border-b border-gray-400 pb-1.5 text-sm text-nowrap text-white select-none"
+          >
+            {{ `${auth.username} (${auth.org})` }}
+          </span>
+
+          <div
+            v-if="formattedTime"
+            class="flex h-8 flex-col items-center justify-center px-2 text-nowrap"
+          >
+            <div class="text-center text-xs text-white">
+              <span class="font-chivo">{{ formattedTime }}</span> min left
+            </div>
+            <div class="h-2 w-full overflow-hidden rounded bg-gray-600">
+              <div class="h-2 bg-cyan-500" :style="{ width: progressBarWidth }"></div>
+            </div>
+          </div>
+
+          <button
+            @click="logout()"
+            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700"
+          >
+            Log out
+          </button>
         </div>
       </div>
-      <!-- time left end -->
-      <span
-        class="flex h-8 items-center rounded-md border border-gray-700 bg-gray-300 px-3 font-semibold text-nowrap text-gray-800"
-      >
-        {{ `${auth.username} (${auth.org})` }}
-      </span>
-
-      <button
-        @click="logout()"
-        class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-white hover:bg-cyan-700"
-      >
-        Log out
-      </button>
     </div>
   </nav>
 </template>

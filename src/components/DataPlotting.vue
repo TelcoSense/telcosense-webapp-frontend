@@ -143,12 +143,12 @@ const seriesData = computed(() => {
       >
         Clear station data
       </button>
-      <button
+      <!-- <button
         @click="dataPlottingVisible = !dataPlottingVisible"
         class="cursor-pointer rounded-md bg-gray-600 px-3 py-1 text-sm text-white hover:bg-gray-500 hover:opacity-100"
       >
         Hide plot
-      </button>
+      </button> -->
     </div>
 
     <div
@@ -217,14 +217,5 @@ const seriesData = computed(() => {
         Clear link data
       </button>
     </div>
-  </div>
-  <div v-else class="absolute bottom-38 flex flex-col gap-2 text-sm">
-    <button
-      v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0"
-      @click="dataPlottingVisible = !dataPlottingVisible"
-      class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
-    >
-      Show plot
-    </button>
   </div>
 </template>

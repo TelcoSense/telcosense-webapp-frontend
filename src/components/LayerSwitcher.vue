@@ -59,8 +59,12 @@ const layers = [
 
 function toggleLayer(id: string, layer: ReturnType<typeof useImageLayer>) {
   if (activeLayer.value?.name === id) {
+    config.layerControlsVisible = false
+    config.barVisible = false
     hideLayer()
   } else {
+    config.layerControlsVisible = true
+    config.barVisible = true
     setLayer(layer, id)
   }
 }
@@ -88,25 +92,32 @@ const telcoLayers = computed(() =>
 </script>
 
 <template>
-  <div class="absolute top-20 left-6 w-[150px] rounded-md bg-gray-800 p-3 text-sm">
-    <span class="flex border-b border-gray-700 pb-1.5 text-white">Map layers</span>
+  <div
+    class="absolute top-14 left-15 w-[133px] rounded-md border border-gray-600 bg-gray-800/50 p-2 text-xs backdrop-blur-xs md:text-sm"
+  >
+    <span class="flex border-b border-gray-400 pb-1.5 text-white">Map layers</span>
 
     <span v-if="chmiLayers.length > 0" class="my-1.5 flex text-white">CHMI</span>
-    <div class="flex flex-col gap-y-3">
+    <div class="flex flex-col gap-y-2">
       <button
         v-for="{ id, label, layer } in chmiLayers"
         :key="id"
         @click="toggleLayer(id, layer)"
-        class="flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-700 px-3 text-gray-500 enabled:cursor-pointer enabled:text-white enabled:hover:bg-gray-500"
-        :class="isActive(id).value ? 'bg-gray-600' : 'border border-gray-700'"
         :disabled="layer.frames.value.length === 0 || isCustomRangeUnset"
+        :class="[
+          'flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-400 px-2',
+          'enabled:cursor-pointer enabled:hover:bg-gray-800/20',
+          isActive(id).value
+            ? 'bg-gray-800/20 text-cyan-200 enabled:hover:text-cyan-200'
+            : 'text-gray-500 enabled:text-gray-300 enabled:hover:text-cyan-200 disabled:text-gray-400',
+        ]"
       >
         <div>{{ label }}</div>
         <div
+          class="text-lg"
           :class="
             layer.frames.value.length > 0 && !isCustomRangeUnset ? 'text-green-600' : 'text-red-600'
           "
-          class="text-lg"
         >
           ●
         </div>
@@ -114,22 +125,27 @@ const telcoLayers = computed(() =>
     </div>
 
     <span class="my-1.5 flex text-white">TelcoSense</span>
-    <div class="flex flex-col gap-y-3">
+    <div class="flex flex-col gap-y-2">
       <button
         v-for="{ id, label, layer } in telcoLayers"
         :key="id"
         @click="toggleLayer(id, layer)"
-        class="flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-700 px-3 text-gray-500 enabled:cursor-pointer enabled:text-white enabled:hover:bg-gray-500"
-        :class="isActive(id).value ? 'bg-gray-600' : 'border border-gray-700'"
         :disabled="layer.frames.value.length === 0 || isCustomRangeUnset"
+        :class="[
+          'flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-400 px-2',
+          'enabled:cursor-pointer enabled:hover:bg-gray-800/20',
+          isActive(id).value
+            ? 'bg-gray-800/20 text-cyan-200 enabled:hover:text-cyan-200'
+            : 'text-gray-400 enabled:text-gray-300 enabled:hover:text-cyan-200 disabled:text-gray-400',
+        ]"
       >
         <div>{{ label }}</div>
         <div
+          class="text-lg"
           :class="{
             'text-green-600': layer.frames.value.length > 0 && !isCustomRangeUnset,
             'text-red-600': layer.frames.value.length === 0 || isCustomRangeUnset,
           }"
-          class="text-lg"
         >
           ●
         </div>
