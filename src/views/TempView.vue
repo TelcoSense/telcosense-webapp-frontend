@@ -176,6 +176,7 @@ function initMap() {
   }).setView([49.74379, 15.33863], zoom)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
+    detectRetina: true,
   }).addTo(map.value as L.Map)
   stationsGroup.value.addTo(map.value as L.Map)
   linksGroup.value.addTo(map.value as L.Map)
