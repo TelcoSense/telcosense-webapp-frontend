@@ -452,22 +452,18 @@ async function copySelectedLinksToClipboard() {
 </script>
 
 <template>
-  <div class="font-inter min-h-screen">
-    <main class="h-[calc(100vh)]">
+  <div class="font-inter min-h-[100svh]">
+    <main class="h-[100svh]">
       <div class="relative flex h-full w-full flex-row items-center justify-center">
         <div id="map" class="leaflet-container z-0 h-full w-full"></div>
 
-        <div
-          v-if="config.start && config.end"
-          id="timestamps"
-          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 bg-gray-800/60 p-1 text-sm text-white backdrop-blur-xs select-none md:visible md:bottom-3 md:flex"
-        >
+        <div v-if="config.start && config.end" id="timestamps"
+          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 bg-gray-800/60 p-1 text-sm text-white backdrop-blur-xs select-none md:visible md:bottom-3 md:flex">
           <p v-if="config.realtime">Realtime bounds</p>
           <p v-if="!config.realtime">Historic bounds</p>
           <p v-if="config.start">
             Start:
-            <span class="font-chivo"
-              >{{ datetimeFormat(config.start, config.datetimeFormat) }}
+            <span class="font-chivo">{{ datetimeFormat(config.start, config.datetimeFormat) }}
             </span>
           </p>
           <p v-if="config.end">
@@ -479,43 +475,32 @@ async function copySelectedLinksToClipboard() {
             </p> -->
         </div>
 
-        <div
-          id="drag-box"
-          class="pointer-events-none absolute z-40 hidden border-1 border-blue-400 bg-blue-400/10"
-        ></div>
+        <div id="drag-box" class="pointer-events-none absolute z-40 hidden border-1 border-blue-400 bg-blue-400/10">
+        </div>
 
         <TopNavbar>
           <div class="mr-32 hidden gap-x-3 md:flex">
-            <button
-              :class="[
-                'h-8 cursor-pointer rounded-md px-3 text-gray-300',
-                config.realtime
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-700 hover:bg-gray-600',
-              ]"
-              @click="config.setToRealtime()"
-            >
+            <button :class="[
+              'h-8 cursor-pointer rounded-md px-3 text-gray-300',
+              config.realtime
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-700 hover:bg-gray-600',
+            ]" @click="config.setToRealtime()">
               Realtime data
             </button>
 
-            <button
-              :class="[
-                'h-8 cursor-pointer rounded-md px-3 text-gray-300',
-                !config.realtime
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-gray-700 hover:bg-gray-600',
-              ]"
-              @click="config.setToHistoric()"
-            >
+            <button :class="[
+              'h-8 cursor-pointer rounded-md px-3 text-gray-300',
+              !config.realtime
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-700 hover:bg-gray-600',
+            ]" @click="config.setToHistoric()">
               Historic data
             </button>
           </div>
-          <button
-            v-if="links.hasLinks"
+          <button v-if="links.hasLinks"
             class="hidden h-8 rounded-md border border-black bg-amber-200 px-3 hover:bg-amber-300 enabled:cursor-pointer disabled:opacity-50 disabled:hover:bg-amber-200 md:block"
-            :disabled="selectedLinkIds.size === 0"
-            @click="copySelectedLinksToClipboard"
-          >
+            :disabled="selectedLinkIds.size === 0" @click="copySelectedLinksToClipboard">
             Copy link IDs
           </button>
         </TopNavbar>
@@ -526,72 +511,43 @@ async function copySelectedLinksToClipboard() {
         <LayerSwitcher v-if="config.layerSwitcherVisible" />
 
         <PrecipitationBar v-if="activeLayer?.name == 'merge1h' && config.barVisible" />
-        <ReflectivityBar
-          v-if="
-            (activeLayer?.name == 'maxz' ||
-              activeLayer?.name == 'raincz' ||
-              activeLayer?.name == 'user-calc') &&
-            config.barVisible
-          "
-        />
+        <ReflectivityBar v-if="
+          (activeLayer?.name == 'maxz' ||
+            activeLayer?.name == 'raincz' ||
+            activeLayer?.name == 'user-calc') &&
+          config.barVisible
+        " />
 
         <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
         <RainHistoric :link-ids="selectedLinkIds" />
 
         <!-- timerange -->
-        <div
-          v-if="!config.realtime && timeRangeVisible"
-          class="absolute top-14 left-47 z-30 w-64 rounded-md bg-gray-800 p-3"
-        >
+        <div v-if="!config.realtime && timeRangeVisible"
+          class="absolute top-14 left-47 z-30 w-64 rounded-md bg-gray-800 p-3">
           <div class="flex w-full justify-end text-sm">
-            <button
-              @click="timeRangeVisible = false"
-              class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
-            >
+            <button @click="timeRangeVisible = false"
+              class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
               Close
             </button>
           </div>
           <label class="mb-1 block text-sm text-white">Start</label>
-          <Datepicker
-            v-model="selectedStart"
-            utc
-            time-picker-inline
-            model-type="date"
-            :max-date="new Date()"
-            class="mb-3 w-full text-sm"
-            dark
-            :format="formatDateForDatepicker"
-            :timezone="config.datetimeFormat"
-          />
+          <Datepicker v-model="selectedStart" utc time-picker-inline model-type="date" :max-date="new Date()"
+            class="mb-3 w-full text-sm" dark :format="formatDateForDatepicker" :timezone="config.datetimeFormat" />
 
           <label class="mb-1 block text-sm text-white">End</label>
-          <Datepicker
-            v-model="selectedEnd"
-            utc
-            time-picker-inline
-            model-type="date"
-            :max-date="new Date()"
-            class="mb-4 w-full text-sm"
-            dark
-            :format="formatDateForDatepicker"
-            :timezone="config.datetimeFormat"
-          />
+          <Datepicker v-model="selectedEnd" utc time-picker-inline model-type="date" :max-date="new Date()"
+            class="mb-4 w-full text-sm" dark :format="formatDateForDatepicker" :timezone="config.datetimeFormat" />
 
           <button
             class="w-full rounded bg-blue-600 py-1 text-sm text-white hover:bg-blue-700 enabled:cursor-pointer disabled:bg-gray-700 disabled:text-gray-500"
-            :disabled="!isTimeRangeValid"
-            @click="applyCustomRange"
-          >
+            :disabled="!isTimeRangeValid" @click="applyCustomRange">
             Apply time range
           </button>
         </div>
         <div v-else class="absolute top-14 left-47 z-30 text-sm">
-          <button
-            v-show="!config.realtime"
-            @click="timeRangeVisible = true"
-            class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
-          >
+          <button v-show="!config.realtime" @click="timeRangeVisible = true"
+            class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
             Previous realtime data
           </button>
         </div>
