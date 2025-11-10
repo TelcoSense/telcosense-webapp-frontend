@@ -287,7 +287,7 @@ const buildOptions = () => {
           formatter: isLabelPlot
             ? isMobile
               ? '{yyyy}-{MM}-{dd}' // simpler on mobile
-              : '{yyyy}-{MM}-{dd} {HH}:{mm}'
+              : '{yyyy}-{MM}-{dd} '
             : undefined,
           color: '#ffffff',
           fontFamily: 'Chivo Mono',

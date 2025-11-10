@@ -111,16 +111,16 @@ const seriesData = computed(() => {
 
 <template>
   <div v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0)"
-    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:w-[1250px] h-[300px] w-[calc(100%-1.5rem)] flex-col gap-2">
+    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:w-[1250px] h-[280px] w-[calc(100%-1.5rem)] flex-col gap-1">
     <div class="flex h-8 items-center justify-between gap-2">
-      <div class="rounded-md bg-gray-800/50 px-3 py-1 text-sm text-white backdrop-blur-xs">
+      <div class="rounded-md bg-gray-800/50 px-3 md:py-1 py-0.5 md:text-sm text-xs text-white backdrop-blur-xs">
         Stations
       </div>
       <div class="flex-1 overflow-x-auto whitespace-nowrap">
         <div class="flex gap-x-2">
           <button v-for="stationId in weatherData.stationIds" :key="stationId"
             @click="weatherData.selectStation(stationId)" @dblclick.stop="weatherData.removeStation(stationId)"
-            class="inline-block cursor-pointer rounded-md px-3 py-1 text-sm font-medium" :class="stationId === weatherData.selectedStationId
+            class="inline-block cursor-pointer rounded-md px-3 md:py-1 py-0.5 md:text-sm font-medium text-xs" :class="stationId === weatherData.selectedStationId
               ? 'bg-blue-600 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               ">
@@ -133,7 +133,8 @@ const seriesData = computed(() => {
         if (weatherData.stationIds.length === 0 && cmlData.cmlIds.length === 0) {
           config.dataPlottingVisible = false
         }
-      }" class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">
+      }"
+        class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 md:py-1 py-0.5 md:text-sm text-xs text-white hover:bg-red-700">
         Clear
       </button>
       <!-- <button
@@ -159,14 +160,14 @@ const seriesData = computed(() => {
     </div>
 
     <div class="flex h-8 items-center justify-between gap-2">
-      <div class="rounded-md bg-gray-800/50 px-3 py-1 text-sm text-white backdrop-blur-xs">
+      <div class="rounded-md bg-gray-800/50 px-3 md:py-1 py-0.5 md:text-sm text-xs text-white backdrop-blur-xs">
         Links
       </div>
       <div class="flex-1 gap-x-2 overflow-x-auto whitespace-nowrap">
         <div class="flex gap-x-2">
           <button v-for="cmlId in cmlData.cmlIds" :key="cmlId" @click="cmlData.selectCml(cmlId)"
             @dblclick.stop="cmlData.removeCml(cmlId)"
-            class="inline-block cursor-pointer rounded-md px-3 py-1 text-sm font-medium" :class="cmlId === cmlData.selectedCmlId
+            class="inline-block cursor-pointer rounded-md px-3 md:py-1 py-0.5 md:text-sm font-medium text-xs" :class="cmlId === cmlData.selectedCmlId
               ? 'bg-blue-600 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               ">
@@ -179,7 +180,8 @@ const seriesData = computed(() => {
         if (weatherData.stationIds.length === 0 && cmlData.cmlIds.length === 0) {
           config.dataPlottingVisible = false
         }
-      }" class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">
+      }"
+        class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 md:py-1 py-0.5 md:text-sm text-xs text-white hover:bg-red-700">
         Clear
       </button>
     </div>
