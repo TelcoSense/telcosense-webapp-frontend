@@ -16,11 +16,17 @@
     .menu-btn:hover {
       @apply bg-gray-800/60 text-cyan-200;
     }
+
+    .menu-btn:focus {
+      @apply bg-gray-800/60 text-cyan-200 outline-none;
+    }
   }
 
-  .menu-btn:active,
-  .menu-btn:focus,
+  .menu-btn:active {
+    @apply bg-gray-800/60 text-cyan-200;
+  }
+
   .menu-btn.active {
-    @apply bg-gray-800/60 text-cyan-200 outline-none;
+    @apply bg-gray-800/60 text-cyan-200;
   }
 }
