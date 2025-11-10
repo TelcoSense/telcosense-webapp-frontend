@@ -11,6 +11,7 @@ import { coordsBrno, coordsCzechia, coordsPraha, datetimeFormat, toUtcDate } fro
 import { useConfigStore } from '@/stores/config'
 import { useLayersStore } from '@/stores/layers'
 
+
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
 import { useMap } from '@/composables/useMap'
@@ -244,39 +245,29 @@ const canStart = computed(() => {
 </script>
 
 <template>
-  <div
-    v-if="showHistoric && !config.realtime"
-    class="absolute top-14 left-47 z-50 w-3xl rounded-md bg-gray-800 p-3 text-sm text-white"
-  >
+  <div v-if="showHistoric && !config.realtime"
+    class="absolute top-14 left-50.5 z-50 w-3xl rounded-md bg-gray-800 p-3 text-sm text-white">
     <div class="mb-2 flex justify-between">
       <h2>User calculations</h2>
-      <button
-        class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500"
-        @click="showHistoric = false"
-      >
+      <button class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500"
+        @click="showHistoric = false">
         Close
       </button>
     </div>
 
     <div class="mb-2 flex gap-x-3">
-      <button
-        @click="activeTab = 'status'"
-        :class="[
-          'cursor-pointer rounded px-3 py-1',
-          activeTab === 'status'
-            ? 'hover:cyan-700 bg-cyan-600 text-white'
-            : 'bg-gray-600 text-gray-200',
-        ]"
-      >
+      <button @click="activeTab = 'status'" :class="[
+        'cursor-pointer rounded px-3 py-1',
+        activeTab === 'status'
+          ? 'hover:cyan-700 bg-cyan-600 text-white'
+          : 'bg-gray-600 text-gray-200',
+      ]">
         View calculations
       </button>
-      <button
-        @click="activeTab = 'create'"
-        :class="[
-          'cursor-pointer rounded px-3 py-1',
-          activeTab === 'create' ? 'bg-cyan-600 text-white' : 'bg-gray-600 text-gray-200',
-        ]"
-      >
+      <button @click="activeTab = 'create'" :class="[
+        'cursor-pointer rounded px-3 py-1',
+        activeTab === 'create' ? 'bg-cyan-600 text-white' : 'bg-gray-600 text-gray-200',
+      ]">
         New calculation
       </button>
     </div>
@@ -294,31 +285,13 @@ const canStart = computed(() => {
       <div class="grid grid-cols-2 gap-x-4">
         <div>
           <label class="block">Start</label>
-          <Datepicker
-            v-model="selectedStart"
-            time-picker-inline
-            utc
-            model-type="date"
-            :max-date="new Date()"
-            class="w-full text-sm"
-            dark
-            :format="formatDateForDatepicker"
-            :timezone="config.datetimeFormat"
-          />
+          <Datepicker v-model="selectedStart" time-picker-inline utc model-type="date" :max-date="new Date()"
+            class="w-full text-sm" dark :format="formatDateForDatepicker" :timezone="config.datetimeFormat" />
         </div>
         <div>
           <label class="block">End</label>
-          <Datepicker
-            v-model="selectedEnd"
-            time-picker-inline
-            utc
-            model-type="date"
-            :max-date="new Date()"
-            class="w-full text-sm"
-            dark
-            :format="formatDateForDatepicker"
-            :timezone="config.datetimeFormat"
-          />
+          <Datepicker v-model="selectedEnd" time-picker-inline utc model-type="date" :max-date="new Date()"
+            class="w-full text-sm" dark :format="formatDateForDatepicker" :timezone="config.datetimeFormat" />
         </div>
       </div>
 
@@ -328,19 +301,11 @@ const canStart = computed(() => {
       <div class="grid grid-cols-2 gap-x-4">
         <div>
           <label class="block">Min length (km)</label>
-          <input
-            v-model.number="data.min_length"
-            type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none"
-          />
+          <input v-model.number="data.min_length" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
         <div>
           <label class="block">Max length (km)</label>
-          <input
-            v-model.number="data.max_length"
-            type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none"
-          />
+          <input v-model.number="data.max_length" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
       </div>
 
@@ -349,58 +314,36 @@ const canStart = computed(() => {
       <!-- limits -->
       <div class="grid grid-cols-2 gap-x-4">
         <div>
-          <label>X min</label
-          ><input
-            v-model.number="data.x_min"
-            type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none"
-          />
+          <label>X min</label><input v-model.number="data.x_min" type="number"
+            class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
         <div>
-          <label>X max</label
-          ><input
-            v-model.number="data.x_max"
-            type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none"
-          />
+          <label>X max</label><input v-model.number="data.x_max" type="number"
+            class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
         <div>
-          <label>Y min</label
-          ><input
-            v-model.number="data.y_min"
-            type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none"
-          />
+          <label>Y min</label><input v-model.number="data.y_min" type="number"
+            class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
         <div>
-          <label>Y max</label
-          ><input
-            v-model.number="data.y_max"
-            type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none"
-          />
+          <label>Y max</label><input v-model.number="data.y_max" type="number"
+            class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
       </div>
 
       <div class="mt-2 flex gap-x-2">
-        <button
-          @click="setCoords('czechia')"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
-        >
+        <button @click="setCoords('czechia')"
+          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
           Czechia
         </button>
 
-        <button
-          @click="setCoords('praha')"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
-        >
+        <button @click="setCoords('praha')"
+          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
           Prague
         </button>
 
-        <button
-          @click="setCoords('brno')"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
-        >
+        <button @click="setCoords('brno')"
+          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
           Brno
         </button>
       </div>
@@ -411,41 +354,24 @@ const canStart = computed(() => {
         <div class="grid grid-cols-2 gap-x-4">
           <div>
             <label class="block">Rolling hours</label>
-            <input
-              v-model.number="data.rolling_hours"
-              :disabled="data.is_mlp_enabled"
-              type="number"
-              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400"
-            />
+            <input v-model.number="data.rolling_hours" :disabled="data.is_mlp_enabled" type="number"
+              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400" />
           </div>
           <div>
             <label class="block">Rolling values</label>
-            <input
-              v-model.number="data.rolling_values"
-              :disabled="data.is_mlp_enabled"
-              type="number"
-              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400"
-            />
+            <input v-model.number="data.rolling_values" :disabled="data.is_mlp_enabled" type="number"
+              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400" />
           </div>
           <div>
             <label class="block">Deviation</label>
-            <input
-              v-model.number="data.wet_dry_deviation"
-              :disabled="data.is_mlp_enabled"
-              type="number"
-              step="0.1"
-              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400"
-            />
+            <input v-model.number="data.wet_dry_deviation" :disabled="data.is_mlp_enabled" type="number" step="0.1"
+              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400" />
           </div>
           <div>
             <label class="block">Baseline samples</label>
 
-            <input
-              v-model.number="data.baseline_samples"
-              :disabled="data.is_mlp_enabled"
-              type="number"
-              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400"
-            />
+            <input v-model.number="data.baseline_samples" :disabled="data.is_mlp_enabled" type="number"
+              class="w-full bg-gray-700 p-1 focus:outline-none disabled:text-gray-400" />
           </div>
 
           <div class="mt-2 flex gap-x-2">
@@ -460,36 +386,20 @@ const canStart = computed(() => {
         <div class="grid grid-cols-2 gap-x-4">
           <div>
             <label class="block">Interpolation resolution</label>
-            <input
-              v-model.number="data.interp_res"
-              type="number"
-              step="0.01"
-              class="w-full bg-gray-700 p-1 focus:outline-none"
-            />
+            <input v-model.number="data.interp_res" type="number" step="0.01"
+              class="w-full bg-gray-700 p-1 focus:outline-none" />
           </div>
           <div>
             <label class="block">IDW power</label>
-            <input
-              v-model.number="data.idw_power"
-              type="number"
-              class="w-full bg-gray-700 p-1 focus:outline-none"
-            />
+            <input v-model.number="data.idw_power" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
           </div>
           <div>
             <label class="block">IDW near</label>
-            <input
-              v-model.number="data.idw_near"
-              type="number"
-              class="w-full bg-gray-700 p-1 focus:outline-none"
-            />
+            <input v-model.number="data.idw_near" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
           </div>
           <div>
             <label class="block">IDW distance</label>
-            <input
-              v-model.number="data.idw_dist"
-              type="number"
-              class="w-full bg-gray-700 p-1 focus:outline-none"
-            />
+            <input v-model.number="data.idw_dist" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
           </div>
         </div>
 
@@ -506,25 +416,19 @@ const canStart = computed(() => {
 
       <div class="mb-2 flex gap-x-2">
         <span>Selected links: {{ linkIds?.size }}</span>
-        <span class="text-red-600" v-if="linkIds?.size === 0"
-          >Please select links using the map.</span
-        >
+        <span class="text-red-600" v-if="linkIds?.size === 0">Please select links using the map.</span>
       </div>
 
       <div class="flex justify-between gap-x-3">
         <!-- submit -->
-        <button
-          @click="showAdvanced = !showAdvanced"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100"
-        >
+        <button @click="showAdvanced = !showAdvanced"
+          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
           {{ showAdvanced ? 'Hide advanced settings' : 'Show advanced settings' }}
         </button>
 
-        <button
-          @click="startRainCalculation"
+        <button @click="startRainCalculation"
           class="cursor-pointer rounded bg-cyan-600 px-3 py-1 text-sm text-white hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="!canStart"
-        >
+          :disabled="!canStart">
           Start calculation
         </button>
       </div>
@@ -551,25 +455,19 @@ const canStart = computed(() => {
             </tr>
           </thead>
           <tbody>
-            <tr
-              v-for="calc in calculations"
-              :key="calc.id"
-              class="border-b border-gray-700 hover:bg-gray-700"
+            <tr v-for="calc in calculations" :key="calc.id" class="border-b border-gray-700 hover:bg-gray-700"
               :class="{ 'cursor-pointer': calc.status === 'finished' }"
-              @click="calc.status === 'finished' ? viewCalculation(calc) : null"
-            >
+              @click="calc.status === 'finished' ? viewCalculation(calc) : null">
               <td class="max-w-0 truncate py-1 pr-2 pl-1" :title="calc.name">
                 {{ calc.name }}
               </td>
               <td class="py-1 pr-2 whitespace-nowrap">
-                <span
-                  :class="{
-                    'text-yellow-400': calc.status === 'pending',
-                    'text-blue-400': calc.status === 'running',
-                    'text-green-400': calc.status === 'finished',
-                    'text-red-400': calc.status === 'failed',
-                  }"
-                >
+                <span :class="{
+                  'text-yellow-400': calc.status === 'pending',
+                  'text-blue-400': calc.status === 'running',
+                  'text-green-400': calc.status === 'finished',
+                  'text-red-400': calc.status === 'failed',
+                }">
                   {{ calc.status }}
                 </span>
               </td>
@@ -587,17 +485,11 @@ const canStart = computed(() => {
                 {{ datetimeFormat(calc.end, config.datetimeFormat) }}
               </td>
               <td class="py-1 pr-2">
-                <button
-                  v-if="calc.status === 'finished' || calc.status === 'failed'"
-                  @click="deleteCalculation(calc.id)"
-                  class="cursor-pointer text-sm text-red-300 hover:underline"
-                >
+                <button v-if="calc.status === 'finished' || calc.status === 'failed'"
+                  @click="deleteCalculation(calc.id)" class="cursor-pointer text-sm text-red-300 hover:underline">
                   Delete
                 </button>
-                <button
-                  v-if="calc.status === 'pending' || calc.status === 'running'"
-                  class="text-sm text-gray-700"
-                >
+                <button v-if="calc.status === 'pending' || calc.status === 'running'" class="text-sm text-gray-700">
                   Delete
                 </button>
               </td>
@@ -611,11 +503,8 @@ const canStart = computed(() => {
     </div>
   </div>
   <div v-else>
-    <button
-      v-if="!config.realtime"
-      class="absolute top-23 left-47 cursor-pointer rounded bg-gray-600 px-3 py-1 text-sm text-white hover:bg-gray-500"
-      @click="showHistoric = true"
-    >
+    <button v-if="!config.realtime && config.layerSwitcherVisible" class="absolute top-22.5 left-50.5 menu-btn text-sm"
+      @click=" showHistoric = true">
       User calculations
     </button>
   </div>

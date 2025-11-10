@@ -9,23 +9,17 @@
 
 @layer components {
   .menu-btn {
-    @apply cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs;
+    @apply cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 text-white backdrop-blur-xs;
   }
 
   @media (hover: hover) {
-    .menu-btn:hover {
+    .menu-btn:hover,
+    .menu-btn:focus-visible {
       @apply bg-gray-800/60 text-cyan-200;
     }
-
-    .menu-btn:focus {
-      @apply bg-gray-800/60 text-cyan-200 outline-none;
-    }
   }
 
-  .menu-btn:active {
-    @apply bg-gray-800/60 text-cyan-200;
-  }
-
+  .menu-btn:active,
   .menu-btn.active {
     @apply bg-gray-800/60 text-cyan-200;
   }

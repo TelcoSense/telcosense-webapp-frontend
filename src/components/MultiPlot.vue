@@ -53,6 +53,8 @@ const props = defineProps<{
 
 const chartOptions = ref<EChartsOption>({})
 const chartRef = ref<InstanceType<typeof ECharts> | null>(null)
+const isMobile = window.innerWidth <= 768
+
 
 function hasDataForSubplot(index: number): boolean {
   return props.seriesData.some((s) => s.subplotIndex === index && s.data.length > 0)
@@ -70,6 +72,10 @@ function createYAxisConfig(
   position: 'left' | 'right',
   hasData: boolean,
 ): echarts.YAXisComponentOption {
+
+  const fontSizeAxisLabel = isMobile ? 10 : 12
+  const fontSizeYAxisName = isMobile ? 10 : 12
+
   const config: echarts.YAXisComponentOption = {
     type: 'value',
     gridIndex,
@@ -88,8 +94,15 @@ function createYAxisConfig(
     config.nameGap = 45
     config.axisLabel = {
       color: '#ffffff',
+      fontSize: fontSizeAxisLabel,
       fontFamily: 'Chivo Mono, monospace',
-      formatter: (value: number) => (Number.isInteger(value) ? value.toString() : value.toFixed(1)),
+      formatter: (value: number) =>
+        Number.isInteger(value) ? value.toString() : value.toFixed(1),
+    }
+    config.nameTextStyle = {
+      fontSize: fontSizeYAxisName,
+      color: '#ffffff',
+      fontFamily: 'Inter, sans-serif',
     }
   } else {
     config.axisLabel = { show: false }
@@ -182,6 +195,8 @@ const buildOptions = () => {
     legendSelected[name] = !hiddenList.some((h) => name.toLowerCase().includes(h.toLowerCase()))
   })
 
+
+
   chartOptions.value = {
     useUTC: config.datetimeFormat == 'UTC' ? true : false,
     backgroundColor: '#1f2937',
@@ -210,52 +225,86 @@ const buildOptions = () => {
         label: {
           backgroundColor: '#6b7280',
           color: '#ffffff',
+          fontSize: isMobile ? 8 : 12,
           fontFamily: 'Chivo Mono, monospace',
         },
       },
       textStyle: {
         color: '#ffffff',
+        fontSize: isMobile ? 8 : 12,
         fontFamily: 'Chivo Mono, monospace',
       },
       backgroundColor: '#374151',
       borderColor: '#4b5563',
+      borderWidth: 1,
+      padding: isMobile ? 4 : 8,
     },
     legend: {
       data: seriesNames,
       selected: legendSelected,
-      textStyle: { color: '#ffffff', fontFamily: 'Inter' },
-      top: 0,
-      itemGap: 15,
+      top: isMobile ? '1%' : 0,
+      left: isMobile ? 'center' : 'center',
+      itemGap: isMobile ? 8 : 15,
+      itemWidth: isMobile ? 10 : 18,
+      itemHeight: isMobile ? 6 : 12,
+      type: isMobile ? 'scroll' : 'plain',
+      orient: isMobile ? 'horizontal' : 'horizontal',
+      padding: isMobile ? [2, 10] : 5,
+      pageIconSize: isMobile ? 8 : 12,
+      textStyle: {
+        fontSize: isMobile ? 10 : 12,
+        color: '#ffffff',
+        fontFamily: 'Inter',
+      },
+      pageTextStyle: {
+        color: '#ffffff',
+        fontSize: isMobile ? 10 : 12,
+        fontFamily: 'Inter',
+      },
     },
-    grid: [
-      { left: '5%', right: '5%', top: '10%', height: '22%' },
-      { left: '5%', right: '5%', top: '40%', height: '22%' },
-      { left: '5%', right: '5%', top: '70%', height: '22%' },
-    ],
+    grid: isMobile
+      ? [
+        { left: '12%', right: '12%', top: '10%', height: '20%' },
+        { left: '12%', right: '12%', top: '40%', height: '20%' },
+        { left: '12%', right: '12%', top: '70%', height: '20%' },
+      ]
+      : [
+        { left: '5%', right: '5%', top: '10%', height: '22%' },
+        { left: '5%', right: '5%', top: '40%', height: '22%' },
+        { left: '5%', right: '5%', top: '70%', height: '22%' },
+      ],
     xAxis: [0, 1, 2].map((i): XAXisComponentOption => {
-      const base: XAXisComponentOption = {
+      const isLabelPlot = i === 2
+
+      return {
         type: 'time',
         gridIndex: i,
         min: props.xMin,
         max: props.xMax,
         axisLabel: {
-          show: i === 2,
-          formatter: i === 2 ? '{yyyy}-{MM}-{dd} {HH}:{mm}' : undefined,
+          show: isLabelPlot,
+          fontSize: isMobile ? 10 : 12,
+          formatter: isLabelPlot
+            ? isMobile
+              ? '{yyyy}-{MM}-{dd}' // simpler on mobile
+              : '{yyyy}-{MM}-{dd} {HH}:{mm}'
+            : undefined,
           color: '#ffffff',
-          fontFamily: 'Chivo Mono, monospace',
+          fontFamily: 'Chivo Mono',
         },
         axisLine: { lineStyle: { color: '#6b7280' } },
         splitLine: {
           show: true,
           lineStyle: { color: '#374151' },
         },
+        // Force fewer ticks
+        ...(isMobile && {
+          minInterval: 1000 * 60 * 60 * 96,
+        }),
+        ...(hasDataForSubplot(i) && {
+          axisPointer: { label: { show: false } },
+        }),
       }
-
-      if (hasDataForSubplot(i)) {
-        base.axisPointer = { label: { show: false } }
-      }
-
-      return base
     }),
     yAxis: [
       createYAxisConfig(props.topLeftAxisName ?? 'Top left', 0, 'left', hasYAxisData(0, 'left')),

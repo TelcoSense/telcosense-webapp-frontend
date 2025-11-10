@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useCmlDataStore } from '@/stores/cmlData'
+import { useConfigStore } from '@/stores/config'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { computed, ref } from 'vue'
 
@@ -15,6 +16,7 @@ defineProps<{
 
 const weatherData = useWeatherDataStore()
 const cmlData = useCmlDataStore()
+const config = useConfigStore()
 const dataPlottingVisible = ref<boolean>(true)
 
 const { activeLayer } = useActiveLayer()
@@ -110,38 +112,31 @@ const seriesData = computed(() => {
 </script>
 
 <template>
-  <div
-    v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) && dataPlottingVisible"
-    class="absolute bottom-38 flex h-[450px] w-[1250px] flex-col gap-2"
-  >
+  <div v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) && dataPlottingVisible"
+    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:w-[1250px] h-[280px] w-[300px] flex-col gap-2">
     <div class="flex h-8 items-center justify-between gap-2">
       <div class="rounded-md bg-gray-800/50 px-3 py-1 text-sm text-white backdrop-blur-xs">
         Stations
       </div>
       <div class="flex-1 overflow-x-auto whitespace-nowrap">
         <div class="flex gap-x-2">
-          <button
-            v-for="stationId in weatherData.stationIds"
-            :key="stationId"
-            @click="weatherData.selectStation(stationId)"
-            @dblclick.stop="weatherData.removeStation(stationId)"
-            class="inline-block cursor-pointer rounded-md px-3 py-1 text-sm font-medium"
-            :class="
-              stationId === weatherData.selectedStationId
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            "
-          >
+          <button v-for="stationId in weatherData.stationIds" :key="stationId"
+            @click="weatherData.selectStation(stationId)" @dblclick.stop="weatherData.removeStation(stationId)"
+            class="inline-block cursor-pointer rounded-md px-3 py-1 text-sm font-medium" :class="stationId === weatherData.selectedStationId
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ">
             {{ stationId }}
           </button>
         </div>
       </div>
-      <button
-        v-if="weatherData.stationIds.length > 0"
-        @click="weatherData.clear()"
-        class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
-      >
-        Clear station data
+      <button v-if="weatherData.stationIds.length > 0" @click="() => {
+        weatherData.clear()
+        if (weatherData.stationIds.length === 0 && cmlData.cmlIds.length === 0) {
+          config.dataPlottingVisible = false
+        }
+      }" class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">
+        Clear
       </button>
       <!-- <button
         @click="dataPlottingVisible = !dataPlottingVisible"
@@ -151,40 +146,18 @@ const seriesData = computed(() => {
       </button> -->
     </div>
 
-    <div
-      v-if="start && end"
-      class="flex flex-1 flex-col items-center justify-center rounded-md bg-gray-800 p-2"
-    >
-      <div
-        v-if="weatherData.loading || cmlData.loading"
-        class="animate-pulse text-sm text-gray-300"
-      >
+    <div v-if="start && end" class="flex flex-1 flex-col items-center justify-center rounded-md bg-gray-800 p-2">
+      <div v-if="weatherData.loading || cmlData.loading" class="animate-pulse text-sm text-gray-300">
         Loading data...
       </div>
-      <MultiPlot
-        v-else-if="(weatherData.selectedStationId || cmlData.selectedCmlId) && isRainRoute"
-        :seriesData="seriesData"
-        :xMin="start"
-        :xMax="end"
-        :cursorTime="currentCursorTime"
-        :topLeftAxisName="'Rainfall (mm)'"
-        :topRightAxisName="'Temperature (°C)'"
-        :bottomLeftAxisName="'TRSL (dB)'"
-        :bottomRightAxisName="'Temperature (°C)'"
-        :thirdLeftAxisName="'Rain int. (mm/h)'"
-      />
-      <MultiPlot
-        v-else-if="(weatherData.selectedStationId || cmlData.selectedCmlId) && isTempRoute"
-        :seriesData="seriesData"
-        :xMin="start"
-        :xMax="end"
-        :cursorTime="currentCursorTime"
-        :topLeftAxisName="'Rainfall (mm)'"
-        :topRightAxisName="'Temperature (°C)'"
-        :bottomLeftAxisName="'TRSL (dB)'"
-        :bottomRightAxisName="'Temperature (°C)'"
-        :thirdLeftAxisName="'Temperature (°C)'"
-      />
+      <MultiPlot v-else-if="(weatherData.selectedStationId || cmlData.selectedCmlId) && isRainRoute"
+        :seriesData="seriesData" :xMin="start" :xMax="end" :cursorTime="currentCursorTime"
+        :topLeftAxisName="'Rainfall (mm)'" :topRightAxisName="'Temperature (°C)'" :bottomLeftAxisName="'TRSL (dB)'"
+        :bottomRightAxisName="'Temperature (°C)'" :thirdLeftAxisName="'Rain int. (mm/h)'" />
+      <MultiPlot v-else-if="(weatherData.selectedStationId || cmlData.selectedCmlId) && isTempRoute"
+        :seriesData="seriesData" :xMin="start" :xMax="end" :cursorTime="currentCursorTime"
+        :topLeftAxisName="'Rainfall (mm)'" :topRightAxisName="'Temperature (°C)'" :bottomLeftAxisName="'TRSL (dB)'"
+        :bottomRightAxisName="'Temperature (°C)'" :thirdLeftAxisName="'Temperature (°C)'" />
     </div>
 
     <div class="flex h-8 items-center justify-between gap-2">
@@ -193,28 +166,23 @@ const seriesData = computed(() => {
       </div>
       <div class="flex-1 gap-x-2 overflow-x-auto whitespace-nowrap">
         <div class="flex gap-x-2">
-          <button
-            v-for="cmlId in cmlData.cmlIds"
-            :key="cmlId"
-            @click="cmlData.selectCml(cmlId)"
+          <button v-for="cmlId in cmlData.cmlIds" :key="cmlId" @click="cmlData.selectCml(cmlId)"
             @dblclick.stop="cmlData.removeCml(cmlId)"
-            class="inline-block cursor-pointer rounded-md px-3 py-1 text-sm font-medium"
-            :class="
-              cmlId === cmlData.selectedCmlId
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            "
-          >
+            class="inline-block cursor-pointer rounded-md px-3 py-1 text-sm font-medium" :class="cmlId === cmlData.selectedCmlId
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ">
             Link ID: {{ cmlId }}
           </button>
         </div>
       </div>
-      <button
-        v-if="cmlData.cmlIds.length > 0"
-        @click="cmlData.clear()"
-        class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
-      >
-        Clear link data
+      <button v-if="cmlData.cmlIds.length > 0" @click="() => {
+        cmlData.clear()
+        if (weatherData.stationIds.length === 0 && cmlData.cmlIds.length === 0) {
+          config.dataPlottingVisible = false
+        }
+      }" class="shrink-0 cursor-pointer rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">
+        Clear
       </button>
     </div>
   </div>

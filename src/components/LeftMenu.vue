@@ -56,7 +56,7 @@ const anyLayerActive = computed(() => activeLayer.value !== null)
         " />
 
       <Icon v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0" icon="iconoir:graph-up" width="38"
-        height="38" class="hidden menu-btn lg:block" :class="{
+        height="38" class=" menu-btn " :class="{
           active:
             (weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) &&
             config.dataPlottingVisible,

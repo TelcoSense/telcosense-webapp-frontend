@@ -98,8 +98,7 @@ onClickOutside(profileMenuWrapper, () => {
   <nav class="absolute top-1 z-10 flex h-12 w-full items-center justify-between px-3">
     <span
       class="flex h-8 cursor-pointer items-center justify-center rounded-md text-xl font-semibold text-gray-900 transition select-none hover:text-gray-700"
-      @click="toggleRoute"
-    >
+      @click="toggleRoute">
       TelcoSense
     </span>
 
@@ -111,28 +110,16 @@ onClickOutside(profileMenuWrapper, () => {
       <DatetimeToggle />
 
       <div ref="profileMenuWrapper" class="relative">
-        <Icon
-          icon="iconamoon:profile-circle-light"
-          width="38"
-          height="38"
-          class="cursor-pointer text-gray-900 hover:text-gray-700"
-          @click="menuVisible = !menuVisible"
-        />
+        <Icon icon="iconamoon:profile-circle-light" width="38" height="38"
+          class="cursor-pointer text-gray-900 hover:text-gray-700" @click="menuVisible = !menuVisible" />
 
-        <div
-          v-if="menuVisible"
-          class="absolute top-12 right-0 z-50 flex w-58 flex-col gap-y-2 rounded-md border border-gray-600 bg-gray-800/60 p-2 backdrop-blur-xs"
-        >
-          <span
-            class="flex w-full border-b border-gray-400 pb-1.5 text-sm text-nowrap text-white select-none"
-          >
+        <div v-if="menuVisible"
+          class="absolute top-[calc(3rem-1px)] right-0 z-50 flex w-58 flex-col gap-y-2 rounded-md border border-gray-600 bg-gray-800/60 p-2 backdrop-blur-xs">
+          <span class="flex w-full border-b border-gray-400 pb-1.5 text-sm text-nowrap text-white select-none">
             {{ `${auth.username} (${auth.org})` }}
           </span>
 
-          <div
-            v-if="formattedTime"
-            class="flex h-8 flex-col items-center justify-center px-2 text-nowrap"
-          >
+          <div v-if="formattedTime" class="flex h-8 flex-col items-center justify-center px-2 text-nowrap">
             <div class="text-center text-xs text-white">
               <span class="font-chivo">{{ formattedTime }}</span> min left
             </div>
@@ -141,14 +128,13 @@ onClickOutside(profileMenuWrapper, () => {
             </div>
           </div>
 
-          <button
-            @click="logout()"
-            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700"
-          >
+          <button @click="logout()"
+            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
             Log out
           </button>
         </div>
       </div>
     </div>
+    <!-- </div> -->
   </nav>
 </template>

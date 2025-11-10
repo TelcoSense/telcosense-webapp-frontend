@@ -40,22 +40,24 @@ const sliderLabel = computed(() =>
     ? `${sliderIndex.value + 1}/${activeLayer.value.frames.length}`
     : '—',
 )
+
+const isMobile = window.innerWidth <= 768
 </script>
 
 <template>
-  <div v-if="activeLayer && config.layerControlsVisible"
+  <div v-if="activeLayer && config.layerControlsVisible && (!isMobile || !config.dataPlottingVisible)"
     class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
     <div class="flex items-center justify-center gap-x-3">
       <button @click="activeLayer.changeFrame(-1)" :disabled="disablePrev"
-        class="h-6 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 disabled:cursor-default disabled:opacity-40 md:h-8">
+        class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
         Prev
       </button>
       <button @click="activeLayer.changeFrame(1)" :disabled="disableNext"
-        class="h-6 cursor-pointer rounded bg-gray-600 px-3 text-white hover:bg-gray-500 disabled:cursor-default disabled:opacity-40 md:h-8">
+        class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
         Next
       </button>
       <button @click="togglePlayback"
-        class="h-6 cursor-pointer rounded bg-blue-600 px-3 text-white hover:bg-blue-500 md:h-8">
+        class="h-6 cursor-pointer rounded-md bg-blue-600 px-3 text-white hover:bg-blue-700 md:h-8">
         Play/Pause
       </button>
     </div>
@@ -106,7 +108,7 @@ const sliderLabel = computed(() =>
       </div>
     </div>
   </div>
-  <div v-else-if="activeLayer && !config.layerControlsVisible"
+  <div v-else-if="activeLayer && !config.layerControlsVisible && (!isMobile || !config.dataPlottingVisible)"
     class="absolute bottom-3 rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
     Current frame:
     <span class="font-chivo">

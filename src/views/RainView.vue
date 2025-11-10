@@ -504,8 +504,7 @@ async function copySelectedLinksToClipboard() {
         <LeftMenu>
           <!-- insert the button for copying link ids here -->
           <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
-            class="hidden cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200 lg:block"
-            @click="copySelectedLinksToClipboard" />
+            class="menu-btn" @click="copySelectedLinksToClipboard" />
         </LeftMenu>
 
         <LinkFilter />
@@ -526,7 +525,7 @@ async function copySelectedLinksToClipboard() {
 
         <!-- timerange -->
         <div v-if="!config.realtime && timeRangeVisible"
-          class="absolute top-14 left-47 z-30 w-64 rounded-md bg-gray-800 p-3">
+          class="absolute top-14 left-50.5 z-30 w-64 rounded-md bg-gray-800 p-3">
           <div class="flex w-full justify-end text-sm">
             <button @click="timeRangeVisible = false"
               class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
@@ -547,9 +546,9 @@ async function copySelectedLinksToClipboard() {
             Apply time range
           </button>
         </div>
-        <div v-else class="absolute top-14 left-47 z-30 text-sm">
-          <button v-show="!config.realtime" @click="timeRangeVisible = true"
-            class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
+        <div v-else class="absolute top-14 left-50.5 z-30 text-sm">
+          <button v-show="!config.realtime && config.layerSwitcherVisible" @click="timeRangeVisible = true"
+            class="menu-btn">
             Previous realtime data
           </button>
         </div>
