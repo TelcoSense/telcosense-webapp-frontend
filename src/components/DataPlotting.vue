@@ -2,7 +2,7 @@
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
 import { useWeatherDataStore } from '@/stores/weatherData'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 
 import { useActiveLayer } from '@/composables/useActiveLayer'
 
@@ -17,8 +17,6 @@ defineProps<{
 const weatherData = useWeatherDataStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
-const dataPlottingVisible = ref<boolean>(true)
-
 const { activeLayer } = useActiveLayer()
 const route = useRoute()
 
@@ -112,7 +110,7 @@ const seriesData = computed(() => {
 </script>
 
 <template>
-  <div v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) && dataPlottingVisible"
+  <div v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0)"
     class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:w-[1250px] h-[280px] w-[300px] flex-col gap-2">
     <div class="flex h-8 items-center justify-between gap-2">
       <div class="rounded-md bg-gray-800/50 px-3 py-1 text-sm text-white backdrop-blur-xs">

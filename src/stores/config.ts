@@ -18,7 +18,7 @@ export const useConfigStore = defineStore('config', {
     start: null,
     end: null,
     datetimeFormat: 'UTC',
-    dataPlottingVisible: true,
+    dataPlottingVisible: false,
     layerSwitcherVisible: false,
     layerControlsVisible: false,
     linkFilterVisible: false,

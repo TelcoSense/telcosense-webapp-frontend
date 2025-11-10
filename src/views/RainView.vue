@@ -281,6 +281,7 @@ function drawLinks() {
       polyline.on('click', async () => {
         if (selectionInProgress.value) return
         polyline?.setTooltipContent('')
+
         cmlData.fetchCmlData(
           config.start,
           config.end,
@@ -290,6 +291,7 @@ function drawLinks() {
           link.influx_mapping,
         )
       })
+      config.dataPlottingVisible = true;
       polyline.addTo(group as L.LayerGroup)
       linkPolylines.set(link.id, polyline)
     } else {
@@ -349,7 +351,8 @@ function drawStations() {
         if (selectionInProgress.value) return
         const ghId = ws.gh_id
         marker?.setTooltipContent('')
-        await weatherData.fetchStationData(config.start, config.end, ghId)
+        weatherData.fetchStationData(config.start, config.end, ghId)
+        config.dataPlottingVisible = true;
       })
       marker.addTo(group as L.LayerGroup)
       stationMarkers.set(ws.id, marker)
