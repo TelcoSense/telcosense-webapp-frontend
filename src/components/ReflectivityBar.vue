@@ -1,12 +1,11 @@
 <template>
   <div
-    class="font-chivo absolute top-14 right-3 flex flex-col items-center gap-y-1 rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs backdrop-blur-xs md:text-sm"
-  >
+    class="font-chivo absolute top-14 right-3 flex flex-col items-center gap-y-1 rounded-md border border-gray-600 bg-gray-800/60 p-2 text-[9px] backdrop-blur-xs md:text-sm">
     <div class="flex w-full justify-between text-white select-none">
       <div>dBZ</div>
       <div>mm/h</div>
     </div>
-    <div class="flex gap-x-2">
+    <div class="flex gap-x-1.5">
       <div class="flex flex-col-reverse items-center justify-around text-white select-none">
         <div>4</div>
         <div>8</div>
