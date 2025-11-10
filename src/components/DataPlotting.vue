@@ -111,7 +111,7 @@ const seriesData = computed(() => {
 
 <template>
   <div v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0)"
-    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:w-[1250px] h-[280px] w-[300px] flex-col gap-2">
+    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:w-[1250px] h-[300px] w-[calc(100%-1.5rem)] flex-col gap-2">
     <div class="flex h-8 items-center justify-between gap-2">
       <div class="rounded-md bg-gray-800/50 px-3 py-1 text-sm text-white backdrop-blur-xs">
         Stations

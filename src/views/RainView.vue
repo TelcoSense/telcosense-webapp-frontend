@@ -23,6 +23,7 @@ import TopNavbar from '@/components/TopNavbar.vue'
 
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
+import { useDeviceStore } from '@/stores/device'
 import { useLayersStore } from '@/stores/layers'
 import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
@@ -49,6 +50,8 @@ const links = useLinksStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
 const layers = useLayersStore()
+const device = useDeviceStore()
+
 
 // realtime/historic bounds
 // const start = ref<string | null>('')
@@ -168,8 +171,7 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 function initMap() {
-  const isMobile = window.innerWidth <= 768
-  const zoom = isMobile ? 6 : 8
+  const zoom = device.isMobile ? 6 : 8
   map.value = L.map('map', {
     preferCanvas: true,
     zoomControl: false,
@@ -261,8 +263,9 @@ function drawLinks() {
         ],
         { color, weight: 2 },
       )
+      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm';
       polyline.bindTooltip(
-        `<div class="font-inter text-black text-sm">
+        `<div class="font-inter text-black ${tooltipFontsize}">
             <div class="mb-1 border-b font-semibold border-gray-300">Link ID: ${link.id}</div>
             <div>
               Site A: ${link.site_A.name}<br />
@@ -281,7 +284,7 @@ function drawLinks() {
       polyline.on('click', async () => {
         if (selectionInProgress.value) return
         polyline?.setTooltipContent('')
-
+        config.dataPlottingVisible = true;
         cmlData.fetchCmlData(
           config.start,
           config.end,
@@ -291,7 +294,7 @@ function drawLinks() {
           link.influx_mapping,
         )
       })
-      config.dataPlottingVisible = true;
+
       polyline.addTo(group as L.LayerGroup)
       linkPolylines.set(link.id, polyline)
     } else {
@@ -335,8 +338,9 @@ function drawStations() {
         fillOpacity: 0.5,
         weight: 0.5,
       })
+      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm';
       marker.bindTooltip(
-        `<div class="font-inter text-black text-sm">
+        `<div class="font-inter text-black ${tooltipFontsize}">
             <div class="mb-1 border-b border-gray-300 font-semibold">${ws.full_name}</div>
             <div>
               GH ID: ${ws.gh_id}<br/>

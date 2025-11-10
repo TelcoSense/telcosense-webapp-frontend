@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useConfigStore } from '@/stores/config'
+import { useDeviceStore } from '@/stores/device'
 import { datetimeFormat } from '@/utils'
 import { computed, ref, watch } from 'vue'
 
 const { activeLayer } = useActiveLayer()
 const config = useConfigStore()
+const device = useDeviceStore()
 
 const disablePrev = computed(
   () => !activeLayer.value || activeLayer.value.currentIndex <= 0 || activeLayer.value.isPlaying,
@@ -41,11 +43,10 @@ const sliderLabel = computed(() =>
     : '—',
 )
 
-const isMobile = window.innerWidth <= 768
 </script>
 
 <template>
-  <div v-if="activeLayer && config.layerControlsVisible && (!isMobile || !config.dataPlottingVisible)"
+  <div v-if="activeLayer && config.layerControlsVisible && (!device.isMobile || !config.dataPlottingVisible)"
     class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
     <div class="flex items-center justify-center gap-x-3">
       <button @click="activeLayer.changeFrame(-1)" :disabled="disablePrev"
@@ -108,7 +109,7 @@ const isMobile = window.innerWidth <= 768
       </div>
     </div>
   </div>
-  <div v-else-if="activeLayer && !config.layerControlsVisible && (!isMobile || !config.dataPlottingVisible)"
+  <div v-else-if="activeLayer && !config.layerControlsVisible && (!device.isMobile && !config.dataPlottingVisible)"
     class="absolute bottom-3 rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
     Current frame:
     <span class="font-chivo">
