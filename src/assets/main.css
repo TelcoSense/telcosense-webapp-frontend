@@ -6,3 +6,21 @@
   --font-inter: 'Inter', sans-serif;
   --font-chivo: 'Chivo Mono', monospace;
 }
+
+@layer components {
+  .menu-btn {
+    @apply cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs;
+  }
+
+  @media (hover: hover) {
+    .menu-btn:hover {
+      @apply bg-gray-800/60 text-cyan-200;
+    }
+  }
+
+  .menu-btn:active,
+  .menu-btn:focus,
+  .menu-btn.active {
+    @apply bg-gray-800/60 text-cyan-200 outline-none;
+  }
+}

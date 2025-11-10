@@ -32,40 +32,26 @@ async function login() {
 </script>
 
 <template>
-  <div class="font-inter min-h-screen bg-gray-900 text-white">
-    <main class="flex h-screen flex-col items-center justify-center">
+  <div class="font-inter min-h-[100svh] bg-gray-900 text-white">
+    <main class="flex h-[100svh] flex-col items-center justify-center">
       <h2 class="mb-3 text-center text-3xl font-semibold">TelcoSense</h2>
       <div class="w-full max-w-[260px] rounded-md border border-gray-700 bg-gray-800 p-6">
         <form @submit.prevent="login" method="POST" class="space-y-3">
           <div>
             <label for="username" class="mb-1 block font-medium">Username</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              v-model="formData.username"
-              required
+            <input type="text" id="username" name="username" v-model="formData.username" required
               autocomplete="username"
-              class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
+              class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
           <div>
             <label for="password" class="mb-1 block font-medium">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              v-model="formData.password"
-              required
+            <input type="password" id="password" name="password" v-model="formData.password" required
               autocomplete="current-password"
-              class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            />
+              class="w-full rounded-md border border-gray-600 bg-gray-700 px-2 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
           </div>
           <div>
-            <button
-              type="submit"
-              class="w-full cursor-pointer rounded-md bg-cyan-600 py-2 text-white hover:bg-cyan-700"
-            >
+            <button type="submit"
+              class="w-full cursor-pointer rounded-md bg-cyan-600 py-2 text-white hover:bg-cyan-700">
               Log in
             </button>
           </div>

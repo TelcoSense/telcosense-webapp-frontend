@@ -2,6 +2,7 @@
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
+import { Icon } from '@iconify/vue'
 import Datepicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 
@@ -498,14 +499,15 @@ async function copySelectedLinksToClipboard() {
               Historic data
             </button>
           </div>
-          <button v-if="links.hasLinks"
-            class="hidden h-8 rounded-md border border-black bg-amber-200 px-3 hover:bg-amber-300 enabled:cursor-pointer disabled:opacity-50 disabled:hover:bg-amber-200 md:block"
-            :disabled="selectedLinkIds.size === 0" @click="copySelectedLinksToClipboard">
-            Copy link IDs
-          </button>
         </TopNavbar>
 
-        <LeftMenu />
+        <LeftMenu>
+          <!-- insert the button for copying link ids here -->
+          <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
+            class="hidden cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200 lg:block"
+            @click="copySelectedLinksToClipboard" />
+        </LeftMenu>
+
         <LinkFilter />
         <LayerControls />
         <LayerSwitcher v-if="config.layerSwitcherVisible" />

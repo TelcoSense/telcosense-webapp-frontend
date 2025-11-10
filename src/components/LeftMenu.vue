@@ -24,87 +24,47 @@ const anyLayerActive = computed(() => activeLayer.value !== null)
 <template>
   <div class="absolute top-14 left-3 flex flex-col gap-y-4 text-gray-300">
     <div class="flex flex-col gap-y-1">
-      <Icon
-        v-if="links.hasLinks"
-        icon="hugeicons:satellite-01"
-        width="38"
-        height="38"
-        class="cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200"
-        :class="{ 'bg-gray-800/60 text-cyan-200': !links.hideAll }"
-        @click="links.hideAll = !links.hideAll"
-      />
-      <Icon
-        v-if="weatherStations.hasStations"
-        icon="fluent:weather-cloudy-24-regular"
-        width="38"
-        height="38"
-        class="cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200"
-        :class="{ 'bg-gray-800/60 text-cyan-200': !weatherStations.hideAll }"
-        @click="weatherStations.hideAll = !weatherStations.hideAll"
-      />
+      <Icon v-if="links.hasLinks" icon="hugeicons:satellite-01" width="38" height="38" class="menu-btn"
+        :class="{ active: !links.hideAll }" @click="links.hideAll = !links.hideAll" />
+
+      <Icon v-if="weatherStations.hasStations" icon="fluent:weather-cloudy-24-regular" width="38" height="38"
+        class="menu-btn" :class="{ active: !weatherStations.hideAll }"
+        @click="weatherStations.hideAll = !weatherStations.hideAll" />
     </div>
     <div class="flex flex-col gap-y-1">
-      <Icon
-        icon="solar:map-outline"
-        width="38"
-        height="38"
-        class="cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200"
-        :class="{ 'bg-gray-800/60 text-cyan-200': config.layerSwitcherVisible }"
-        @click="
+      <Icon icon="solar:map-outline" width="38" height="38" class="menu-btn"
+        :class="{ active: config.layerSwitcherVisible }" @click="
           () => {
             config.layerSwitcherVisible = !config.layerSwitcherVisible
             config.linkFilterVisible = false
           }
-        "
-      />
+        " />
 
-      <Icon
-        v-if="anyLayerActive"
-        icon="dashicons:controls-play"
-        width="38"
-        height="38"
-        class="cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200"
-        :class="{ 'bg-gray-800/60 text-cyan-200': config.layerControlsVisible }"
-        @click="config.layerControlsVisible = !config.layerControlsVisible"
-      />
+      <Icon v-if="anyLayerActive" icon="dashicons:controls-play" width="38" height="38" class="menu-btn"
+        :class="{ active: config.layerControlsVisible }"
+        @click="config.layerControlsVisible = !config.layerControlsVisible" />
 
-      <Icon
-        v-if="anyLayerActive"
-        icon="lsicon:measure-outline"
-        width="38"
-        height="38"
-        class="cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200"
-        :class="{ 'bg-gray-800/60 text-cyan-200': config.barVisible }"
-        @click="config.barVisible = !config.barVisible"
-      />
+      <Icon v-if="anyLayerActive" icon="lsicon:measure-outline" width="38" height="38" class="menu-btn"
+        :class="{ active: config.barVisible }" @click="config.barVisible = !config.barVisible" />
 
-      <Icon
-        icon="carbon:filter"
-        width="38"
-        height="38"
-        class="cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200"
-        :class="{ 'bg-gray-800/60 text-cyan-200': config.linkFilterVisible }"
+      <Icon icon="carbon:filter" width="38" height="38" class="menu-btn" :class="{ active: config.linkFilterVisible }"
         @click="
           () => {
             config.linkFilterVisible = !config.linkFilterVisible
             config.layerSwitcherVisible = false
           }
-        "
-      />
+        " />
 
-      <Icon
-        v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0"
-        icon="iconoir:graph-up"
-        width="38"
-        height="38"
-        class="hidden cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 backdrop-blur-xs hover:bg-gray-800/60 hover:text-cyan-200 lg:block"
-        :class="{
-          'bg-gray-800/60 text-cyan-200':
+      <Icon v-if="weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0" icon="iconoir:graph-up" width="38"
+        height="38" class="hidden menu-btn lg:block" :class="{
+          active:
             (weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) &&
             config.dataPlottingVisible,
-        }"
-        @click="config.dataPlottingVisible = !config.dataPlottingVisible"
-      />
+        }" @click="config.dataPlottingVisible = !config.dataPlottingVisible" />
+
+
+      <slot>
+      </slot>
     </div>
   </div>
 </template>
