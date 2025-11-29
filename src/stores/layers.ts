@@ -18,10 +18,17 @@ export const useLayersStore = defineStore('layers', () => {
     }),
   )
 
+  // const raincz = shallowRef(
+  //   useImageLayer('raincz', {
+  //     apiUrl: '/raincz/list',
+  //     bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
+  //   }),
+  // )
+
   const raincz = shallowRef(
     useImageLayer('raincz', {
       apiUrl: '/raincz/list',
-      bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
+      bounds: L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
     }),
   )
 
@@ -36,7 +43,8 @@ export const useLayersStore = defineStore('layers', () => {
     useImageLayer('user-calc', {
       apiUrl: '/placeholder',
       bounds: L.latLngBounds([0, 0], [0, 0]),
-    }))
+    }),
+  )
 
   // telcotemp starts here:
   const tempcz = shallowRef(
