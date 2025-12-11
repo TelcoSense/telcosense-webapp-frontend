@@ -10,6 +10,7 @@ interface ConfigState {
   layerControlsVisible: boolean;
   linkFilterVisible: boolean;
   barVisible: boolean;
+  splitView: boolean;
 }
 
 export const useConfigStore = defineStore('config', {
@@ -22,7 +23,8 @@ export const useConfigStore = defineStore('config', {
     layerSwitcherVisible: false,
     layerControlsVisible: false,
     linkFilterVisible: false,
-    barVisible: false
+    barVisible: false,
+    splitView: true
   }),
 
   actions: {
@@ -37,7 +39,20 @@ export const useConfigStore = defineStore('config', {
     },
 
     toggleDatetimeFormat() {
-      this.datetimeFormat = this.datetimeFormat === 'UTC' ? 'Europe/Prague' : 'UTC';
+      this.datetimeFormat =
+        this.datetimeFormat === 'UTC' ? 'Europe/Prague' : 'UTC';
+    },
+
+    enableSplitView() {
+      this.splitView = true;
+    },
+
+    disableSplitView() {
+      this.splitView = false;
+    },
+
+    toggleSplitView() {
+      this.splitView = !this.splitView;
     }
   },
 });

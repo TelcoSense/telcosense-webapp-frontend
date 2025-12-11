@@ -4,7 +4,7 @@ import type { Frame } from './useImageSequenceLayer'
 
 export interface ControllableLayer {
   name: string
-  frames: ComputedRef<{ timestamp: string; objectUrl: string | null }[]>
+  frames: ComputedRef<Frame[]>
   currentIndex: ComputedRef<number>
   isPlaying: ComputedRef<boolean>
   frameLoading: ComputedRef<boolean>

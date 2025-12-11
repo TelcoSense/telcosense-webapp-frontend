@@ -34,14 +34,11 @@ import { useLinkSelection } from '@/composables/useLinkSelection'
 import { useMap } from '@/composables/useMap'
 import { useRealtime } from '@/composables/useRealtime'
 import { datetimeFormat, toUtcDate } from '@/utils'
-// import { useStationSelection } from '@/composables/useStationSelection'
 
-// TODO: playback speed, select proper time range for the rest of the layers when using user calculation
-// when deleting selected calc check if it isnt selected
 
 // realtime composable
 const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
-const { map } = useMap()
+const { map, secondaryMap } = useMap()
 
 // store definitions
 const weatherStations = useWeatherStationsStore()
@@ -51,11 +48,6 @@ const cmlData = useCmlDataStore()
 const config = useConfigStore()
 const layers = useLayersStore()
 const device = useDeviceStore()
-
-
-// realtime/historic bounds
-// const start = ref<string | null>('')
-// const end = ref<string | null>('')
 
 watch(
   () => config.realtime,
@@ -78,14 +70,17 @@ watch([currentTimestamp, oneWeekAgoTimestamp], ([end, start]) => {
   }
 })
 
-// map initialization, link and station selection setup
-// const map = ref<L.Map | null>(null)
+const stationsGroupMain = ref<L.LayerGroup>(L.layerGroup())
+const linksGroupMain = ref<L.LayerGroup>(L.layerGroup())
 
-const stationsGroup = ref<L.LayerGroup>(L.layerGroup())
-const linksGroup = ref<L.LayerGroup>(L.layerGroup())
+const stationsGroupSecondary = ref<L.LayerGroup>(L.layerGroup())
+const linksGroupSecondary = ref<L.LayerGroup>(L.layerGroup())
 
-const linkPolylines = new Map<number, L.Polyline>()
-const stationMarkers = new Map<number, L.CircleMarker>()
+const linkPolylinesMain = new Map<number, L.Polyline>()
+const stationMarkersMain = new Map<number, L.CircleMarker>()
+
+const linkPolylinesSecondary = new Map<number, L.Polyline>()
+const stationMarkersSecondary = new Map<number, L.CircleMarker>()
 
 const selectedLinkIds = ref<Set<number>>(new Set())
 const selectedStationIds = ref<Set<number>>(new Set())
@@ -116,16 +111,8 @@ function applyCustomRange() {
       ? toUtcDate(selectedEnd.value).toISOString()
       : new Date(selectedEnd.value).toISOString()
 
-  // const startUtc = toUtcDate(selectedStart.value).toISOString()
-  // const endUtc = toUtcDate(selectedEnd.value).toISOString()
-
   config.start = startUtc
   config.end = endUtc
-  // start.value = startUtc
-  // end.value = endUtc
-
-  // weatherData.clear()
-  // cmlData.clear()
 
   clearLayer()
 
@@ -153,14 +140,6 @@ const isTimeRangeValid = computed(() => {
   )
 })
 
-// const { onMapMouseDown: onStationMouseDown } = useStationSelection({
-//   map: map as Ref<L.Map | null>,
-//   dragBox,
-//   stations: weatherStations,
-//   selectedStationIds,
-//   drawStations,
-// })
-
 function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     selectedLinkIds.value.clear()
@@ -181,8 +160,24 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors',
     detectRetina: true,
   }).addTo(map.value as L.Map)
-  stationsGroup.value.addTo(map.value as L.Map)
-  linksGroup.value.addTo(map.value as L.Map)
+  stationsGroupMain.value.addTo(map.value as L.Map)
+  linksGroupMain.value.addTo(map.value as L.Map)
+}
+
+function initSecondaryMap() {
+  const zoom = device.isMobile ? 6 : 8
+  secondaryMap.value = L.map('secondary-map', {
+    preferCanvas: true,
+    zoomControl: false,
+    renderer: L.canvas({ tolerance: 6 }),
+  }).setView([49.74379, 15.33863], zoom)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    detectRetina: true,
+  }).addTo(secondaryMap.value as L.Map)
+  stationsGroupSecondary.value.addTo(secondaryMap.value as L.Map)
+  linksGroupSecondary.value.addTo(secondaryMap.value as L.Map)
 }
 
 // map layers setup
@@ -203,6 +198,7 @@ async function initLayer(
 
 onMounted(async () => {
   initMap()
+  initSecondaryMap()
 
   config.start = oneWeekAgoTimestamp.value
   config.end = currentTimestamp.value
@@ -241,20 +237,26 @@ const tooltipOptions: L.TooltipOptions = {
   opacity: 1,
 }
 
-function drawLinks() {
-  const group = linksGroup.value!
+function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
   const currentIds = new Set(links.filteredLinks.map((l) => l.id))
-  for (const [id, polyline] of linkPolylines.entries()) {
+
+  // remove deleted
+  for (const [id, poly] of store.entries()) {
     if (!currentIds.has(id)) {
-      group.removeLayer(polyline)
-      linkPolylines.delete(id)
+      group.removeLayer(poly)
+      store.delete(id)
     }
   }
+
   links.filteredLinks.forEach((link) => {
     const isSelected =
-      selectedLinkIds.value.has(link.id) || link.id.toString() === cmlData.selectedCmlId
+      selectedLinkIds.value.has(link.id) ||
+      link.id.toString() === cmlData.selectedCmlId
+
     const color = isSelected ? 'red' : 'black'
-    let polyline = linkPolylines.get(link.id)
+
+    let polyline = store.get(link.id)
+
     if (!polyline) {
       polyline = L.polyline(
         [
@@ -281,10 +283,10 @@ function drawLinks() {
           </div>`,
         tooltipOptions,
       )
+
       polyline.on('click', async () => {
         if (selectionInProgress.value) return
-        polyline?.setTooltipContent('')
-        config.dataPlottingVisible = true;
+        config.dataPlottingVisible = true
         cmlData.fetchCmlData(
           config.start,
           config.end,
@@ -295,41 +297,46 @@ function drawLinks() {
         )
       })
 
-      polyline.addTo(group as L.LayerGroup)
-      linkPolylines.set(link.id, polyline)
+      group.addLayer(polyline)
+      store.set(link.id, polyline)
     } else {
       polyline.setStyle({ color })
     }
   })
 }
 
-function drawStations() {
-  const group = stationsGroup.value!
+function drawLinks() {
+  drawLinksTo(linksGroupMain.value as L.LayerGroup, linkPolylinesMain)
+  drawLinksTo(linksGroupSecondary.value as L.LayerGroup, linkPolylinesSecondary)
+}
+
+function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>) {
   const currentIds = new Set(weatherStations.filteredStations.map((ws) => ws.id))
-  for (const [id, marker] of stationMarkers.entries()) {
+
+  // remove deleted
+  for (const [id, marker] of store.entries()) {
     if (!currentIds.has(id)) {
       group.removeLayer(marker)
-      stationMarkers.delete(id)
+      store.delete(id)
     }
   }
+
   weatherStations.filteredStations.forEach((ws) => {
     const isSelected =
-      selectedStationIds.value.has(ws.id) || ws.gh_id === weatherData.selectedStationId
+      selectedStationIds.value.has(ws.id) ||
+      ws.gh_id === weatherData.selectedStationId
+
     const hasTemperature = ws.measurements.includes('T')
     const hasPrecipitation = ws.measurements.includes('SRA10M')
 
     let color = 'gray'
-    if (isSelected) {
-      color = 'red'
-    } else if (hasTemperature && hasPrecipitation) {
-      color = 'purple'
-    } else if (hasTemperature) {
-      color = 'orange'
-    } else if (hasPrecipitation) {
-      color = 'blue'
-    }
+    if (isSelected) color = 'red'
+    else if (hasTemperature && hasPrecipitation) color = 'purple'
+    else if (hasTemperature) color = 'orange'
+    else if (hasPrecipitation) color = 'blue'
 
-    let marker = stationMarkers.get(ws.id)
+    let marker = store.get(ws.id)
+
     if (!marker) {
       marker = L.circleMarker([ws.Y, ws.X], {
         radius: 3.5,
@@ -338,6 +345,7 @@ function drawStations() {
         fillOpacity: 0.5,
         weight: 0.5,
       })
+
       const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm';
       marker.bindTooltip(
         `<div class="font-inter text-black ${tooltipFontsize}">
@@ -353,17 +361,21 @@ function drawStations() {
       )
       marker.on('click', async () => {
         if (selectionInProgress.value) return
-        const ghId = ws.gh_id
-        marker?.setTooltipContent('')
-        weatherData.fetchStationData(config.start, config.end, ghId)
-        config.dataPlottingVisible = true;
+        weatherData.fetchStationData(config.start, config.end, ws.gh_id)
+        config.dataPlottingVisible = true
       })
-      marker.addTo(group as L.LayerGroup)
-      stationMarkers.set(ws.id, marker)
+
+      group.addLayer(marker)
+      store.set(ws.id, marker)
     } else {
       marker.setStyle({ color, fillColor: color })
     }
   })
+}
+
+function drawStations() {
+  drawStationsTo(stationsGroupMain.value as L.LayerGroup, stationMarkersMain)
+  drawStationsTo(stationsGroupSecondary.value as L.LayerGroup, stationMarkersSecondary)
 }
 
 // watchers for the filtered links and stations drawing
@@ -434,8 +446,6 @@ watch(
       layers.raincz.clear()
       layers.userCalc.clear()
 
-      // weatherData.clear()
-      // cmlData.clear()
     }
   },
 )
@@ -463,7 +473,11 @@ async function copySelectedLinksToClipboard() {
   <div class="font-inter min-h-[100svh]">
     <main class="h-[100svh]">
       <div class="relative flex h-full w-full flex-row items-center justify-center">
-        <div id="map" class="leaflet-container z-0 h-full w-full"></div>
+
+        <div class="flex h-full w-full">
+          <div id="map" class="leaflet-container h-full w-1/2 z-0"></div>
+          <div id="secondary-map" class="leaflet-container h-full w-1/2 z-0"></div>
+        </div>
 
         <div v-if="config.start && config.end" id="timestamps"
           class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 bg-gray-800/60 p-1 text-sm text-white backdrop-blur-xs select-none md:visible md:bottom-3 md:flex">

@@ -143,14 +143,5 @@ onClickOutside(layerSwitcher, () => {
       </button>
     </div>
 
-    <!-- <button
-      class="mt-4 cursor-pointer rounded px-2 py-1 text-sm"
-      :class="
-        showLatestFrame ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-      "
-      @click="showLatestFrame = !showLatestFrame"
-    >
-      Show latest frame
-    </button> -->
   </div>
 </template>

@@ -18,12 +18,6 @@ export const useLayersStore = defineStore('layers', () => {
     }),
   )
 
-  // const raincz = shallowRef(
-  //   useImageLayer('raincz', {
-  //     apiUrl: '/raincz/list',
-  //     bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
-  //   }),
-  // )
 
   const raincz = shallowRef(
     useImageLayer('raincz', {
@@ -31,13 +25,6 @@ export const useLayersStore = defineStore('layers', () => {
       bounds: L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
     }),
   )
-
-  // const raincz = shallowRef(
-  //   useImageLayer('raincz', {
-  //     apiUrl: '/raincz/list',
-  //     bounds: L.latLngBounds([48.55547303756637, 12.094991576420597], [51.05353169070471, 18.8503225129994]),
-  //   }),
-  // )
 
   const userCalc = shallowRef(
     useImageLayer('user-calc', {

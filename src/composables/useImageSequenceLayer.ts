@@ -8,6 +8,7 @@ export interface Frame {
   timestamp: string
   url: string
   objectUrl: string | null
+  rain_score?: number
 }
 
 export function useImageSequenceLayer(initialConfig: {

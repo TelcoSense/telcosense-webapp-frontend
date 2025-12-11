@@ -3,11 +3,19 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useConfigStore } from '@/stores/config'
 import { useDeviceStore } from '@/stores/device'
 import { datetimeFormat } from '@/utils'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 const { activeLayer } = useActiveLayer()
 const config = useConfigStore()
 const device = useDeviceStore()
+
+const rainColors = [
+  '#380070', '#3000a8', '#0000fc', '#006cc0', '#00a000',
+  '#00bc00', '#34d800', '#9cdc00', '#e0dc00', '#fcb000',
+  '#fc8400', '#fc5800', '#fc0000', '#a00000', '#fcfcfc'
+]
+
+const timelineCanvas = ref<HTMLCanvasElement | null>(null)
 
 const disablePrev = computed(
   () => !activeLayer.value || activeLayer.value.currentIndex <= 0 || activeLayer.value.isPlaying,
@@ -43,6 +51,50 @@ const sliderLabel = computed(() =>
     : '—',
 )
 
+const frameColors = computed(() => {
+  if (!activeLayer.value) return []
+
+  return activeLayer.value.frames.map(frame => {
+    const score = frame.rain_score
+    if (score == null) return 'transparent'
+    if (score <= 0.01) return 'transparent'
+    const idx = Math.floor(score * rainColors.length)
+    return rainColors[Math.min(rainColors.length - 1, Math.max(0, idx))]
+  })
+})
+
+watch(
+  () => frameColors.value,
+  async () => {
+    await nextTick()
+    drawTimeline()
+  },
+  { deep: true }
+)
+
+function drawTimeline() {
+  const canvas = timelineCanvas.value
+  if (!canvas || !frameColors.value.length) return
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+
+  // set canvas to actual pixel size of rendered width
+  const width = canvas.clientWidth
+  const height = canvas.clientHeight
+
+  canvas.width = width
+  canvas.height = height
+
+  const n = frameColors.value.length
+  const barWidth = width / n
+
+  for (let i = 0; i < n; i++) {
+    ctx.fillStyle = frameColors.value[i]
+    ctx.fillRect(i * barWidth, 0, barWidth + 1, height)
+  }
+}
+
 </script>
 
 <template>
@@ -72,6 +124,10 @@ const sliderLabel = computed(() =>
       <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
     </p>
     <div class="flex flex-col items-center gap-x-3">
+
+      <canvas v-if="activeLayer.frames.length" ref="timelineCanvas"
+        class="w-[calc(100%-0.1rem)] h-2 rounded-sm mb-1 border border-gray-400"></canvas>
+
       <input v-if="activeLayer.frames.length" type="range" min="0" :max="activeLayer.frames.length - 1"
         v-model.number="sliderIndex" @change="onSliderChanged"
         :disabled="activeLayer.isPlaying || activeLayer.frameLoading" :key="activeLayer.name" class="w-full" />

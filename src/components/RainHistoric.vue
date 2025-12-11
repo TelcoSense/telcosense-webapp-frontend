@@ -6,7 +6,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { api } from '@/api'
 import getSecureConfig from '@/cookies'
-import { coordsBrno, coordsCzechia, coordsPraha, datetimeFormat, toUtcDate } from '@/utils'
+import { datetimeFormat, toUtcDate } from '@/utils'
 
 import { useConfigStore } from '@/stores/config'
 import { useLayersStore } from '@/stores/layers'
@@ -41,10 +41,6 @@ interface Calculation {
   created_at: string
   start: string
   end: string
-  x_min: number
-  x_max: number
-  y_min: number
-  y_max: number
 }
 
 const userCalcLayer = useImageLayer('user-calc')
@@ -72,6 +68,8 @@ const data = ref({
   name: '',
   start: null,
   end: null,
+  step: 10,
+  output_step: 10,
   min_length: 0.5,
   max_length: 100,
   is_mlp_enabled: false,
@@ -79,57 +77,22 @@ const data = ref({
   rolling_values: 10,
   wet_dry_deviation: 0.8,
   baseline_samples: 5,
-  interp_res: 0.01,
-  idw_power: 1,
-  idw_near: 35,
-  idw_dist: 1.5,
-  x_min: 12.0905,
-  x_max: 18.8591,
-  y_min: 48.5525,
-  y_max: 51.0557,
-  is_crop_enabled: false,
+  idw_power: 2,
+  idw_near: 8,
+  idw_dist_m: 30000,
+  is_crop_enabled: true,
+  exclude_cmls: false,
 })
-
-function setCoords(name: string) {
-  switch (name) {
-    case 'czechia': {
-      data.value.x_min = coordsCzechia.xMin
-      data.value.x_max = coordsCzechia.xMax
-      data.value.y_min = coordsCzechia.yMin
-      data.value.y_max = coordsCzechia.yMax
-      break
-    }
-    case 'brno': {
-      data.value.x_min = coordsBrno.xMin
-      data.value.x_max = coordsBrno.xMax
-      data.value.y_min = coordsBrno.yMin
-      data.value.y_max = coordsBrno.yMax
-      break
-    }
-    case 'praha': {
-      data.value.x_min = coordsPraha.xMin
-      data.value.x_max = coordsPraha.xMax
-      data.value.y_min = coordsPraha.yMin
-      data.value.y_max = coordsPraha.yMax
-      break
-    }
-  }
-}
 
 async function viewCalculation(calc: Calculation) {
   if (!map.value) return
-
   applyCustomRange(calc.start, calc.end)
-
   userCalcLayer.clear()
   userCalcLayer.setMap(map.value as L.Map)
-
   userCalcLayer.setApiUrl(`/historic/${calc.name}/list`)
-
   userCalcLayer.setBounds(
-    L.latLngBounds(L.latLng(calc.y_min, calc.x_min), L.latLng(calc.y_max, calc.x_max)),
+    L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
   )
-
   await userCalcLayer.fetchList(calc.start, calc.end)
 }
 
@@ -246,9 +209,9 @@ const canStart = computed(() => {
 
 <template>
   <div v-if="showHistoric && !config.realtime"
-    class="absolute top-14 left-50.5 z-50 w-3xl rounded-md bg-gray-800 p-3 text-sm text-white">
-    <div class="mb-2 flex justify-between">
-      <h2>User calculations</h2>
+    class="absolute top-14 left-50.5 z-50 w-3xl rounded-md  backdrop-blur-xs border  border-gray-600 bg-gray-800 p-2 text-sm text-white">
+    <div class="flex justify-between border-gray-400">
+      User calculations
       <button class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500"
         @click="showHistoric = false">
         Close
@@ -257,16 +220,16 @@ const canStart = computed(() => {
 
     <div class="mb-2 flex gap-x-3">
       <button @click="activeTab = 'status'" :class="[
-        'cursor-pointer rounded px-3 py-1',
+        'cursor-pointer rounded px-3 py-1 ',
         activeTab === 'status'
-          ? 'hover:cyan-700 bg-cyan-600 text-white'
-          : 'bg-gray-600 text-gray-200',
+          ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+          : 'bg-gray-600 text-gray-200 hover:bg-gray-700',
       ]">
         View calculations
       </button>
       <button @click="activeTab = 'create'" :class="[
-        'cursor-pointer rounded px-3 py-1',
-        activeTab === 'create' ? 'bg-cyan-600 text-white' : 'bg-gray-600 text-gray-200',
+        'cursor-pointer rounded px-3 py-1 ',
+        activeTab === 'create' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'bg-gray-600 text-gray-200 hover:bg-gray-700',
       ]">
         New calculation
       </button>
@@ -295,9 +258,20 @@ const canStart = computed(() => {
         </div>
       </div>
 
+      <div class="grid grid-cols-2 gap-x-4">
+        <div>
+          <label class="block">Step (min)</label>
+          <input v-model.number="data.step" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
+        </div>
+        <div>
+          <label class="block">Output step (min)</label>
+          <input v-model.number="data.output_step" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
+        </div>
+      </div>
       <hr class="my-2 border-gray-700" />
 
       <!-- CML filtering -->
+
       <div class="grid grid-cols-2 gap-x-4">
         <div>
           <label class="block">Min length (km)</label>
@@ -307,48 +281,14 @@ const canStart = computed(() => {
           <label class="block">Max length (km)</label>
           <input v-model.number="data.max_length" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
+        <div class="flex gap-x-2 mt-2">
+          <label class="block">Exclude CMLs</label>
+          <input v-model="data.exclude_cmls" type="checkbox" />
+        </div>
       </div>
 
       <hr class="my-2 border-gray-700" />
 
-      <!-- limits -->
-      <div class="grid grid-cols-2 gap-x-4">
-        <div>
-          <label>X min</label><input v-model.number="data.x_min" type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none" />
-        </div>
-        <div>
-          <label>X max</label><input v-model.number="data.x_max" type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none" />
-        </div>
-        <div>
-          <label>Y min</label><input v-model.number="data.y_min" type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none" />
-        </div>
-        <div>
-          <label>Y max</label><input v-model.number="data.y_max" type="number"
-            class="w-full bg-gray-700 p-1 focus:outline-none" />
-        </div>
-      </div>
-
-      <div class="mt-2 flex gap-x-2">
-        <button @click="setCoords('czechia')"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
-          Czechia
-        </button>
-
-        <button @click="setCoords('praha')"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
-          Prague
-        </button>
-
-        <button @click="setCoords('brno')"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
-          Brno
-        </button>
-      </div>
-
-      <hr class="my-2 border-gray-700" />
       <div v-if="showAdvanced">
         <!-- wet/dry -->
         <div class="grid grid-cols-2 gap-x-4">
@@ -385,11 +325,6 @@ const canStart = computed(() => {
         <!-- interpolation -->
         <div class="grid grid-cols-2 gap-x-4">
           <div>
-            <label class="block">Interpolation resolution</label>
-            <input v-model.number="data.interp_res" type="number" step="0.01"
-              class="w-full bg-gray-700 p-1 focus:outline-none" />
-          </div>
-          <div>
             <label class="block">IDW power</label>
             <input v-model.number="data.idw_power" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
           </div>
@@ -398,8 +333,8 @@ const canStart = computed(() => {
             <input v-model.number="data.idw_near" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
           </div>
           <div>
-            <label class="block">IDW distance</label>
-            <input v-model.number="data.idw_dist" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
+            <label class="block">IDW distance (m)</label>
+            <input v-model.number="data.idw_dist_m" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
           </div>
         </div>
 
@@ -422,7 +357,7 @@ const canStart = computed(() => {
       <div class="flex justify-between gap-x-3">
         <!-- submit -->
         <button @click="showAdvanced = !showAdvanced"
-          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
+          class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-700 hover:opacity-100">
           {{ showAdvanced ? 'Hide advanced settings' : 'Show advanced settings' }}
         </button>
 
