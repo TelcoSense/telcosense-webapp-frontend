@@ -5,7 +5,23 @@ import { useDeviceStore } from '@/stores/device'
 import { datetimeFormat } from '@/utils'
 import { computed, nextTick, ref, watch } from 'vue'
 
-const { activeLayer } = useActiveLayer()
+const props = withDefaults(
+  defineProps<{
+    mapTarget?: 'main' | 'secondary'
+  }>(),
+  {
+    mapTarget: 'main',
+  }
+)
+
+const { activeLayerMain, activeLayerSecondary } = useActiveLayer()
+
+const activeLayer = computed(() =>
+  props.mapTarget === 'secondary'
+    ? activeLayerSecondary.value
+    : activeLayerMain.value
+)
+
 const config = useConfigStore()
 const device = useDeviceStore()
 
@@ -73,22 +89,18 @@ watch(
 )
 
 function drawTimeline() {
+
+  console.log("here")
   const canvas = timelineCanvas.value
   if (!canvas || !frameColors.value.length) return
-
   const ctx = canvas.getContext('2d')
   if (!ctx) return
-
-  // set canvas to actual pixel size of rendered width
   const width = canvas.clientWidth
   const height = canvas.clientHeight
-
   canvas.width = width
   canvas.height = height
-
   const n = frameColors.value.length
   const barWidth = width / n
-
   for (let i = 0; i < n; i++) {
     ctx.fillStyle = frameColors.value[i]
     ctx.fillRect(i * barWidth, 0, barWidth + 1, height)
@@ -126,7 +138,7 @@ function drawTimeline() {
     <div class="flex flex-col items-center gap-x-3">
 
       <canvas v-if="activeLayer.frames.length" ref="timelineCanvas"
-        class="w-[calc(100%-0.1rem)] h-2 rounded-sm mb-1 border border-gray-400"></canvas>
+        class="w-full h-2 rounded-sm mb-1 border border-gray-400"></canvas>
 
       <input v-if="activeLayer.frames.length" type="range" min="0" :max="activeLayer.frames.length - 1"
         v-model.number="sliderIndex" @change="onSliderChanged"

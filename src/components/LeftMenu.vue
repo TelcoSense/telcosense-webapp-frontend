@@ -16,9 +16,15 @@ const cmlData = useCmlDataStore()
 const links = useLinksStore()
 const config = useConfigStore()
 
-const { activeLayer } = useActiveLayer()
+const {
+  activeLayerMain,
+} = useActiveLayer()
 
-const anyLayerActive = computed(() => activeLayer.value !== null)
+const layerMainActive = computed(() => {
+  return (
+    activeLayerMain.value !== null
+  )
+})
 </script>
 
 <template>
@@ -32,26 +38,34 @@ const anyLayerActive = computed(() => activeLayer.value !== null)
         @click="weatherStations.hideAll = !weatherStations.hideAll" />
     </div>
     <div class="flex flex-col gap-y-1">
-      <Icon icon="solar:map-outline" width="38" height="38" class="menu-btn"
-        :class="{ active: config.layerSwitcherVisible }" @click="
+
+      <Icon icon="carbon:split-screen" width="38" height="38" class="menu-btn" :class="{ active: config.splitView }"
+        @click="
           () => {
-            config.layerSwitcherVisible = !config.layerSwitcherVisible
+            config.toggleSplitView()
+          }
+        " />
+
+      <Icon icon="solar:map-outline" width="38" height="38" class="menu-btn"
+        :class="{ active: config.mainLayerSwitcherVisible }" @click="
+          () => {
+            config.mainLayerSwitcherVisible = !config.mainLayerSwitcherVisible
             config.linkFilterVisible = false
           }
         " />
 
-      <Icon v-if="anyLayerActive" icon="dashicons:controls-play" width="38" height="38" class="menu-btn"
+      <Icon v-if="layerMainActive" icon="dashicons:controls-play" width="38" height="38" class="menu-btn"
         :class="{ active: config.layerControlsVisible }"
         @click="config.layerControlsVisible = !config.layerControlsVisible" />
 
-      <Icon v-if="anyLayerActive" icon="lsicon:measure-outline" width="38" height="38" class="menu-btn"
+      <Icon v-if="layerMainActive" icon="lsicon:measure-outline" width="38" height="38" class="menu-btn"
         :class="{ active: config.barVisible }" @click="config.barVisible = !config.barVisible" />
 
       <Icon icon="carbon:filter" width="38" height="38" class="menu-btn" :class="{ active: config.linkFilterVisible }"
         @click="
           () => {
             config.linkFilterVisible = !config.linkFilterVisible
-            config.layerSwitcherVisible = false
+            config.mainLayerSwitcherVisible = false
           }
         " />
 

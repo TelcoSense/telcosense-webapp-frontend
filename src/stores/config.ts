@@ -6,7 +6,8 @@ interface ConfigState {
   end: string | null;
   datetimeFormat: 'UTC' | 'Europe/Prague';
   dataPlottingVisible: boolean;
-  layerSwitcherVisible: boolean;
+  mainLayerSwitcherVisible: boolean;
+  secondaryLayerSwitcherVisible: boolean;
   layerControlsVisible: boolean;
   linkFilterVisible: boolean;
   barVisible: boolean;
@@ -20,7 +21,8 @@ export const useConfigStore = defineStore('config', {
     end: null,
     datetimeFormat: 'UTC',
     dataPlottingVisible: false,
-    layerSwitcherVisible: false,
+    mainLayerSwitcherVisible: false,
+    secondaryLayerSwitcherVisible: false,
     layerControlsVisible: false,
     linkFilterVisible: false,
     barVisible: false,

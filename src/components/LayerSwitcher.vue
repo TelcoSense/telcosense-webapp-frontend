@@ -3,11 +3,52 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
 import { useConfigStore } from '@/stores/config'
 
+import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
 import { onClickOutside } from '@vueuse/core'
+import type { PropType } from 'vue'
+
 import { computed, useTemplateRef } from 'vue'
 import { useRoute } from 'vue-router'
 
-const { activeLayer, setLayer, hideLayer } = useActiveLayer()
+const props = defineProps({
+  mapTarget: {
+    type: String as PropType<'main' | 'secondary'>,
+    default: 'main',
+  },
+})
+
+const {
+  activeLayerMain,
+  setMainLayer,
+  hideMainLayer,
+
+  activeLayerSecondary,
+  setSecondaryLayer,
+  hideSecondaryLayer,
+} = useActiveLayer()
+
+const activeLayer = computed(() =>
+  props.mapTarget === 'main'
+    ? activeLayerMain.value
+    : activeLayerSecondary.value
+)
+
+function setLayerForTarget(layer: ImageSequenceLayer, id: string) {
+  if (props.mapTarget === 'main') {
+    setMainLayer(layer, id)
+  } else {
+    setSecondaryLayer(layer, id)
+  }
+}
+
+function hideLayerForTarget() {
+  if (props.mapTarget === 'main') {
+    hideMainLayer()
+  } else {
+    hideSecondaryLayer()
+  }
+}
+
 const config = useConfigStore()
 
 const route = useRoute()
@@ -63,11 +104,11 @@ function toggleLayer(id: string, layer: ReturnType<typeof useImageLayer>) {
   if (activeLayer.value?.name === id) {
     config.layerControlsVisible = false
     config.barVisible = false
-    hideLayer()
+    hideLayerForTarget()
   } else {
     config.layerControlsVisible = true
     config.barVisible = true
-    setLayer(layer, id)
+    setLayerForTarget(layer, id)
   }
 }
 
@@ -95,7 +136,11 @@ const telcoLayers = computed(() =>
 const layerSwitcher = useTemplateRef<HTMLElement>('layerSwitcher')
 
 onClickOutside(layerSwitcher, () => {
-  config.layerSwitcherVisible = false
+  if (props.mapTarget === 'main') {
+    config.mainLayerSwitcherVisible = false
+  } else {
+    config.secondaryLayerSwitcherVisible = false
+  }
 })
 </script>
 

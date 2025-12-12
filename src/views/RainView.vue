@@ -8,7 +8,7 @@ import '@vuepic/vue-datepicker/dist/main.css'
 
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
 import type { Ref } from 'vue'
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import DataPlotting from '@/components/DataPlotting.vue'
 import LayerControls from '@/components/LayerControls.vue'
@@ -16,9 +16,8 @@ import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LeftMenu from '@/components/LeftMenu.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import LinkTable from '@/components/LinkTable.vue'
-import PrecipitationBar from '@/components/PrecipitationBar.vue'
 import RainHistoric from '@/components/RainHistoric.vue'
-import ReflectivityBar from '@/components/ReflectivityBar.vue'
+import RightMenu from '@/components/RightMenu.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
 import { useCmlDataStore } from '@/stores/cmlData'
@@ -114,7 +113,10 @@ function applyCustomRange() {
   config.start = startUtc
   config.end = endUtc
 
-  clearLayer()
+  clearMainLayer()
+  if (config.splitView) {
+    clearSecondaryLayer()
+  }
 
   layers.maxz.clear()
   layers.merge1h.clear()
@@ -171,7 +173,6 @@ function initSecondaryMap() {
     zoomControl: false,
     renderer: L.canvas({ tolerance: 6 }),
   }).setView([49.74379, 15.33863], zoom)
-
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
     detectRetina: true,
@@ -181,24 +182,30 @@ function initSecondaryMap() {
 }
 
 // map layers setup
-const { activeLayer, clearLayer } = useActiveLayer()
+const {
+  clearMainLayer,
+  clearSecondaryLayer,
+} = useActiveLayer()
+
 
 async function initLayer(
   layer: ImageSequenceLayer,
   map: L.Map,
   start: string,
   end: string,
-  fetch: boolean = true,
+  fetch = true,
 ) {
   layer.releaseBlobs()
   layer.setMap(map)
-
   if (fetch) await layer.fetchList(start, end)
 }
 
+
 onMounted(async () => {
   initMap()
-  initSecondaryMap()
+  if (config.splitView) {
+    initSecondaryMap()
+  }
 
   config.start = oneWeekAgoTimestamp.value
   config.end = currentTimestamp.value
@@ -211,15 +218,14 @@ onMounted(async () => {
 
   mapObject.on('mousedown', (e: L.LeafletMouseEvent) => {
     onMapMouseDown(e)
-    // onStationMouseDown(e)
   })
 
   window.addEventListener('keydown', onKeyDown)
 
   await Promise.all([
-    initLayer(layers.maxz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
-    initLayer(layers.merge1h, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
-    initLayer(layers.raincz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value),
+    initLayer(layers.maxz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
+    initLayer(layers.merge1h, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
+    initLayer(layers.raincz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.userCalc, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
   ])
 })
@@ -422,7 +428,11 @@ watch(
         cmlData.refresh(config.start, config.end)
         weatherData.refresh(config.start, config.end)
       }
-      clearLayer()
+      clearMainLayer()
+      if (config.splitView) {
+        clearSecondaryLayer()
+      }
+
       layers.maxz.clear()
       layers.merge1h.clear()
       layers.raincz.clear()
@@ -434,7 +444,10 @@ watch(
       // do something when switching to historic calcs
       config.dataPlottingVisible = false
 
-      clearLayer()
+      clearMainLayer()
+      if (config.splitView) {
+        clearSecondaryLayer()
+      }
 
       if (config.start && config.end) {
         cmlData.refresh(config.start, config.end)
@@ -467,6 +480,21 @@ async function copySelectedLinksToClipboard() {
     console.error('Failed to copy:', err)
   }
 }
+
+watch(
+  () => config.splitView,
+  (enabled) => {
+    if (enabled && !secondaryMap.value) {
+      initSecondaryMap()
+    }
+    nextTick(() => {
+      map.value?.invalidateSize()
+      if (enabled) {
+        secondaryMap.value?.invalidateSize()
+      }
+    })
+  }
+)
 </script>
 
 <template>
@@ -475,8 +503,11 @@ async function copySelectedLinksToClipboard() {
       <div class="relative flex h-full w-full flex-row items-center justify-center">
 
         <div class="flex h-full w-full">
-          <div id="map" class="leaflet-container h-full w-1/2 z-0"></div>
-          <div id="secondary-map" class="leaflet-container h-full w-1/2 z-0"></div>
+          <div id="map" :class="[
+            'leaflet-container h-full z-0',
+            config.splitView ? 'w-1/2' : 'w-full'
+          ]"></div>
+          <div id="secondary-map" v-show="config.splitView" class="leaflet-container h-full w-1/2 z-0"></div>
         </div>
 
         <div v-if="config.start && config.end" id="timestamps"
@@ -528,17 +559,21 @@ async function copySelectedLinksToClipboard() {
             class="menu-btn" @click="copySelectedLinksToClipboard" />
         </LeftMenu>
 
+        <RightMenu v-if="config.splitView" />
+
         <LinkFilter />
         <LayerControls />
-        <LayerSwitcher v-if="config.layerSwitcherVisible" />
+        <LayerSwitcher v-if="config.mainLayerSwitcherVisible" map-target="main" />
+        <LayerSwitcher class="left-[calc(50%+3.75rem)]" v-if="config.secondaryLayerSwitcherVisible"
+          map-target="secondary" />
 
-        <PrecipitationBar v-if="activeLayer?.name == 'merge1h' && config.barVisible" />
+        <!-- <PrecipitationBar v-if="activeLayer?.name == 'merge1h' && config.barVisible" />
         <ReflectivityBar v-if="
           (activeLayer?.name == 'maxz' ||
             activeLayer?.name == 'raincz' ||
             activeLayer?.name == 'user-calc') &&
           config.barVisible
-        " />
+        " /> -->
 
         <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
@@ -568,7 +603,7 @@ async function copySelectedLinksToClipboard() {
           </button>
         </div>
         <div v-else class="absolute top-14 left-50.5 z-30 text-sm">
-          <button v-show="!config.realtime && config.layerSwitcherVisible" @click="timeRangeVisible = true"
+          <button v-show="!config.realtime && config.mainLayerSwitcherVisible" @click="timeRangeVisible = true"
             class="menu-btn">
             Previous realtime data
           </button>
