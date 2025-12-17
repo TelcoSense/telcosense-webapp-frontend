@@ -36,6 +36,9 @@ const layerMainActive = computed(() => {
       <Icon v-if="weatherStations.hasStations" icon="fluent:weather-cloudy-24-regular" width="38" height="38"
         class="menu-btn" :class="{ active: !weatherStations.hideAll }"
         @click="weatherStations.hideAll = !weatherStations.hideAll" />
+
+      <slot name="up">
+      </slot>
     </div>
     <div class="flex flex-col gap-y-1">
 
@@ -77,7 +80,7 @@ const layerMainActive = computed(() => {
         }" @click="config.dataPlottingVisible = !config.dataPlottingVisible" />
 
 
-      <slot>
+      <slot name="down">
       </slot>
     </div>
   </div>

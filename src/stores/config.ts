@@ -10,6 +10,7 @@ interface ConfigState {
   secondaryLayerSwitcherVisible: boolean;
   layerControlsVisible: boolean;
   linkFilterVisible: boolean;
+  clustersVisible: boolean;
   barVisible: boolean;
   splitView: boolean;
 }
@@ -25,6 +26,7 @@ export const useConfigStore = defineStore('config', {
     secondaryLayerSwitcherVisible: false,
     layerControlsVisible: false,
     linkFilterVisible: false,
+    clustersVisible: false,
     barVisible: false,
     splitView: true
   }),

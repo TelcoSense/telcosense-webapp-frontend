@@ -16,6 +16,25 @@ const props = withDefaults(
 
 const { activeLayerMain, activeLayerSecondary } = useActiveLayer()
 
+function findClosestFrameIndex(
+  frames: { timestamp: string }[],
+  targetTs: number,
+) {
+  let bestIdx = 0
+  let bestDiff = Infinity
+  for (let i = 0; i < frames.length; i++) {
+    const diff = Math.abs(
+      new Date(frames[i].timestamp).getTime() - targetTs,
+    )
+    if (diff < bestDiff) {
+      bestDiff = diff
+      bestIdx = i
+    }
+  }
+  return bestIdx
+}
+
+
 const activeLayer = computed(() =>
   props.mapTarget === 'secondary'
     ? activeLayerSecondary.value
@@ -59,6 +78,28 @@ watch(
   (index) => {
     if (index != null) sliderIndex.value = index
   },
+)
+
+watch(
+  () => {
+    const layer = activeLayerMain.value
+    if (!layer) return null
+    return layer.frames[layer.currentIndex]?.timestamp ?? null
+  },
+  (ts) => {
+    if (props.mapTarget !== 'main') return
+    if (!ts) return
+    const main = activeLayerMain.value
+    const secondary = activeLayerSecondary.value
+    if (!main || !secondary || secondary.isPlaying) return
+    if (!secondary.frames.length) return
+    const targetTs = +new Date(ts)
+    const idx = findClosestFrameIndex(secondary.frames, targetTs)
+    if (idx !== secondary.currentIndex) {
+      secondary.showFrame(idx)
+    }
+  },
+  { flush: 'post' },
 )
 
 const sliderLabel = computed(() =>

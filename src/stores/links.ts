@@ -21,6 +21,8 @@ export interface Link {
   frequency_A: number
   frequency_B: number
   length: number
+  center_x: number
+  center_y: number
 }
 
 const FILTER_KEY = 'linkFilters'

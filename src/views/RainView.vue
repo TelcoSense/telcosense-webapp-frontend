@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import L from 'leaflet'
+import 'leaflet.markercluster/dist/leaflet.markercluster.js'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import 'leaflet/dist/leaflet.css'
 
 import { Icon } from '@iconify/vue'
@@ -16,7 +19,6 @@ import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LeftMenu from '@/components/LeftMenu.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import LinkTable from '@/components/LinkTable.vue'
-import RainHistoric from '@/components/RainHistoric.vue'
 import RightMenu from '@/components/RightMenu.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
@@ -69,6 +71,7 @@ watch([currentTimestamp, oneWeekAgoTimestamp], ([end, start]) => {
   }
 })
 
+
 const stationsGroupMain = ref<L.LayerGroup>(L.layerGroup())
 const linksGroupMain = ref<L.LayerGroup>(L.layerGroup())
 
@@ -76,15 +79,19 @@ const stationsGroupSecondary = ref<L.LayerGroup>(L.layerGroup())
 const linksGroupSecondary = ref<L.LayerGroup>(L.layerGroup())
 
 const linkPolylinesMain = new Map<number, L.Polyline>()
-const stationMarkersMain = new Map<number, L.CircleMarker>()
-
 const linkPolylinesSecondary = new Map<number, L.Polyline>()
+
+const stationMarkersMain = new Map<number, L.CircleMarker>()
 const stationMarkersSecondary = new Map<number, L.CircleMarker>()
 
 const selectedLinkIds = ref<Set<number>>(new Set())
 const selectedStationIds = ref<Set<number>>(new Set())
 
 const dragBox = ref<HTMLDivElement | null>(null)
+
+const clusterGroup = ref<L.LayerGroup>(L.layerGroup())
+const clusterMarkers = new Map<number, L.CircleMarker>()
+
 
 const { onMapMouseDown, selectionInProgress } = useLinkSelection({
   map: map as Ref<L.Map | null>,
@@ -162,6 +169,15 @@ function initMap() {
     attribution: '&copy; OpenStreetMap contributors',
     detectRetina: true,
   }).addTo(map.value as L.Map)
+  // dirty hack because of the missing types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  clusterGroup.value = (L as any).markerClusterGroup({
+    maxClusterRadius: 75,
+    disableClusteringAtZoom: 13,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: true,
+  })
+  clusterGroup.value.addTo(map.value as L.Map)
   stationsGroupMain.value.addTo(map.value as L.Map)
   linksGroupMain.value.addTo(map.value as L.Map)
 }
@@ -215,6 +231,7 @@ onMounted(async () => {
 
   dragBox.value = document.getElementById('drag-box') as HTMLDivElement
   const mapObject = map.value as L.Map
+  const mapObjectSecondary = secondaryMap.value as L.Map
 
   mapObject.on('mousedown', (e: L.LeafletMouseEvent) => {
     onMapMouseDown(e)
@@ -227,6 +244,11 @@ onMounted(async () => {
     initLayer(layers.merge1h, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.raincz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.userCalc, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
+
+    initLayer(layers.maxzSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
+    initLayer(layers.merge1hSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
+    initLayer(layers.rainczSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
+    initLayer(layers.userCalcSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
   ])
 })
 
@@ -379,6 +401,48 @@ function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>)
   })
 }
 
+function rebuildLinksCluster(
+  cluster: L.LayerGroup,
+  store: Map<number, L.CircleMarker>
+) {
+  cluster.clearLayers()
+  store.clear()
+  links.links.forEach((link) => {
+    const color = 'transparent'
+    const marker = L.circleMarker(
+      [link.center_y, link.center_x],
+      {
+        radius: 3.5,
+        color,
+        fillColor: color,
+      }
+    )
+    cluster.addLayer(marker)
+    store.set(link.id, marker)
+  })
+}
+
+function clearLinksCluster(
+  cluster: L.LayerGroup,
+  store: Map<number, L.CircleMarker>
+) {
+  cluster.clearLayers()
+  store.clear()
+}
+
+function toggleLinksCluster(
+  cluster: L.LayerGroup | null,
+  store: Map<number, L.CircleMarker>
+) {
+  if (!cluster) return
+  config.clustersVisible = !config.clustersVisible;
+  if (config.clustersVisible) {
+    rebuildLinksCluster(cluster, store)
+  } else {
+    clearLinksCluster(cluster, store)
+  }
+}
+
 function drawStations() {
   drawStationsTo(stationsGroupMain.value as L.LayerGroup, stationMarkersMain)
   drawStationsTo(stationsGroupSecondary.value as L.LayerGroup, stationMarkersSecondary)
@@ -440,6 +504,7 @@ watch(
       layers.maxz.fetchList(config.start, config.end)
       layers.merge1h.fetchList(config.start, config.end)
       layers.raincz.fetchList(config.start, config.end)
+
     } else {
       // do something when switching to historic calcs
       config.dataPlottingVisible = false
@@ -555,16 +620,27 @@ watch(
 
         <LeftMenu>
           <!-- insert the button for copying link ids here -->
-          <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
-            class="menu-btn" @click="copySelectedLinksToClipboard" />
+          <template #up>
+            <Icon icon="mingcute:three-circles-fill" width="38" height="38" class="menu-btn"
+              @click="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)"
+              :class="{ active: config.clustersVisible }" />
+          </template>
+
+          <template #down>
+            <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
+              class="menu-btn" @click="copySelectedLinksToClipboard" />
+          </template>
         </LeftMenu>
 
         <RightMenu v-if="config.splitView" />
 
         <LinkFilter />
-        <LayerControls />
+
+        <LayerControls class="left-[calc(25%-190px)]" map-target="main" />
+        <LayerControls class="left-[calc(75%-190px)]" map-target="secondary" />
+
         <LayerSwitcher v-if="config.mainLayerSwitcherVisible" map-target="main" />
-        <LayerSwitcher class="left-[calc(50%+3.75rem)]" v-if="config.secondaryLayerSwitcherVisible"
+        <LayerSwitcher v-if="config.secondaryLayerSwitcherVisible" class="left-[calc(50%+3.75rem)]"
           map-target="secondary" />
 
         <!-- <PrecipitationBar v-if="activeLayer?.name == 'merge1h' && config.barVisible" />
@@ -577,7 +653,7 @@ watch(
 
         <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
-        <RainHistoric :link-ids="selectedLinkIds" />
+        <!-- <RainHistoric :link-ids="selectedLinkIds" /> -->
 
         <!-- timerange -->
         <div v-if="!config.realtime && timeRangeVisible"

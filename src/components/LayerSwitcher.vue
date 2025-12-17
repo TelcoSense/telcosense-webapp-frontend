@@ -53,54 +53,54 @@ const config = useConfigStore()
 
 const route = useRoute()
 
-
 const layers = [
   {
     id: 'maxz',
     label: 'Max Z',
     group: 'CHMI',
-    layer: useImageLayer('maxz'),
+    layer: computed(() => useImageLayer(props.mapTarget, 'maxz')),
     showOnRoutes: ['rain'],
   },
   {
     id: 'merge1h',
     label: 'Merge 1h',
     group: 'CHMI',
-    layer: useImageLayer('merge1h'),
+    layer: computed(() => useImageLayer(props.mapTarget, 'merge1h')),
     showOnRoutes: ['rain'],
   },
   {
     id: 'raincz',
     label: 'Rain CZ',
     group: 'TelcoSense',
-    layer: useImageLayer('raincz'),
+    layer: computed(() => useImageLayer(props.mapTarget, 'raincz')),
     showOnRoutes: ['rain'],
   },
   {
     id: 'user-calc',
     label: 'User calc',
     group: 'TelcoSense',
-    layer: useImageLayer('user-calc'),
+    layer: computed(() => useImageLayer(props.mapTarget, 'user-calc')),
     showOnRoutes: ['rain'],
   },
-  // telcotemp
   {
     id: 'tempcz',
     label: 'Temp CZ',
     group: 'TelcoSense',
-    layer: useImageLayer('tempcz'),
+    layer: computed(() => useImageLayer(props.mapTarget, 'tempcz')),
     showOnRoutes: ['temp'],
   },
   {
     id: 'tempchmi',
     label: 'Temp CHMI',
     group: 'TelcoSense',
-    layer: useImageLayer('tempchmi'),
+    layer: computed(() => useImageLayer(props.mapTarget, 'tempchmi')),
     showOnRoutes: ['temp'],
   },
 ]
 
-function toggleLayer(id: string, layer: ReturnType<typeof useImageLayer>) {
+function toggleLayer(id: string, layerRef: { value: ImageSequenceLayer }) {
+  const layer = layerRef.value
+
   if (activeLayer.value?.name === id) {
     config.layerControlsVisible = false
     config.barVisible = false
@@ -153,7 +153,7 @@ onClickOutside(layerSwitcher, () => {
     <span v-if="chmiLayers.length > 0" class="my-1.5 flex text-white">CHMI</span>
     <div class="flex flex-col gap-y-2">
       <button v-for="{ id, label, layer } in chmiLayers" :key="id" @click="toggleLayer(id, layer)"
-        :disabled="layer.frames.value.length === 0 || isCustomRangeUnset" :class="[
+        :disabled="layer.value.frames.value.length === 0 || isCustomRangeUnset" :class="[
           'flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-400 px-2',
           'enabled:cursor-pointer enabled:hover:bg-gray-800/20',
           isActive(id).value
@@ -161,7 +161,7 @@ onClickOutside(layerSwitcher, () => {
             : 'text-gray-500 enabled:text-gray-300 enabled:hover:text-cyan-200 disabled:text-gray-400',
         ]">
         <div>{{ label }}</div>
-        <div class="text-lg" :class="layer.frames.value.length > 0 && !isCustomRangeUnset ? 'text-green-600' : 'text-red-600'
+        <div class="text-lg" :class="layer.value.frames.value.length > 0 && !isCustomRangeUnset ? 'text-green-600' : 'text-red-600'
           ">
           ●
         </div>
@@ -171,7 +171,7 @@ onClickOutside(layerSwitcher, () => {
     <span class="my-1.5 flex text-white">TelcoSense</span>
     <div class="flex flex-col gap-y-2">
       <button v-for="{ id, label, layer } in telcoLayers" :key="id" @click="toggleLayer(id, layer)"
-        :disabled="layer.frames.value.length === 0 || isCustomRangeUnset" :class="[
+        :disabled="layer.value.frames.value.length === 0 || isCustomRangeUnset" :class="[
           'flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-400 px-2',
           'enabled:cursor-pointer enabled:hover:bg-gray-800/20',
           isActive(id).value
@@ -180,8 +180,8 @@ onClickOutside(layerSwitcher, () => {
         ]">
         <div>{{ label }}</div>
         <div class="text-lg" :class="{
-          'text-green-600': layer.frames.value.length > 0 && !isCustomRangeUnset,
-          'text-red-600': layer.frames.value.length === 0 || isCustomRangeUnset,
+          'text-green-600': layer.value.frames.value.length > 0 && !isCustomRangeUnset,
+          'text-red-600': layer.value.frames.value.length === 0 || isCustomRangeUnset,
         }">
           ●
         </div>

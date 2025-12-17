@@ -32,7 +32,7 @@ const weatherData = useWeatherDataStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
 
-const { clearLayer } = useActiveLayer()
+const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
 const { remainingTime } = useTokenCountdown()
 
 const formattedTime = computed(() => {
@@ -53,7 +53,8 @@ function resetData() {
   links.$reset()
   cmlData.$reset()
   config.$reset()
-  clearLayer()
+  clearMainLayer()
+  clearSecondaryLayer()
 }
 
 async function logout() {
