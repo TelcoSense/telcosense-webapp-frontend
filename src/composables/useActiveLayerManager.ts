@@ -2,6 +2,7 @@ import { computed, ref, unref, type ComputedRef, type Ref } from 'vue'
 import type { Frame } from './useImageSequenceLayer'
 
 export interface ControllableLayer {
+  id: string
   name: string
   frames: ComputedRef<Frame[]>
   currentIndex: ComputedRef<number>
@@ -49,9 +50,12 @@ export function createActiveLayerManager() {
       setAnimationSpeed(value: number): void
       clear(): void
     },
-    name = 'Unnamed Layer',
+    id = 'Default',
+    name = 'Default',
     initialTimestamp?: string | null
   ) {
+
+    console.log("setting layer!")
     const prevTs = initialTimestamp ?? activeLayer.value?.currentTimestamp ?? null
     const prevOpacity = activeLayer.value?.opacity
 
@@ -59,6 +63,7 @@ export function createActiveLayerManager() {
     activeLayer.value?.setVisible(false)
 
     activeLayer.value = {
+      id,
       name,
       frames: toComputed(store.frames),
       currentIndex: toComputed(store.currentIndex),

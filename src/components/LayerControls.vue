@@ -3,7 +3,7 @@ import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useConfigStore } from '@/stores/config'
 import { useDeviceStore } from '@/stores/device'
 import { datetimeFormat } from '@/utils'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -50,7 +50,6 @@ const rainColors = [
   '#fc8400', '#fc5800', '#fc0000', '#a00000', '#fcfcfc'
 ]
 
-const timelineCanvas = ref<HTMLCanvasElement | null>(null)
 
 const disablePrev = computed(
   () => !activeLayer.value || activeLayer.value.currentIndex <= 0 || activeLayer.value.isPlaying,
@@ -114,58 +113,52 @@ const frameColors = computed(() => {
   return activeLayer.value.frames.map(frame => {
     const score = frame.rain_score
     if (score == null) return 'transparent'
-    if (score <= 0.01) return 'transparent'
+    // if (score <= 0.01) return 'transparent'
     const idx = Math.floor(score * rainColors.length)
     return rainColors[Math.min(rainColors.length - 1, Math.max(0, idx))]
   })
 })
 
-watch(
-  () => frameColors.value,
-  async () => {
-    await nextTick()
-    drawTimeline()
-  },
-  { deep: true }
-)
+const sliderGradient = computed(() => {
+  const colors = frameColors.value
+  const n = colors.length
 
-function drawTimeline() {
-
-  console.log("here")
-  const canvas = timelineCanvas.value
-  if (!canvas || !frameColors.value.length) return
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-  const width = canvas.clientWidth
-  const height = canvas.clientHeight
-  canvas.width = width
-  canvas.height = height
-  const n = frameColors.value.length
-  const barWidth = width / n
-  for (let i = 0; i < n; i++) {
-    ctx.fillStyle = frameColors.value[i]
-    ctx.fillRect(i * barWidth, 0, barWidth + 1, height)
+  // fallback (neutral gray track)
+  if (!n || colors.every(c => !c || c === 'transparent')) {
+    return 'linear-gradient(to right, #4b5563 0%, #4b5563 100%)' // tailwind gray-600
   }
-}
+
+  return `linear-gradient(to right, ${colors
+    .map((c, i) => {
+      const a = (i / n) * 100
+      const b = ((i + 1) / n) * 100
+      return `${c} ${a}% ${b}%`
+    })
+    .join(', ')})`
+})
+
 
 </script>
 
 <template>
   <div v-if="activeLayer && config.layerControlsVisible && (!device.isMobile || !config.dataPlottingVisible)"
     class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
-    <div class="flex items-center justify-center gap-x-3">
-      <button @click="activeLayer.changeFrame(-1)" :disabled="disablePrev"
-        class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
-        Prev
-      </button>
-      <button @click="activeLayer.changeFrame(1)" :disabled="disableNext"
-        class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
-        Next
-      </button>
-      <button @click="togglePlayback"
-        class="h-6 cursor-pointer rounded-md bg-blue-600 px-3 text-white hover:bg-blue-700 md:h-8">
-        Play/Pause
-      </button>
+    <div class="flex items-center justify-between gap-x-3">
+      <span> Layer: {{ activeLayer.name }}</span>
+      <div class="flex gap-x-2">
+        <button @click="activeLayer.changeFrame(-1)" :disabled="disablePrev"
+          class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
+          Prev
+        </button>
+        <button @click="activeLayer.changeFrame(1)" :disabled="disableNext"
+          class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
+          Next
+        </button>
+        <button @click="togglePlayback"
+          class="h-6 cursor-pointer rounded-md bg-blue-600 px-3 text-white hover:bg-blue-700 md:h-8">
+          Play/Pause
+        </button>
+      </div>
     </div>
     <p class="mt-1">
       Current frame:
@@ -178,12 +171,12 @@ function drawTimeline() {
     </p>
     <div class="flex flex-col items-center gap-x-3">
 
-      <canvas v-if="activeLayer.frames.length" ref="timelineCanvas"
-        class="w-full h-2 rounded-sm mb-1 border border-gray-400"></canvas>
 
       <input v-if="activeLayer.frames.length" type="range" min="0" :max="activeLayer.frames.length - 1"
         v-model.number="sliderIndex" @change="onSliderChanged"
-        :disabled="activeLayer.isPlaying || activeLayer.frameLoading" :key="activeLayer.name" class="w-full" />
+        :disabled="activeLayer.isPlaying || activeLayer.frameLoading" :key="activeLayer.id"
+        class="w-full timeline-range mb-1 mt-0.5" :style="{ '--track-bg': sliderGradient }" />
+
       <div class="flex w-full justify-between">
         <span class="font-chivo text-nowrap">
           {{ datetimeFormat(activeLayer.frames[0]?.timestamp, config.datetimeFormat) ?? '—' }}
@@ -226,3 +219,42 @@ function drawTimeline() {
     </span>
   </div>
 </template>
+
+
+<style scoped>
+.timeline-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+
+.timeline-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track-bg);
+}
+
+.timeline-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 12px;
+  width: 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.75);
+  margin-top: -3px;
+}
+
+
+.timeline-range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track-bg);
+}
+
+.timeline-range::-moz-range-thumb {
+  height: 12px;
+  width: 12px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.75);
+}
+</style>

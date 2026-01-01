@@ -6,6 +6,7 @@ const layerMap = new Map<string, ReturnType<typeof useImageSequenceLayer>>()
 export function useImageLayer(
   mapTarget: 'main' | 'secondary',
   id: string,
+
   config?: { apiUrl: string; bounds: L.LatLngBounds }
 ) {
   const key = `${mapTarget}:${id}`

@@ -33,11 +33,11 @@ const activeLayer = computed(() =>
     : activeLayerSecondary.value
 )
 
-function setLayerForTarget(layer: ImageSequenceLayer, id: string) {
+function setLayerForTarget(layer: ImageSequenceLayer, id: string, name: string) {
   if (props.mapTarget === 'main') {
-    setMainLayer(layer, id)
+    setMainLayer(layer, id, name)
   } else {
-    setSecondaryLayer(layer, id)
+    setSecondaryLayer(layer, id, name)
   }
 }
 
@@ -98,22 +98,22 @@ const layers = [
   },
 ]
 
-function toggleLayer(id: string, layerRef: { value: ImageSequenceLayer }) {
+function toggleLayer(id: string, name: string, layerRef: { value: ImageSequenceLayer }) {
   const layer = layerRef.value
 
-  if (activeLayer.value?.name === id) {
+  if (activeLayer.value?.id === id) {
     config.layerControlsVisible = false
     config.barVisible = false
     hideLayerForTarget()
   } else {
     config.layerControlsVisible = true
     config.barVisible = true
-    setLayerForTarget(layer, id)
+    setLayerForTarget(layer, id, name)
   }
 }
 
 function isActive(id: string) {
-  return computed(() => activeLayer.value?.name === id)
+  return computed(() => activeLayer.value?.id === id)
 }
 
 const isCustomRangeUnset = computed(() => {
@@ -152,7 +152,7 @@ onClickOutside(layerSwitcher, () => {
 
     <span v-if="chmiLayers.length > 0" class="my-1.5 flex text-white">CHMI</span>
     <div class="flex flex-col gap-y-2">
-      <button v-for="{ id, label, layer } in chmiLayers" :key="id" @click="toggleLayer(id, layer)"
+      <button v-for="{ id, label, layer } in chmiLayers" :key="id" @click="toggleLayer(id, label, layer)"
         :disabled="layer.value.frames.value.length === 0 || isCustomRangeUnset" :class="[
           'flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-400 px-2',
           'enabled:cursor-pointer enabled:hover:bg-gray-800/20',
@@ -170,7 +170,7 @@ onClickOutside(layerSwitcher, () => {
 
     <span class="my-1.5 flex text-white">TelcoSense</span>
     <div class="flex flex-col gap-y-2">
-      <button v-for="{ id, label, layer } in telcoLayers" :key="id" @click="toggleLayer(id, layer)"
+      <button v-for="{ id, label, layer } in telcoLayers" :key="id" @click="toggleLayer(id, label, layer)"
         :disabled="layer.value.frames.value.length === 0 || isCustomRangeUnset" :class="[
           'flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-400 px-2',
           'enabled:cursor-pointer enabled:hover:bg-gray-800/20',
