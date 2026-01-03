@@ -58,6 +58,7 @@ export function createActiveLayerManager() {
     console.log("setting layer!")
     const prevTs = initialTimestamp ?? activeLayer.value?.currentTimestamp ?? null
     const prevOpacity = activeLayer.value?.opacity
+    const prevAnimationSpeed = activeLayer.value?.animationSpeed
 
     activeLayer.value?.pause()
     activeLayer.value?.setVisible(false)
@@ -87,6 +88,7 @@ export function createActiveLayerManager() {
     const layer = activeLayer.value!
     layer.setVisible(true)
     if (prevOpacity != null) layer.setOpacity(prevOpacity)
+    if (prevAnimationSpeed != null) layer.setAnimationSpeed(prevAnimationSpeed)
     if (prevTs) {
       await layer.showNearestTimestamp(prevTs)
     } else {

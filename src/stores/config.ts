@@ -8,6 +8,7 @@ interface ConfigState {
   dataPlottingVisible: boolean;
   mainLayerSwitcherVisible: boolean;
   secondaryLayerSwitcherVisible: boolean;
+  followPrimary: boolean;
   layerControlsVisible: boolean;
   linkFilterVisible: boolean;
   clustersVisible: boolean;
@@ -24,6 +25,7 @@ export const useConfigStore = defineStore('config', {
     dataPlottingVisible: false,
     mainLayerSwitcherVisible: false,
     secondaryLayerSwitcherVisible: false,
+    followPrimary: true,
     layerControlsVisible: false,
     linkFilterVisible: false,
     clustersVisible: false,
@@ -40,6 +42,17 @@ export const useConfigStore = defineStore('config', {
 
     setToHistoric() {
       this.realtime = false;
+    },
+
+    toggleRealtime() {
+      if (this.realtime) {
+        this.realtime = false
+      }
+      else {
+        this.realtime = true;
+        this.start = null;
+        this.end = null;
+      }
     },
 
     toggleDatetimeFormat() {

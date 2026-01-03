@@ -17,14 +17,14 @@ defineProps<{
 const weatherData = useWeatherDataStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
-const { activeLayer } = useActiveLayer()
+const { activeLayerMain } = useActiveLayer()
 const route = useRoute()
 
 const isRainRoute = computed(() => route.path.includes('rain'))
 const isTempRoute = computed(() => route.path.includes('temp'))
 
 const currentCursorTime = computed(() => {
-  const frame = activeLayer.value?.frames[activeLayer.value.currentIndex]
+  const frame = activeLayerMain.value?.frames[activeLayerMain.value.currentIndex]
   return frame?.timestamp ?? undefined
 })
 

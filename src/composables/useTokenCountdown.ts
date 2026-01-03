@@ -26,7 +26,8 @@ export function useTokenCountdown(pollInterval = 30000) {
     useLinksStore().$reset()
     useCmlDataStore().$reset()
     useConfigStore().$reset()
-    useActiveLayer().clearLayer()
+    useActiveLayer().clearMainLayer()
+    useActiveLayer().clearSecondaryLayer()
 
     router.push({ name: 'login' })
   }

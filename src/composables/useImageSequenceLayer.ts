@@ -101,8 +101,14 @@ export function useImageSequenceLayer(initialConfig: {
 
     try {
       let objectUrl = blobCache.get(frame.timestamp)
+
+
       if (!objectUrl) {
+
         const res = await api.get(frame.url, { responseType: 'blob' })
+
+        // console.log("frame fetched", frame.url)
+
         objectUrl = URL.createObjectURL(res.data as Blob)
         blobCache.set(frame.timestamp, objectUrl)
       }

@@ -19,6 +19,9 @@ import LayerSwitcher from '@/components/LayerSwitcher.vue'
 import LeftMenu from '@/components/LeftMenu.vue'
 import LinkFilter from '@/components/LinkFilter.vue'
 import LinkTable from '@/components/LinkTable.vue'
+import PrecipitationBar from '@/components/PrecipitationBar.vue'
+import RainHistoric from '@/components/RainHistoric.vue'
+import ReflectivityBar from '@/components/ReflectivityBar.vue'
 import RightMenu from '@/components/RightMenu.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
@@ -71,6 +74,14 @@ watch([currentTimestamp, oneWeekAgoTimestamp], ([end, start]) => {
   }
 })
 
+
+const {
+  activeLayerMain,
+  activeLayerSecondary
+} = useActiveLayer()
+
+
+const showHistoric = ref<boolean>(false)
 
 const stationsGroupMain = ref<L.LayerGroup>(L.layerGroup())
 const linksGroupMain = ref<L.LayerGroup>(L.layerGroup())
@@ -125,14 +136,8 @@ function applyCustomRange() {
     clearSecondaryLayer()
   }
 
-  layers.maxz.clear()
-  layers.merge1h.clear()
-  layers.raincz.clear()
-  layers.userCalc.clear()
-
-  layers.maxz.fetchList(config.start, config.end)
-  layers.merge1h.fetchList(config.start, config.end)
-  layers.raincz.fetchList(config.start, config.end)
+  layers.clearRainLayers()
+  layers.fetchListRain(config.start, config.end, config.splitView)
 
   cmlData.refresh(config.start, config.end)
   weatherData.refresh(config.start, config.end)
@@ -248,7 +253,6 @@ onMounted(async () => {
     initLayer(layers.maxzSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.merge1hSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.rainczSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
-    initLayer(layers.userCalcSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
   ])
 })
 
@@ -485,47 +489,20 @@ watch(
 watch(
   () => config.realtime,
   (newVal) => {
-    if (newVal) {
-      config.dataPlottingVisible = true
-
-      if (config.start && config.end) {
-        cmlData.refresh(config.start, config.end)
-        weatherData.refresh(config.start, config.end)
-      }
-      clearMainLayer()
-      if (config.splitView) {
-        clearSecondaryLayer()
-      }
-
-      layers.maxz.clear()
-      layers.merge1h.clear()
-      layers.raincz.clear()
-
-      layers.maxz.fetchList(config.start, config.end)
-      layers.merge1h.fetchList(config.start, config.end)
-      layers.raincz.fetchList(config.start, config.end)
-
-    } else {
-      // do something when switching to historic calcs
-      config.dataPlottingVisible = false
-
-      clearMainLayer()
-      if (config.splitView) {
-        clearSecondaryLayer()
-      }
-
-      if (config.start && config.end) {
-        cmlData.refresh(config.start, config.end)
-        weatherData.refresh(config.start, config.end)
-      }
-
-      layers.maxz.clear()
-      layers.merge1h.clear()
-      layers.raincz.clear()
-      layers.userCalc.clear()
-
+    config.dataPlottingVisible = true
+    if (config.start && config.end) {
+      cmlData.refresh(config.start, config.end)
+      weatherData.refresh(config.start, config.end)
     }
-  },
+    clearMainLayer()
+    if (config.splitView) {
+      clearSecondaryLayer()
+      layers.clearRainLayers(true)
+    }
+    layers.clearRainLayers()
+    // for realtime fetch the frames from the realtime window
+    if (newVal) layers.fetchListRain(config.start, config.end, config.splitView)
+  }
 )
 
 function formatDateForDatepicker(date: Date): string {
@@ -534,13 +511,11 @@ function formatDateForDatepicker(date: Date): string {
 
 async function copySelectedLinksToClipboard() {
   if (selectedLinkIds.value.size === 0) {
-    // console.warn("No links selected")
     return
   }
   const text = Array.from(selectedLinkIds.value).join(', ')
   try {
     await navigator.clipboard.writeText(text)
-    // console.log("Copied:", text)
   } catch (err) {
     console.error('Failed to copy:', err)
   }
@@ -598,23 +573,33 @@ watch(
 
         <TopNavbar>
           <div class="mr-32 hidden gap-x-3 md:flex">
-            <button :class="[
-              'h-8 cursor-pointer rounded-md px-3 text-gray-300',
-              config.realtime
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-700 hover:bg-gray-600',
-            ]" @click="config.setToRealtime()">
-              Realtime data
+            <button
+              class="h-8 cursor-pointer rounded-md px-3 bg-gray-800/50 backdrop-blur-xs text-white hover:bg-gray-900/50 text-sm"
+              @click="config.toggleRealtime">
+              {{ config.realtime ? "Switch to historic" : "Switch to realtime" }}
             </button>
 
-            <button :class="[
+            <button v-if="!config.realtime"
+              class="h-8 cursor-pointer rounded-md px-3 bg-gray-800/50 backdrop-blur-xs text-white hover:bg-gray-900/50 text-sm"
+              @click="timeRangeVisible = true">
+              Select time range
+            </button>
+
+            <button v-if="!config.realtime"
+              class="h-8 cursor-pointer rounded-md px-3 bg-gray-800/50 backdrop-blur-xs text-white hover:bg-gray-900/50 text-sm"
+              @click="showHistoric = !showHistoric">
+              User calculations
+            </button>
+
+
+            <!-- <button :class="[
               'h-8 cursor-pointer rounded-md px-3 text-gray-300',
               !config.realtime
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-700 hover:bg-gray-600',
             ]" @click="config.setToHistoric()">
               Historic data
-            </button>
+            </button> -->
           </div>
         </TopNavbar>
 
@@ -636,32 +621,43 @@ watch(
 
         <LinkFilter />
 
-        <LayerControls class="left-[calc(25%-190px)]" map-target="main" />
-        <LayerControls class="left-[calc(75%-190px)]" map-target="secondary" />
+        <LayerControls :class="config.splitView ? 'left-[calc(25%-190px)]' : null" map-target="main" />
+        <LayerControls v-if="config.splitView" class="left-[calc(75%-190px)]" map-target="secondary" />
 
         <LayerSwitcher v-if="config.mainLayerSwitcherVisible" map-target="main" />
         <LayerSwitcher v-if="config.secondaryLayerSwitcherVisible" class="left-[calc(50%+3.75rem)]"
           map-target="secondary" />
 
-        <!-- <PrecipitationBar v-if="activeLayer?.name == 'merge1h' && config.barVisible" />
+        <!-- primary -->
+        <PrecipitationBar v-if="activeLayerMain?.id == 'merge1h' && config.barVisible"
+          :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'" />
         <ReflectivityBar v-if="
-          (activeLayer?.name == 'maxz' ||
-            activeLayer?.name == 'raincz' ||
-            activeLayer?.name == 'user-calc') &&
-          config.barVisible
-        " /> -->
+          (activeLayerMain?.id == 'maxz' ||
+            activeLayerMain?.id == 'raincz' ||
+            activeLayerMain?.id == 'user-calc') &&
+          config.barVisible" :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'"
+          :layer-id="activeLayerMain.id" />
+
+
+        <!-- secondary -->
+        <PrecipitationBar v-if="activeLayerSecondary?.id == 'merge1h' && config.barVisible" />
+        <ReflectivityBar v-if="
+          (activeLayerSecondary?.id == 'maxz' ||
+            activeLayerSecondary?.id == 'raincz' ||
+            activeLayerSecondary?.id == 'user-calc') &&
+          config.barVisible" :layer-id="activeLayerSecondary.id" />
 
         <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
-        <!-- <RainHistoric :link-ids="selectedLinkIds" /> -->
+        <RainHistoric :link-ids="selectedLinkIds" :show-historic="showHistoric" />
 
         <!-- timerange -->
         <div v-if="!config.realtime && timeRangeVisible"
-          class="absolute top-14 left-50.5 z-30 w-64 rounded-md bg-gray-800 p-3">
+          class="absolute top-14 left-36.5 z-30 w-64 rounded-md bg-gray-800/50 backdrop-blur-xs p-2">
           <div class="flex w-full justify-end text-sm">
             <button @click="timeRangeVisible = false"
-              class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500 hover:opacity-100">
-              Close
+              class="cursor-pointer rounded bg-gray-500 px-3 py-1 text-white hover:bg-gray-600 hover:opacity-100">
+              Cancel
             </button>
           </div>
           <label class="mb-1 block text-sm text-white">Start</label>
@@ -678,12 +674,7 @@ watch(
             Apply time range
           </button>
         </div>
-        <div v-else class="absolute top-14 left-50.5 z-30 text-sm">
-          <button v-show="!config.realtime && config.mainLayerSwitcherVisible" @click="timeRangeVisible = true"
-            class="menu-btn">
-            Previous realtime data
-          </button>
-        </div>
+
         <!-- timerange end-->
       </div>
     </main>

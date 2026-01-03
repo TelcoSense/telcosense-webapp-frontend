@@ -97,13 +97,16 @@ onClickOutside(profileMenuWrapper, () => {
 
 <template>
   <nav class="absolute top-1 z-10 flex h-12 w-full items-center justify-between px-3">
-    <span
-      class="flex h-8 cursor-pointer items-center justify-center rounded-md text-xl font-semibold text-gray-900 transition select-none hover:text-gray-700"
-      @click="toggleRoute">
-      TelcoSense
-    </span>
 
     <div class="flex gap-x-3">
+
+      <span
+        class="flex h-8 cursor-pointer items-center justify-center rounded-md text-xl font-semibold text-gray-900 transition select-none hover:text-gray-700 mr-3"
+        @click="toggleRoute">
+        TelcoSense
+      </span>
+
+
       <slot></slot>
     </div>
 

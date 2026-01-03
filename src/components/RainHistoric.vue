@@ -43,8 +43,8 @@ interface Calculation {
   end: string
 }
 
-const userCalcLayer = useImageLayer('user-calc')
-const { clearLayer } = useActiveLayer()
+const userCalcLayer = useImageLayer('main', 'user-calc')
+const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
 
 const config = useConfigStore()
 const layers = useLayersStore()
@@ -52,10 +52,11 @@ const layers = useLayersStore()
 const selectedStart = ref<Date | null>(null)
 const selectedEnd = ref<Date | null>(null)
 
-const showHistoric = ref<boolean>(false)
+// const showHistoric = ref<boolean>(false)
 
 const props = defineProps<{
   linkIds: Set<number> | null
+  showHistoric: boolean
 }>()
 
 const activeTab = ref<'create' | 'status'>('status')
@@ -143,11 +144,9 @@ async function deleteCalculation(id: number) {
     await api.delete(`/rain-calculations/${id}`, getSecureConfig())
     // remove it from the list locally without waiting for the next poll
     calculations.value = calculations.value.filter((c) => c.id !== id)
-    clearLayer()
+    clearMainLayer()
 
-    layers.maxz.clear()
-    layers.merge1h.clear()
-    layers.raincz.clear()
+    layers.clearRainLayers()
 
     config.start = null
     config.end = null
@@ -170,32 +169,38 @@ function applyCustomRange(start: string, end: string) {
   // weatherData.clear()
   // cmlData.clear()
 
-  clearLayer()
-
-  layers.maxz.clear()
-  layers.merge1h.clear()
-  layers.raincz.clear()
-
-  layers.maxz.fetchList(config.start, config.end)
-  layers.merge1h.fetchList(config.start, config.end)
-  layers.raincz.fetchList(config.start, config.end)
+  if (config.splitView) {
+    clearMainLayer()
+    clearSecondaryLayer()
+    layers.clearRainLayers(true)
+    layers.fetchListRain(config.start, config.end, true)
+  }
+  else {
+    clearMainLayer()
+    layers.clearRainLayers(false)
+    layers.fetchListRain(config.start, config.end, false)
+  }
 
   // cmlData.refresh(start.value, end.value)
   // weatherData.refresh(start.value, end.value)
-
   // timeRangeVisible.value = false
+
   config.dataPlottingVisible = true
 }
 
-watch(showHistoric, (visible) => {
-  if (visible && activeTab.value === 'status') {
-    rainCalculations()
-    intervalId = window.setInterval(rainCalculations, 3000)
-  } else if (!visible && intervalId !== null) {
-    clearInterval(intervalId)
-    intervalId = null
-  }
-})
+watch(
+  () => props.showHistoric,
+  (visible) => {
+    if (visible) {
+      rainCalculations()
+      intervalId = window.setInterval(rainCalculations, 3000)
+    } else if (intervalId !== null) {
+      clearInterval(intervalId)
+      intervalId = null
+    }
+  },
+  { immediate: true }
+)
 
 const activeCalculationCount = computed(
   () => calculations.value.filter((c) => c.status === 'pending' || c.status === 'running').length,
@@ -209,13 +214,13 @@ const canStart = computed(() => {
 
 <template>
   <div v-if="showHistoric && !config.realtime"
-    class="absolute top-14 left-50.5 z-50 w-3xl rounded-md  backdrop-blur-xs border  border-gray-600 bg-gray-800 p-2 text-sm text-white">
+    class="absolute top-14 left-36.5 z-50 w-3xl rounded-md  backdrop-blur-xs border  border-gray-600 bg-gray-800 p-2 text-sm text-white">
     <div class="flex justify-between border-gray-400">
       User calculations
-      <button class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500"
+      <!-- <button class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500"
         @click="showHistoric = false">
         Close
-      </button>
+      </button> -->
     </div>
 
     <div class="mb-2 flex gap-x-3">
@@ -436,11 +441,5 @@ const canStart = computed(() => {
         </table>
       </div>
     </div>
-  </div>
-  <div v-else>
-    <button v-if="!config.realtime && config.layerSwitcherVisible" class="absolute top-22.5 left-50.5 menu-btn text-sm"
-      @click=" showHistoric = true">
-      User calculations
-    </button>
   </div>
 </template>

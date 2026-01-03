@@ -25,13 +25,6 @@ const layerSecondaryActive = computed(() => {
 
     <div class="flex flex-col gap-y-1">
 
-      <!-- <Icon icon="carbon:split-screen" width="38" height="38" class="menu-btn" :class="{ active: config.splitView }"
-        @click="
-          () => {
-            config.toggleSplitView()
-          }
-        " /> -->
-
       <Icon icon="solar:map-outline" width="38" height="38" class="menu-btn"
         :class="{ active: config.secondaryLayerSwitcherVisible }" @click="
           () => {
@@ -39,12 +32,15 @@ const layerSecondaryActive = computed(() => {
           }
         " />
 
-      <Icon v-if="layerSecondaryActive" icon="dashicons:controls-play" width="38" height="38" class="menu-btn"
+      <Icon v-if="layerSecondaryActive" icon="material-symbols:lock-outline" width="38" height="38" class="menu-btn"
+        :class="{ active: config.followPrimary }" @click="config.followPrimary = !config.followPrimary" />
+
+      <!-- <Icon v-if="layerSecondaryActive" icon="dashicons:controls-play" width="38" height="38" class="menu-btn"
         :class="{ active: config.layerControlsVisible }"
         @click="config.layerControlsVisible = !config.layerControlsVisible" />
 
       <Icon v-if="layerSecondaryActive" icon="lsicon:measure-outline" width="38" height="38" class="menu-btn"
-        :class="{ active: config.barVisible }" @click="config.barVisible = !config.barVisible" />
+        :class="{ active: config.barVisible }" @click="config.barVisible = !config.barVisible" /> -->
 
 
       <slot>

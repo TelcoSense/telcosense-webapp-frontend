@@ -129,6 +129,9 @@ const telcoLayers = computed(() =>
     (l) =>
       l.group === 'TelcoSense' &&
       l.showOnRoutes?.includes(route.name as string) &&
+      // show "user-calc" ONLY on primary (main) map
+      (l.id !== 'user-calc' || props.mapTarget === 'main') &&
+      // keep existing rule
       (l.id !== 'user-calc' || !config.realtime),
   ),
 )

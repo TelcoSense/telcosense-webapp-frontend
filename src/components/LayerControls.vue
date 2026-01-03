@@ -5,6 +5,8 @@ import { useDeviceStore } from '@/stores/device'
 import { datetimeFormat } from '@/utils'
 import { computed, ref, watch } from 'vue'
 
+import { Icon } from '@iconify/vue'
+
 const props = withDefaults(
   defineProps<{
     mapTarget?: 'main' | 'secondary'
@@ -143,9 +145,11 @@ const sliderGradient = computed(() => {
 <template>
   <div v-if="activeLayer && config.layerControlsVisible && (!device.isMobile || !config.dataPlottingVisible)"
     class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
+
     <div class="flex items-center justify-between gap-x-3">
       <span> Layer: {{ activeLayer.name }}</span>
-      <div class="flex gap-x-2">
+
+      <div v-if="!(props.mapTarget === 'secondary' && config.followPrimary)" class="flex gap-x-2">
         <button @click="activeLayer.changeFrame(-1)" :disabled="disablePrev"
           class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
           Prev
@@ -160,22 +164,27 @@ const sliderGradient = computed(() => {
         </button>
       </div>
     </div>
-    <p class="mt-1">
-      Current frame:
-      <span class="font-chivo">
-        {{
-          datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, config.datetimeFormat) ?? '—'
-        }}
-      </span>
-      <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
-    </p>
+    <div class="mt-1 flex items-center justify-between">
+      <p>
+        Current frame:
+        <span class="font-chivo">
+          {{
+            datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, config.datetimeFormat) ?? '—'
+          }}
+        </span>
+        <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
+
+      </p>
+      <Icon v-if="activeLayer.frameLoading" icon="eos-icons:loading" width="18" height="18" />
+
+    </div>
     <div class="flex flex-col items-center gap-x-3">
 
 
       <input v-if="activeLayer.frames.length" type="range" min="0" :max="activeLayer.frames.length - 1"
         v-model.number="sliderIndex" @change="onSliderChanged"
-        :disabled="activeLayer.isPlaying || activeLayer.frameLoading" :key="activeLayer.id"
-        class="w-full timeline-range mb-1 mt-0.5" :style="{ '--track-bg': sliderGradient }" />
+        :disabled="activeLayer.isPlaying || activeLayer.frameLoading || (config.followPrimary && props.mapTarget === 'secondary')"
+        :key="activeLayer.id" class="w-full timeline-range mb-1 mt-0.5" :style="{ '--track-bg': sliderGradient }" />
 
       <div class="flex w-full justify-between">
         <span class="font-chivo text-nowrap">
@@ -199,7 +208,7 @@ const sliderGradient = computed(() => {
           @input="(e) => activeLayer?.setOpacity(parseFloat((e.target as HTMLInputElement).value))"
           class="w-14 md:w-20" />
       </div>
-      <div class="flex items-center gap-x-1">
+      <div v-if="!(props.mapTarget === 'secondary' && config.followPrimary)" class="flex items-center gap-x-1">
         <span>Speed:</span>
         <input type="range" min="0.1" max="10" step="0.1" :value="1000 / activeLayer.animationSpeed" @input="
           (e) => {
@@ -217,6 +226,8 @@ const sliderGradient = computed(() => {
     <span class="font-chivo">
       {{ datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, config.datetimeFormat) ?? '—' }}
     </span>
+
+
   </div>
 </template>
 
