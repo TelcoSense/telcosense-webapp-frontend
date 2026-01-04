@@ -4,10 +4,9 @@ import { useImageLayer } from '@/composables/useImageLayer'
 import { useConfigStore } from '@/stores/config'
 
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
-import { onClickOutside } from '@vueuse/core'
 import type { PropType } from 'vue'
 
-import { computed, useTemplateRef } from 'vue'
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const props = defineProps({
@@ -99,11 +98,10 @@ const layers = [
 ]
 
 function toggleLayer(id: string, name: string, layerRef: { value: ImageSequenceLayer }) {
+  config.setLayerSwitchedTime()
   const layer = layerRef.value
 
   if (activeLayer.value?.id === id) {
-    config.layerControlsVisible = false
-    config.barVisible = false
     hideLayerForTarget()
   } else {
     config.layerControlsVisible = true
@@ -135,22 +133,11 @@ const telcoLayers = computed(() =>
       (l.id !== 'user-calc' || !config.realtime),
   ),
 )
-
-const layerSwitcher = useTemplateRef<HTMLElement>('layerSwitcher')
-
-onClickOutside(layerSwitcher, () => {
-  if (props.mapTarget === 'main') {
-    config.mainLayerSwitcherVisible = false
-  } else {
-    config.secondaryLayerSwitcherVisible = false
-  }
-})
 </script>
 
 <template>
   <div
-    class="absolute top-14 left-15 w-[133px] rounded-md border border-gray-600 bg-gray-800/50 p-2 text-xs backdrop-blur-xs md:text-sm"
-    ref="layerSwitcher">
+    class="absolute top-14 left-15 w-[133px] rounded-md border border-gray-600 bg-gray-800/50 p-2 text-xs backdrop-blur-xs md:text-sm">
     <span class="flex border-b border-gray-400 pb-1.5 text-white">Map layers</span>
 
     <span v-if="chmiLayers.length > 0" class="my-1.5 flex text-white">CHMI</span>

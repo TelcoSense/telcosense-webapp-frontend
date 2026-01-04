@@ -55,7 +55,6 @@ export function createActiveLayerManager() {
     initialTimestamp?: string | null
   ) {
 
-    console.log("setting layer!")
     const prevTs = initialTimestamp ?? activeLayer.value?.currentTimestamp ?? null
     const prevOpacity = activeLayer.value?.opacity
     const prevAnimationSpeed = activeLayer.value?.animationSpeed

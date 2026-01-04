@@ -25,23 +25,19 @@ const layerSecondaryActive = computed(() => {
 
     <div class="flex flex-col gap-y-1">
 
-      <Icon icon="solar:map-outline" width="38" height="38" class="menu-btn"
-        :class="{ active: config.secondaryLayerSwitcherVisible }" @click="
-          () => {
-            config.secondaryLayerSwitcherVisible = !config.secondaryLayerSwitcherVisible
-          }
-        " />
+      <button id="layer-button-secondary">
+        <Icon icon="solar:map-outline" width="38" height="38" class="menu-btn "
+          :class="{ active: config.secondaryLayerSwitcherVisible }" @click="
+            () => {
+              config.secondaryLayerSwitcherVisible = !config.secondaryLayerSwitcherVisible
+            }
+          " />
+      </button>
 
-      <Icon v-if="layerSecondaryActive" icon="material-symbols:lock-outline" width="38" height="38" class="menu-btn"
-        :class="{ active: config.followPrimary }" @click="config.followPrimary = !config.followPrimary" />
-
-      <!-- <Icon v-if="layerSecondaryActive" icon="dashicons:controls-play" width="38" height="38" class="menu-btn"
-        :class="{ active: config.layerControlsVisible }"
-        @click="config.layerControlsVisible = !config.layerControlsVisible" />
-
-      <Icon v-if="layerSecondaryActive" icon="lsicon:measure-outline" width="38" height="38" class="menu-btn"
-        :class="{ active: config.barVisible }" @click="config.barVisible = !config.barVisible" /> -->
-
+      <button v-if="layerSecondaryActive">
+        <Icon icon="material-symbols:lock-outline" width="38" height="38" class="menu-btn"
+          :class="{ active: config.followPrimary }" @click="config.followPrimary = !config.followPrimary" />
+      </button>
 
       <slot>
       </slot>

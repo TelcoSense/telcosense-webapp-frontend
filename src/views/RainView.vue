@@ -10,8 +10,9 @@ import Datepicker from '@vuepic/vue-datepicker'
 import '@vuepic/vue-datepicker/dist/main.css'
 
 import type { ImageSequenceLayer } from '@/composables/useImageSequenceLayer'
+import { onClickOutside } from '@vueuse/core'
 import type { Ref } from 'vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import DataPlotting from '@/components/DataPlotting.vue'
 import LayerControls from '@/components/LayerControls.vue'
@@ -52,6 +53,36 @@ const cmlData = useCmlDataStore()
 const config = useConfigStore()
 const layers = useLayersStore()
 const device = useDeviceStore()
+
+
+// function syncPrimaryToSecondary() {
+//   if (!map.value || !secondaryMap.value) return
+
+//   const src = map.value
+//   const dst = secondaryMap.value
+
+//   src.on('move', () => {
+//     dst.setView(src.getCenter(), src.getZoom(), {
+//       animate: false,
+//     })
+//   })
+// }
+
+function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => boolean) {
+  const sync = () => {
+    if (!isEnabled()) return
+    dst.setView(src.getCenter(), src.getZoom(), { animate: false })
+  }
+
+  src.on('moveend', sync)  // fires after drag ends
+  src.on('zoomend', sync)  // fires after zoom ends
+
+  // return cleanup
+  return () => {
+    src.off('moveend', sync)
+    src.off('zoomend', sync)
+  }
+}
 
 watch(
   () => config.realtime,
@@ -114,7 +145,6 @@ const { onMapMouseDown, selectionInProgress } = useLinkSelection({
 
 const selectedStart = ref<Date | null>(null)
 const selectedEnd = ref<Date | null>(null)
-const timeRangeVisible = ref<boolean>(false)
 
 function applyCustomRange() {
   if (!selectedStart.value || !selectedEnd.value) return
@@ -142,7 +172,7 @@ function applyCustomRange() {
   cmlData.refresh(config.start, config.end)
   weatherData.refresh(config.start, config.end)
 
-  timeRangeVisible.value = false
+  config.datetimeSelectorVisible = false
   config.dataPlottingVisible = true
 }
 
@@ -224,9 +254,14 @@ async function initLayer(
 
 onMounted(async () => {
   initMap()
-  if (config.splitView) {
-    initSecondaryMap()
-  }
+  initSecondaryMap()
+
+  await nextTick()
+  syncPrimaryToSecondarySmooth(
+    map.value as L.Map,
+    secondaryMap.value as L.Map,
+    () => config.splitView
+  )
 
   config.start = oneWeekAgoTimestamp.value
   config.end = currentTimestamp.value
@@ -250,9 +285,9 @@ onMounted(async () => {
     initLayer(layers.raincz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.userCalc, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
 
-    initLayer(layers.maxzSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
-    initLayer(layers.merge1hSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
-    initLayer(layers.rainczSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
+    initLayer(layers.maxzSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
+    initLayer(layers.merge1hSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
+    initLayer(layers.rainczSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
   ])
 })
 
@@ -490,6 +525,9 @@ watch(
   () => config.realtime,
   (newVal) => {
     config.dataPlottingVisible = true
+    cmlData.clear()
+    weatherData.clear()
+
     if (config.start && config.end) {
       cmlData.refresh(config.start, config.end)
       weatherData.refresh(config.start, config.end)
@@ -527,14 +565,51 @@ watch(
     if (enabled && !secondaryMap.value) {
       initSecondaryMap()
     }
+
     nextTick(() => {
       map.value?.invalidateSize()
       if (enabled) {
         secondaryMap.value?.invalidateSize()
+        layers.fetchListRainSecondary(config.start, config.end)
       }
     })
+    if (!enabled) {
+      clearSecondaryLayer()
+    }
   }
 )
+
+// on click outsides
+// layer switchers
+const layerSwitcherMain = useTemplateRef<HTMLElement>('layerSwitcherMain')
+onClickOutside(layerSwitcherMain, () => {
+  config.mainLayerSwitcherVisible = false
+}, { ignore: ['#layer-button-main'] })
+
+const layerSwitcherSecondary = useTemplateRef<HTMLElement>('layerSwitcherSecondary')
+onClickOutside(layerSwitcherSecondary, () => {
+  config.secondaryLayerSwitcherVisible = false
+}, { ignore: ['#layer-button-secondary'] })
+
+// link filter
+const linkFilter = useTemplateRef<HTMLElement>('linkFilter')
+onClickOutside(linkFilter, () => {
+  config.linkFilterVisible = false
+}, { ignore: ['#link-filter-button'] })
+
+// datetime selector
+const datetimeSelector = useTemplateRef<HTMLElement>('datetimeSelector')
+onClickOutside(datetimeSelector, () => {
+  config.datetimeSelectorVisible = false
+}, { ignore: ['#time-range-button'] })
+
+// user calculations
+const userCalculations = useTemplateRef<HTMLElement>('userCalculations')
+onClickOutside(userCalculations, () => {
+  showHistoric.value = false
+}, { ignore: ['#user-calc-button'] })
+
+
 </script>
 
 <template>
@@ -543,11 +618,13 @@ watch(
       <div class="relative flex h-full w-full flex-row items-center justify-center">
 
         <div class="flex h-full w-full">
-          <div id="map" :class="[
-            'leaflet-container h-full z-0',
-            config.splitView ? 'w-1/2' : 'w-full'
-          ]"></div>
-          <div id="secondary-map" v-show="config.splitView" class="leaflet-container h-full w-1/2 z-0"></div>
+          <div :class="config.splitView ? 'w-1/2 border-r' : 'w-full'">
+            <div id="map" class="leaflet-container h-full z-0"></div>
+          </div>
+
+          <div v-show="config.splitView" class="w-1/2">
+            <div id="secondary-map" class="leaflet-container h-full z-0 border-l-1"></div>
+          </div>
         </div>
 
         <div v-if="config.start && config.end" id="timestamps"
@@ -572,22 +649,29 @@ watch(
         </div>
 
         <TopNavbar>
-          <div class="mr-32 hidden gap-x-3 md:flex">
-            <button
-              class="h-8 cursor-pointer rounded-md px-3 bg-gray-800/50 backdrop-blur-xs text-white hover:bg-gray-900/50 text-sm"
-              @click="config.toggleRealtime">
-              {{ config.realtime ? "Switch to historic" : "Switch to realtime" }}
+          <div class="mr-32 hidden gap-x-2 md:flex">
+            <div class="cursor-pointer rounded-md h-8 text-white ">
+              <button class="h-full menu-btn-top rounded-l-md border-r border-y border-gray-600"
+                @click="config.setToRealtime()" :class="{ active: config.realtime }">
+                Realtime
+              </button>
+
+              <button class="h-full menu-btn-top rounded-r-md border-y border-r border-gray-600"
+                @click="config.setToHistoric()" :class="{ active: !config.realtime }">
+                Historic
+              </button>
+            </div>
+
+            <button v-if="!config.realtime" id="time-range-button"
+              class="h-full menu-btn-top rounded-md border border-gray-600"
+              @click="config.datetimeSelectorVisible = !config.datetimeSelectorVisible"
+              :class="{ active: config.datetimeSelectorVisible }">
+              Time range
             </button>
 
-            <button v-if="!config.realtime"
-              class="h-8 cursor-pointer rounded-md px-3 bg-gray-800/50 backdrop-blur-xs text-white hover:bg-gray-900/50 text-sm"
-              @click="timeRangeVisible = true">
-              Select time range
-            </button>
-
-            <button v-if="!config.realtime"
-              class="h-8 cursor-pointer rounded-md px-3 bg-gray-800/50 backdrop-blur-xs text-white hover:bg-gray-900/50 text-sm"
-              @click="showHistoric = !showHistoric">
+            <button v-if="!config.realtime" id="user-calc-button"
+              class="h-full menu-btn-top rounded-md border border-gray-600" @click="showHistoric = !showHistoric"
+              :class="{ active: showHistoric }">
               User calculations
             </button>
 
@@ -619,14 +703,14 @@ watch(
 
         <RightMenu v-if="config.splitView" />
 
-        <LinkFilter />
+        <LinkFilter ref="linkFilter" />
 
         <LayerControls :class="config.splitView ? 'left-[calc(25%-190px)]' : null" map-target="main" />
         <LayerControls v-if="config.splitView" class="left-[calc(75%-190px)]" map-target="secondary" />
 
-        <LayerSwitcher v-if="config.mainLayerSwitcherVisible" map-target="main" />
+        <LayerSwitcher v-if="config.mainLayerSwitcherVisible" map-target="main" ref="layerSwitcherMain" />
         <LayerSwitcher v-if="config.secondaryLayerSwitcherVisible" class="left-[calc(50%+3.75rem)]"
-          map-target="secondary" />
+          map-target="secondary" ref="layerSwitcherSecondary" />
 
         <!-- primary -->
         <PrecipitationBar v-if="activeLayerMain?.id == 'merge1h' && config.barVisible"
@@ -648,18 +732,13 @@ watch(
           config.barVisible" :layer-id="activeLayerSecondary.id" />
 
         <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
-        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" />
-        <RainHistoric :link-ids="selectedLinkIds" :show-historic="showHistoric" />
+        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" ref="linkTable" />
+        <RainHistoric :link-ids="selectedLinkIds" :show-historic="showHistoric" ref="userCalculations" />
 
-        <!-- timerange -->
-        <div v-if="!config.realtime && timeRangeVisible"
-          class="absolute top-14 left-36.5 z-30 w-64 rounded-md bg-gray-800/50 backdrop-blur-xs p-2">
-          <div class="flex w-full justify-end text-sm">
-            <button @click="timeRangeVisible = false"
-              class="cursor-pointer rounded bg-gray-500 px-3 py-1 text-white hover:bg-gray-600 hover:opacity-100">
-              Cancel
-            </button>
-          </div>
+        <!-- date time selector -->
+        <div v-show="!config.realtime && config.datetimeSelectorVisible"
+          class="absolute top-14 left-36.5 z-30 w-64 rounded-md bg-gray-800 p-2" ref="datetimeSelector">
+
           <label class="mb-1 block text-sm text-white">Start</label>
           <Datepicker v-model="selectedStart" utc time-picker-inline model-type="date" :max-date="new Date()"
             class="mb-3 w-full text-sm" dark :format="formatDateForDatepicker" :timezone="config.datetimeFormat" />
@@ -669,13 +748,13 @@ watch(
             class="mb-4 w-full text-sm" dark :format="formatDateForDatepicker" :timezone="config.datetimeFormat" />
 
           <button
-            class="w-full rounded bg-blue-600 py-1 text-sm text-white hover:bg-blue-700 enabled:cursor-pointer disabled:bg-gray-700 disabled:text-gray-500"
+            class="w-full rounded bg-cyan-600 py-1 text-sm text-white hover:bg-cyan-700 enabled:cursor-pointer disabled:bg-gray-700 disabled:text-gray-500"
             :disabled="!isTimeRangeValid" @click="applyCustomRange">
-            Apply time range
+            Select time range
           </button>
         </div>
+        <!-- date time selector end-->
 
-        <!-- timerange end-->
       </div>
     </main>
   </div>

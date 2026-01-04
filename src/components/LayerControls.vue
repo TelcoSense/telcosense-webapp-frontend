@@ -81,21 +81,29 @@ watch(
   },
 )
 
+
 watch(
-  () => {
-    const layer = activeLayerMain.value
-    if (!layer) return null
-    return layer.frames[layer.currentIndex]?.timestamp ?? null
-  },
-  (ts) => {
+  () => activeLayerMain.value?.currentTimestamp ?? null,
+  async (ts) => {
     if (props.mapTarget !== 'main') return
     if (!ts) return
-    const main = activeLayerMain.value
+
     const secondary = activeLayerSecondary.value
-    if (!main || !secondary || secondary.isPlaying) return
+    if (!secondary || secondary.isPlaying) return
     if (!secondary.frames.length) return
+    if (!config.followPrimary) return
+
+    const now = new Date()
+    if (
+      config.layerSwitchedTime &&
+      now.getTime() - config.layerSwitchedTime.getTime() < 100
+    ) {
+      return
+    }
+
     const targetTs = +new Date(ts)
     const idx = findClosestFrameIndex(secondary.frames, targetTs)
+
     if (idx !== secondary.currentIndex) {
       secondary.showFrame(idx)
     }

@@ -8,12 +8,14 @@ interface ConfigState {
   dataPlottingVisible: boolean;
   mainLayerSwitcherVisible: boolean;
   secondaryLayerSwitcherVisible: boolean;
-  followPrimary: boolean;
   layerControlsVisible: boolean;
   linkFilterVisible: boolean;
   clustersVisible: boolean;
   barVisible: boolean;
+  datetimeSelectorVisible: boolean;
   splitView: boolean;
+  followPrimary: boolean;
+  layerSwitchedTime: Date | null;
 }
 
 export const useConfigStore = defineStore('config', {
@@ -22,15 +24,22 @@ export const useConfigStore = defineStore('config', {
     start: null,
     end: null,
     datetimeFormat: 'UTC',
+
+    // visibility
     dataPlottingVisible: false,
     mainLayerSwitcherVisible: false,
     secondaryLayerSwitcherVisible: false,
-    followPrimary: true,
+
     layerControlsVisible: false,
     linkFilterVisible: false,
     clustersVisible: false,
     barVisible: false,
-    splitView: true
+    datetimeSelectorVisible: false,
+
+    // split view
+    splitView: false,
+    followPrimary: true,
+    layerSwitchedTime: null,
   }),
 
   actions: {
@@ -70,6 +79,10 @@ export const useConfigStore = defineStore('config', {
 
     toggleSplitView() {
       this.splitView = !this.splitView;
+    },
+
+    setLayerSwitchedTime() {
+      this.layerSwitchedTime = new Date()
     }
   },
 });

@@ -58,13 +58,6 @@ export const useLayersStore = defineStore('layers', () => {
     }),
   )
 
-  // const userCalcSecondary = shallowRef(
-  //   useImageLayer('secondary', 'user-calc', {
-  //     apiUrl: '/placeholder',
-  //     bounds: L.latLngBounds([0, 0], [0, 0]),
-  //   }),
-  // )
-
   // temp primary
   const tempcz = shallowRef(
     useImageLayer('main', 'tempcz', {
@@ -118,6 +111,12 @@ export const useLayersStore = defineStore('layers', () => {
     }
   }
 
+  function fetchListRainSecondary(start: string | null, end: string | null) {
+    maxzSecondary.value.fetchList(start, end)
+    merge1hSecondary.value.fetchList(start, end)
+    rainczSecondary.value.fetchList(start, end)
+  }
+
   function clearTempLayers(secondary: boolean = false) {
     tempchmi.value.clear()
     tempcz.value.clear()
@@ -148,6 +147,7 @@ export const useLayersStore = defineStore('layers', () => {
     // funcs
     clearRainLayers,
     clearTempLayers,
-    fetchListRain
+    fetchListRain,
+    fetchListRainSecondary
   }
 })

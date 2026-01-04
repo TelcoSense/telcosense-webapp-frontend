@@ -214,16 +214,10 @@ const canStart = computed(() => {
 
 <template>
   <div v-if="showHistoric && !config.realtime"
-    class="absolute top-14 left-36.5 z-50 w-3xl rounded-md  backdrop-blur-xs border  border-gray-600 bg-gray-800 p-2 text-sm text-white">
-    <div class="flex justify-between border-gray-400">
-      User calculations
-      <!-- <button class="cursor-pointer rounded bg-gray-600 px-3 py-1 text-white hover:bg-gray-500"
-        @click="showHistoric = false">
-        Close
-      </button> -->
-    </div>
+    class="absolute top-14 left-36.5 z-50 w-3xl rounded-md  backdrop-blur-xs bg-gray-800 p-2 text-sm text-white">
+    <div class="w-full border-b border-gray-600 pb-1.5 text-white">User calculations</div>
 
-    <div class="mb-2 flex gap-x-3">
+    <div class="py-2 flex gap-x-2">
       <button @click="activeTab = 'status'" :class="[
         'cursor-pointer rounded px-3 py-1 ',
         activeTab === 'status'
@@ -356,7 +350,7 @@ const canStart = computed(() => {
 
       <div class="mb-2 flex gap-x-2">
         <span>Selected links: {{ linkIds?.size }}</span>
-        <span class="text-red-600" v-if="linkIds?.size === 0">Please select links using the map.</span>
+        <span class="text-red-500" v-if="linkIds?.size === 0">Please select links using the map.</span>
       </div>
 
       <div class="flex justify-between gap-x-3">
@@ -376,7 +370,7 @@ const canStart = computed(() => {
 
     <div v-if="activeTab === 'status'" class="text-sm text-white">
       <div class="mb-2">
-        Available calculations:
+        Calculation slots:
         <span class="font-chivo">{{ 3 - activeCalculationCount }}/3</span>
       </div>
 
@@ -435,7 +429,7 @@ const canStart = computed(() => {
               </td>
             </tr>
             <tr v-if="calculations.length === 0">
-              <td colspan="6" class="py-2 text-center text-gray-400">No calculations yet</td>
+              <td colspan="6" class="py-2 text-center text-gray-400">No user calculations</td>
             </tr>
           </tbody>
         </table>

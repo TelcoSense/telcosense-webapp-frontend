@@ -4,21 +4,21 @@
     <div class="text-white select-none">mm</div>
     <div class="flex gap-x-1.5">
       <div class="flex flex-col-reverse">
-        <div class="h-4 w-2 md:h-6" style="background-color: #380070"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #3000a8"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #0000fc"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #006cc0"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #00a000"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #00bc00"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #34d800"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #9cdc00"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #e0dc00"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #fcb000"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #fc8400"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #fc5800"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #fc0000"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #a00000"></div>
-        <div class="h-4 w-2 md:h-6" style="background-color: #fcfcfc"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #380070"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #3000a8"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #0000fc"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #006cc0"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #00a000"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #00bc00"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #34d800"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #9cdc00"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #e0dc00"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #fcb000"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #fc8400"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #fc5800"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #fc0000"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #a00000"></div>
+        <div class="h-4 w-2.5  md:h-6" style="background-color: #fcfcfc"></div>
       </div>
       <div class="flex flex-col-reverse items-center justify-around text-white select-none">
         <div>0.1</div>
