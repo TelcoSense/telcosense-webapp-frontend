@@ -111,7 +111,7 @@ const seriesData = computed(() => {
 
 <template>
   <div v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) && (config.start && config.end)"
-    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:w-[1250px] h-[280px] w-[calc(100%-1.5rem)] flex-col gap-1">
+    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:max-w-[1000px] h-[280px] w-[calc(100%-1.5rem)] flex-col gap-1 z-25">
     <div class="flex h-8 items-center justify-between gap-2">
       <div class="rounded-md bg-gray-800/50 px-3 md:py-1 py-0.5 md:text-sm text-xs text-white backdrop-blur-xs">
         Stations
@@ -171,7 +171,7 @@ const seriesData = computed(() => {
               ? 'bg-blue-600 text-white'
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
               ">
-            Link ID: {{ cmlId }}
+            {{ cmlId }}
           </button>
         </div>
       </div>

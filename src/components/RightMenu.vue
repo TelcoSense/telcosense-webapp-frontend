@@ -1,27 +1,13 @@
 <script setup lang="ts">
-import { Icon } from '@iconify/vue'
-
-import { useActiveLayer } from '@/composables/useActiveLayer'
-import { useConfigStore } from '@/stores/config'
-
-import { computed } from 'vue'
-
+import { useConfigStore } from '@/stores/config';
+import { Icon } from '@iconify/vue';
 
 const config = useConfigStore()
 
-const {
-  activeLayerSecondary,
-} = useActiveLayer()
-
-const layerSecondaryActive = computed(() => {
-  return (
-    activeLayerSecondary.value !== null
-  )
-})
 </script>
 
 <template>
-  <div class="absolute top-14 left-[calc(50%+0.75rem)] flex flex-col gap-y-4 text-gray-300">
+  <div class="absolute top-14 left-[calc(50%+0.75rem)] flex flex-col gap-y-4 text-gray-300 z-50">
 
     <div class="flex flex-col gap-y-1">
 
@@ -34,7 +20,7 @@ const layerSecondaryActive = computed(() => {
           " />
       </button>
 
-      <button v-if="layerSecondaryActive">
+      <button v-if="config.splitView">
         <Icon icon="material-symbols:lock-outline" width="38" height="38" class="menu-btn"
           :class="{ active: config.followPrimary }" @click="config.followPrimary = !config.followPrimary" />
       </button>

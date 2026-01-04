@@ -75,14 +75,14 @@ export const useLayersStore = defineStore('layers', () => {
 
   // temp primary
   const tempczSecondary = shallowRef(
-    useImageLayer('main', 'tempcz', {
+    useImageLayer('secondary', 'tempcz', {
       apiUrl: '/tempcz/list',
       bounds: boundsTemp,
     }),
   )
 
   const tempchmiSecondary = shallowRef(
-    useImageLayer('main', 'tempchmi', {
+    useImageLayer('secondary', 'tempchmi', {
       apiUrl: '/tempchmi/list',
       bounds: boundsTemp,
     }),
@@ -100,6 +100,15 @@ export const useLayersStore = defineStore('layers', () => {
     }
   }
 
+  function clearTempLayers(secondary: boolean = false) {
+    tempcz.value.clear()
+    tempchmi.value.clear()
+    if (secondary) {
+      tempczSecondary.value.clear()
+      tempchmiSecondary.value.clear()
+    }
+  }
+
   function fetchListRain(start: string | null, end: string | null, secondary: boolean = false) {
     maxz.value.fetchList(start, end)
     merge1h.value.fetchList(start, end)
@@ -111,19 +120,24 @@ export const useLayersStore = defineStore('layers', () => {
     }
   }
 
+  function fetchListTemp(start: string | null, end: string | null, secondary: boolean = false) {
+    tempcz.value.fetchList(start, end)
+    tempchmi.value.fetchList(start, end)
+    if (secondary) {
+      tempczSecondary.value.fetchList(start, end)
+      tempchmiSecondary.value.fetchList(start, end)
+    }
+  }
+
   function fetchListRainSecondary(start: string | null, end: string | null) {
     maxzSecondary.value.fetchList(start, end)
     merge1hSecondary.value.fetchList(start, end)
     rainczSecondary.value.fetchList(start, end)
   }
 
-  function clearTempLayers(secondary: boolean = false) {
-    tempchmi.value.clear()
-    tempcz.value.clear()
-    if (secondary) {
-      tempchmiSecondary.value.clear()
-      tempczSecondary.value.clear()
-    }
+  function fetchListTempSecondary(start: string | null, end: string | null) {
+    tempczSecondary.value.fetchList(start, end)
+    tempchmiSecondary.value.fetchList(start, end)
   }
 
   return {
@@ -148,6 +162,8 @@ export const useLayersStore = defineStore('layers', () => {
     clearRainLayers,
     clearTempLayers,
     fetchListRain,
-    fetchListRainSecondary
+    fetchListTemp,
+    fetchListRainSecondary,
+    fetchListTempSecondary
   }
 })

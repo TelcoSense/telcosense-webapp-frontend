@@ -61,7 +61,7 @@ function cellClass(id: number, truncate = false) {
           <span class="font-chivo text-cyan-300">{{ filteredAndSearchedLinks.length }}</span> links
         </div>
 
-        <button @click="store.showLinkTable = false" :class="[
+        <button id="table-button-close" @click="store.showLinkTable = false" :class="[
           'cursor-pointer rounded  px-3 py-1 text-white  text-sm bg-gray-600  enabled:hover:bg-gray-700']">
           Close
         </button>

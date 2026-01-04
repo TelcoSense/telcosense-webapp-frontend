@@ -8,7 +8,7 @@ function toggle() {
 </script>
 
 <template>
-  <div class="flex h-8 items-center rounded-md border border-gray-600  px-1 blurred-bg">
+  <div class="flex h-8 items-center rounded-md border border-gray-600  px-1 blurred-bg select-none">
     <!-- left label -->
     <span class="text-xs text-white"> UTC </span>
     <!-- toggle switch -->

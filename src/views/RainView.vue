@@ -54,20 +54,6 @@ const config = useConfigStore()
 const layers = useLayersStore()
 const device = useDeviceStore()
 
-
-// function syncPrimaryToSecondary() {
-//   if (!map.value || !secondaryMap.value) return
-
-//   const src = map.value
-//   const dst = secondaryMap.value
-
-//   src.on('move', () => {
-//     dst.setView(src.getCenter(), src.getZoom(), {
-//       animate: false,
-//     })
-//   })
-// }
-
 function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => boolean) {
   const sync = () => {
     if (!isEnabled()) return
@@ -251,13 +237,14 @@ async function initLayer(
   if (fetch) await layer.fetchList(start, end)
 }
 
+let stopSync: null | (() => void) = null
 
 onMounted(async () => {
   initMap()
   initSecondaryMap()
 
   await nextTick()
-  syncPrimaryToSecondarySmooth(
+  stopSync = syncPrimaryToSecondarySmooth(
     map.value as L.Map,
     secondaryMap.value as L.Map,
     () => config.splitView
@@ -292,6 +279,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  stopSync?.()
+  stopSync = null
   window.removeEventListener('keydown', onKeyDown)
 })
 
@@ -579,6 +568,25 @@ watch(
   }
 )
 
+watch(
+  () => config.followPrimary,
+  (enabled) => {
+    if (enabled) {
+      if (map.value && secondaryMap.value && !stopSync) {
+        stopSync = syncPrimaryToSecondarySmooth(
+          map.value as L.Map,
+          secondaryMap.value as L.Map,
+          () => config.splitView
+        )
+      }
+    }
+    else {
+      stopSync?.()
+      stopSync = null
+    }
+  }
+)
+
 // on click outsides
 // layer switchers
 const layerSwitcherMain = useTemplateRef<HTMLElement>('layerSwitcherMain')
@@ -595,7 +603,7 @@ onClickOutside(layerSwitcherSecondary, () => {
 const linkFilter = useTemplateRef<HTMLElement>('linkFilter')
 onClickOutside(linkFilter, () => {
   config.linkFilterVisible = false
-}, { ignore: ['#link-filter-button'] })
+}, { ignore: ['#link-filter-button', '#table-button-close'] })
 
 // datetime selector
 const datetimeSelector = useTemplateRef<HTMLElement>('datetimeSelector')
@@ -616,19 +624,25 @@ onClickOutside(userCalculations, () => {
   <div class="font-inter min-h-[100svh]">
     <main class="h-[100svh]">
       <div class="relative flex h-full w-full flex-row items-center justify-center">
-
         <div class="flex h-full w-full">
+          <!-- primary map -->
           <div :class="config.splitView ? 'w-1/2 border-r' : 'w-full'">
             <div id="map" class="leaflet-container h-full z-0"></div>
           </div>
-
-          <div v-show="config.splitView" class="w-1/2">
+          <div v-show="config.splitView" class="relative w-1/2">
             <div id="secondary-map" class="leaflet-container h-full z-0 border-l-1"></div>
+            <!-- interaction blocker + label -->
+            <div v-if="config.followPrimary" class="absolute inset-0 z-10 p-3 flex items-end">
+
+              <div class="blurred-bg rounded-md border border-gray-600 p-1 text-sm text-white">
+                <span class="select-none">Interaction disabled</span>
+              </div>
+            </div>
           </div>
         </div>
 
         <div v-if="config.start && config.end" id="timestamps"
-          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 bg-gray-800/60 p-1 text-sm text-white backdrop-blur-xs select-none md:visible md:bottom-3 md:flex">
+          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 p-1 text-sm text-white blurred-bg select-none md:visible md:bottom-3 md:flex">
           <p v-if="config.realtime">Realtime bounds</p>
           <p v-if="!config.realtime">Historic bounds</p>
           <p v-if="config.start">
@@ -674,25 +688,17 @@ onClickOutside(userCalculations, () => {
               :class="{ active: showHistoric }">
               User calculations
             </button>
-
-
-            <!-- <button :class="[
-              'h-8 cursor-pointer rounded-md px-3 text-gray-300',
-              !config.realtime
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-700 hover:bg-gray-600',
-            ]" @click="config.setToHistoric()">
-              Historic data
-            </button> -->
           </div>
         </TopNavbar>
 
         <LeftMenu>
           <!-- insert the button for copying link ids here -->
           <template #up>
-            <Icon icon="mingcute:three-circles-fill" width="38" height="38" class="menu-btn"
-              @click="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)"
-              :class="{ active: config.clustersVisible }" />
+            <button v-if="links.hasLinks">
+              <Icon icon="mingcute:three-circles-fill" width="38" height="38" class="menu-btn"
+                @click="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)"
+                :class="{ active: config.clustersVisible }" />
+            </button>
           </template>
 
           <template #down>

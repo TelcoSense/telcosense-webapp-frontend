@@ -45,8 +45,8 @@ export const useConfigStore = defineStore('config', {
   actions: {
     setToRealtime() {
       this.realtime = true;
-      this.start = null;
-      this.end = null;
+      // this.start = null;
+      // this.end = null;
     },
 
     setToHistoric() {

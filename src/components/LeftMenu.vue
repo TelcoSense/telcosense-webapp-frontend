@@ -34,13 +34,13 @@ const layerMainActive = computed(() => {
         <Icon icon="hugeicons:satellite-01" width="38" height="38" class="menu-btn" :class="{ active: !links.hideAll }"
           @click="links.hideAll = !links.hideAll" />
       </button>
-
+      <slot name="up">
+      </slot>
       <button v-if="weatherStations.hasStations">
         <Icon icon="fluent:weather-cloudy-24-regular" width="38" height="38" class="menu-btn"
           :class="{ active: !weatherStations.hideAll }" @click="weatherStations.hideAll = !weatherStations.hideAll" />
       </button>
-      <slot name="up">
-      </slot>
+
     </div>
     <div class="flex flex-col gap-y-1">
 

@@ -152,7 +152,7 @@ const sliderGradient = computed(() => {
 
 <template>
   <div v-if="activeLayer && config.layerControlsVisible && (!device.isMobile || !config.dataPlottingVisible)"
-    class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
+    class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 blurred-bg p-2 text-xs text-white  md:text-sm">
 
     <div class="flex items-center justify-between gap-x-3">
       <span> Layer: {{ activeLayer.name }}</span>

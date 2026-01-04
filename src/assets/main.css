@@ -9,38 +9,38 @@
 
 @layer components {
   .menu-btn {
-    @apply cursor-pointer rounded-md border border-gray-600 bg-gray-800/50 p-1 text-white backdrop-blur-xs;
+    @apply cursor-pointer rounded-md border border-white/20 bg-gray-800/65 p-1 text-white backdrop-blur-sm;
   }
 
   .menu-btn-top {
-    @apply cursor-pointer bg-gray-800/50 px-3 text-sm text-white backdrop-blur-xs;
-  }
-
-  .blurred-bg {
-    @apply bg-gray-800/50 backdrop-blur-xs;
+    @apply cursor-pointer bg-gray-800/65 px-3 text-sm text-white backdrop-blur-sm;
   }
 
   /* Only show hover if device supports it */
   body:not(.no-hover) .menu-btn:hover,
   body:not(.no-hover) .menu-btn:focus-visible {
-    @apply bg-gray-800/70 text-blue-200;
+    @apply border-blue-200/60 bg-gray-800/80 text-blue-200;
   }
 
   /* Active/toggle states (works on all devices) */
   .menu-btn:active,
   .menu-btn.active {
-    @apply bg-gray-800/70 text-blue-200;
+    @apply border-blue-300/70 bg-gray-900/85 text-blue-200;
   }
 
   /* Only show hover if device supports it */
   body:not(.no-hover) .menu-btn-top:hover,
   body:not(.no-hover) .menu-btn-top:focus-visible {
-    @apply bg-gray-800/70 text-blue-200;
+    @apply border-blue-400/60 bg-gray-800/80 text-blue-200;
   }
 
   /* Active/toggle states (works on all devices) */
   .menu-btn-top:active,
   .menu-btn-top.active {
-    @apply bg-gray-800/70 text-blue-200;
+    @apply border-blue-500/70 bg-gray-900/85 text-blue-200;
+  }
+
+  .blurred-bg {
+    @apply bg-gray-800/60 backdrop-blur-xs;
   }
 }

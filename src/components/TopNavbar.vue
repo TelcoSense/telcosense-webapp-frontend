@@ -77,8 +77,8 @@ async function logout() {
 
 function toggleRoute() {
   if (route.name === 'rain') {
-    config.realtime = true
     resetData()
+    config.realtime = true
     router.push({ name: 'temp' })
   } else {
     resetData()
