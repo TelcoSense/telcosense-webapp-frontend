@@ -34,6 +34,34 @@
     @apply border-blue-400/60 bg-gray-800/80 text-blue-200;
   }
 
+  .menu-btn-orange {
+    @apply cursor-pointer rounded-md border border-white/20 bg-gray-800/65 p-1 text-white backdrop-blur-sm;
+  }
+
+  .menu-btn-top-orange {
+    @apply cursor-pointer bg-gray-800/65 px-3 text-sm text-white backdrop-blur-sm;
+  }
+
+  body:not(.no-hover) .menu-btn-orange:hover,
+  body:not(.no-hover) .menu-btn-orange:focus-visible {
+    @apply border-orange-300/60 bg-gray-800/80 text-orange-300;
+  }
+
+  .menu-btn-orange:active,
+  .menu-btn-orange.active {
+    @apply border-orange-400/70 bg-gray-900/85 text-orange-300;
+  }
+
+  body:not(.no-hover) .menu-btn-top-orange:hover,
+  body:not(.no-hover) .menu-btn-top-orange:focus-visible {
+    @apply border-orange-400/60 bg-gray-800/80 text-orange-300;
+  }
+
+  .menu-btn-top-orange:active,
+  .menu-btn-top-orange.active {
+    @apply border-orange-500/70 bg-gray-900/85 text-orange-300;
+  }
+
   /* Active/toggle states (works on all devices) */
   .menu-btn-top:active,
   .menu-btn-top.active {

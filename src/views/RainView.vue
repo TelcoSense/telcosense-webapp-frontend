@@ -26,6 +26,7 @@ import ReflectivityBar from '@/components/ReflectivityBar.vue'
 import RightMenu from '@/components/RightMenu.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
+import { useAuthStore } from '@/stores/auth'
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
 import { useDeviceStore } from '@/stores/device'
@@ -53,6 +54,7 @@ const cmlData = useCmlDataStore()
 const config = useConfigStore()
 const layers = useLayersStore()
 const device = useDeviceStore()
+const auth = useAuthStore()
 
 function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => boolean) {
   const sync = () => {
@@ -875,7 +877,31 @@ onClickOutside(userCalculations, () => {
   showHistoric.value = false
 }, { ignore: ['#user-calc-button'] })
 
+function setMapInteractivity(m: L.Map, enabled: boolean) {
+  const action = enabled ? 'enable' : 'disable'
+  // core interactions
+  m.dragging?.[action]()
+  m.touchZoom?.[action]()
+  m.doubleClickZoom?.[action]()
+  m.scrollWheelZoom?.[action]()
+  m.boxZoom?.[action]()
+  m.keyboard?.[action]()
+    // Tap handler exists on mobile builds
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ; (m as any).tap?.[action]()
+}
 
+watch(
+  [() => config.followPrimary, () => config.splitView],
+  ([follow, split]) => {
+    const m = secondaryMap.value
+    if (!m) return
+    // only lock when split view is active AND following
+    const unlocked = !(split && follow)
+    setMapInteractivity(m as L.Map, unlocked)
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -890,12 +916,12 @@ onClickOutside(userCalculations, () => {
           <div v-show="config.splitView" class="relative w-1/2">
             <div id="secondary-map" class="leaflet-container h-full z-0 border-l-1"></div>
             <!-- interaction blocker + label -->
-            <div v-if="config.followPrimary" class="absolute inset-0 z-10 p-3 flex items-end">
+            <!-- <div v-if="config.followPrimary" class="absolute inset-0 z-10 p-3 flex items-end">
 
               <div class="blurred-bg rounded-md border border-gray-600 p-1 text-sm text-white">
                 <span class="select-none">Interaction disabled</span>
               </div>
-            </div>
+            </div> -->
           </div>
         </div>
 
@@ -921,7 +947,7 @@ onClickOutside(userCalculations, () => {
         </div>
 
         <TopNavbar>
-          <div class="mr-32 hidden gap-x-2 md:flex">
+          <div v-if="auth.isLoggedIn" class="mr-32 hidden gap-x-2 md:flex">
             <div class="cursor-pointer rounded-md h-8 text-white ">
               <button class="h-full menu-btn-top rounded-l-md border-r border-y border-gray-600"
                 @click="config.setToRealtime()" :class="{ active: config.realtime }">
@@ -949,8 +975,8 @@ onClickOutside(userCalculations, () => {
           </div>
 
           <template #settings>
-            <span class="text-sm border-b w-full border-gray-400 pb-1.5">Settings</span>
-            <div class="pb-2 w-full flex flex-col gap-y-1">
+            <span v-if="links.hasLinks" class="text-sm border-b w-full border-gray-400 pb-1.5">Settings</span>
+            <div v-if="links.hasLinks" class="pb-2 w-full flex flex-col gap-y-1">
               <div class="flex items-center gap-x-2">
                 <label for="clusters-toggle" class="cursor-pointer select-none text-sm">
                   Show link clusters

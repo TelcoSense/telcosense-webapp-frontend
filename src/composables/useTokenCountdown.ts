@@ -49,7 +49,7 @@ export function useTokenCountdown(pollInterval = 30000) {
       if (!valid) throw new Error('Invalid token')
     } catch (err) {
       console.warn('Token polling failed:', err)
-      performLogout()
+      if (auth.isLoggedIn) performLogout()
     }
   }
 

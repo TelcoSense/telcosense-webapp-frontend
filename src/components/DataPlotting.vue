@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
+
+import { useAuthStore } from '@/stores/auth'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { computed } from 'vue'
 
@@ -19,6 +21,7 @@ const cmlData = useCmlDataStore()
 const config = useConfigStore()
 const { activeLayerMain } = useActiveLayer()
 const route = useRoute()
+const auth = useAuthStore()
 
 const isRainRoute = computed(() => route.path.includes('rain'))
 const isTempRoute = computed(() => route.path.includes('temp'))
@@ -111,7 +114,8 @@ const seriesData = computed(() => {
 
 <template>
   <div v-if="(weatherData.stationIds.length > 0 || cmlData.cmlIds.length > 0) && (config.start && config.end)"
-    class="absolute md:bottom-38 bottom-3 flex md:h-[450px] md:max-w-[1000px] h-[280px] w-[calc(100%-1.5rem)] flex-col gap-1 z-25">
+    class="absolute md:bottom-38 bottom-3 flex md:max-w-[1000px] w-[calc(100%-1.5rem)] flex-col gap-1 z-25"
+    :class="auth.isLoggedIn ? 'md:h-[450px] h-[280px]' : 'md:h-[280px] h-[280px]'">
     <div class="flex h-8 items-center justify-between gap-2">
       <div class="rounded-md bg-gray-800/50 px-3 md:py-1 py-0.5 md:text-sm text-xs text-white backdrop-blur-xs">
         Stations
@@ -159,7 +163,7 @@ const seriesData = computed(() => {
         :bottomRightAxisName="'Temperature (°C)'" :thirdLeftAxisName="'Temperature (°C)'" />
     </div>
 
-    <div class="flex h-8 items-center justify-between gap-2">
+    <div v-show="auth.isLoggedIn" class="flex h-8 items-center justify-between gap-2">
       <div class="rounded-md bg-gray-800/50 px-3 md:py-1 py-0.5 md:text-sm text-xs text-white backdrop-blur-xs">
         Links
       </div>

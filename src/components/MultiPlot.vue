@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { useMediaQuery } from '@vueuse/core'
-import type { EChartsOption, LineSeriesOption, SeriesOption, XAXisComponentOption, YAXisComponentOption } from 'echarts'
+import type {
+  EChartsOption,
+  LineSeriesOption,
+  SeriesOption,
+  XAXisComponentOption,
+  YAXisComponentOption,
+} from 'echarts'
 import { LineChart } from 'echarts/charts'
 import {
   DataZoomComponent,
@@ -17,6 +23,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import ECharts from 'vue-echarts'
 import { useRoute } from 'vue-router'
 
+import { useAuthStore } from '@/stores/auth'
 import { useConfigStore } from '@/stores/config'
 
 use([
@@ -38,6 +45,9 @@ type SeriesInput = {
   yAxisSide?: 'left' | 'right'
 }
 
+const auth = useAuthStore()
+
+const showOnlyFirstPlot = computed(() => !auth.isLoggedIn)
 const route = useRoute()
 const cfgStore = useConfigStore()
 
@@ -52,6 +62,9 @@ const props = defineProps<{
   bottomRightAxisName?: string
   thirdLeftAxisName?: string
   thirdRightAxisName?: string
+
+  // NEW: allow parent to force single-plot mode
+  // singlePlot?: boolean
 }>()
 
 const chartOptions = ref<EChartsOption>({})
@@ -85,7 +98,11 @@ function hasDataForSubplot(index: number): boolean {
   return props.seriesData.some((s) => s.subplotIndex === index && s.data.length > 0)
 }
 
-const seriesNames = computed(() => props.seriesData.map((s) => s.name))
+const seriesNames = computed(() =>
+  props.seriesData
+    .filter((s) => !showOnlyFirstPlot.value || s.subplotIndex === 0)
+    .map((s) => s.name),
+)
 
 function computeDefaultLegendSelected(): Record<string, boolean> {
   const hiddenByDefault: Record<number, string[]> =
@@ -94,7 +111,10 @@ function computeDefaultLegendSelected(): Record<string, boolean> {
       : { 1: ['trsl'] }
 
   const selected: Record<string, boolean> = {}
+
   for (const s of props.seriesData) {
+    if (showOnlyFirstPlot.value && s.subplotIndex !== 0) continue
+
     const hiddenList = hiddenByDefault[s.subplotIndex] ?? []
     selected[s.name] = !hiddenList.some((h) => s.name.toLowerCase().includes(h.toLowerCase()))
   }
@@ -110,12 +130,16 @@ function isSeriesVisible(name: string) {
 }
 
 function hasYAxisSeriesData(subplot: number, side: 'left' | 'right') {
+  if (showOnlyFirstPlot.value && subplot !== 0) return false
+
   return props.seriesData.some(
     (s) => s.subplotIndex === subplot && (s.yAxisSide ?? resolveYAxisSide(s.name)) === side && s.data.length > 0,
   )
 }
 
 function hasVisibleSeriesForAxis(subplot: number, side: 'left' | 'right') {
+  if (showOnlyFirstPlot.value && subplot !== 0) return false
+
   return props.seriesData.some((s) => {
     if (s.subplotIndex !== subplot) return false
     if ((s.yAxisSide ?? resolveYAxisSide(s.name)) !== side) return false
@@ -188,8 +212,7 @@ function createYAxisConfig(
       align: 'right',
       margin: position === 'right' ? 24 : 5,
       hideOverlap: true,
-      formatter: (value: number) =>
-        Number.isFinite(value) ? value.toFixed(spec.decimals) : '',
+      formatter: (value: number) => (Number.isFinite(value) ? value.toFixed(spec.decimals) : ''),
     }
 
     axis.nameTextStyle = {
@@ -230,7 +253,10 @@ function tooltipFormatter(params) {
   if (!items.length) return ''
 
   const header = items[0]?.axisValueLabel ?? ''
-  const desiredOrder = props.seriesData.map((s) => s.name)
+  const desiredOrder = props.seriesData
+    .filter((s) => !showOnlyFirstPlot.value || s.subplotIndex === 0)
+    .map((s) => s.name)
+
   const map = new Map(items.map((p) => [p.seriesName, p]))
   const sorted = desiredOrder.map((n) => map.get(n)).filter(Boolean)
 
@@ -246,11 +272,13 @@ function tooltipFormatter(params) {
 // build options
 // ----------------------------
 
-
 function buildOptions() {
   const series: SeriesOption[] = []
 
+  // only build series for visible subplots
   for (const seriesItem of props.seriesData) {
+    if (showOnlyFirstPlot.value && seriesItem.subplotIndex !== 0) continue
+
     const convertedData: [string, number | null][] = seriesItem.data.map((d) => [d.time, d.value])
 
     const subplotIndex = seriesItem.subplotIndex
@@ -270,29 +298,41 @@ function buildOptions() {
     })
   }
 
+  // cursor markline (only on subplot 0 in single-plot mode)
   if (hasDataForSubplot(0))
     series.push(createCursorMarkline('cursor-markline-top', 0, cursorYAxisIndexForSubplot(0)))
-  if (hasDataForSubplot(1))
-    series.push(createCursorMarkline('cursor-markline-bottom', 1, cursorYAxisIndexForSubplot(1)))
-  if (hasDataForSubplot(2))
-    series.push(createCursorMarkline('cursor-markline-third', 2, cursorYAxisIndexForSubplot(2)))
 
-  const activeXAxisIndices = [0, 1, 2].filter(hasDataForSubplot)
+  if (!showOnlyFirstPlot.value) {
+    if (hasDataForSubplot(1))
+      series.push(createCursorMarkline('cursor-markline-bottom', 1, cursorYAxisIndexForSubplot(1)))
+    if (hasDataForSubplot(2))
+      series.push(createCursorMarkline('cursor-markline-third', 2, cursorYAxisIndexForSubplot(2)))
+  }
 
-  const grids = isMobile.value
+  const activeXAxisIndices = showOnlyFirstPlot.value ? [0] : [0, 1, 2].filter(hasDataForSubplot)
+
+  const grids = showOnlyFirstPlot.value
     ? [
-      { left: '5%', right: '5%', top: '10%', height: '20%' },
-      { left: '5%', right: '5%', top: '40%', height: '20%' },
-      { left: '5%', right: '5%', top: '70%', height: '20%' },
+      isMobile.value
+        ? { left: '5%', right: '5%', top: '10%', height: '80%' }
+        : { left: '8%', right: '8%', top: '10%', height: '80%' },
     ]
-    : [
-      { left: '8%', right: '8%', top: '10%', height: '22%' },
-      { left: '8%', right: '8%', top: '40%', height: '22%' },
-      { left: '8%', right: '8%', top: '70%', height: '22%' },
-    ]
+    : isMobile.value
+      ? [
+        { left: '5%', right: '5%', top: '10%', height: '20%' },
+        { left: '5%', right: '5%', top: '40%', height: '20%' },
+        { left: '5%', right: '5%', top: '70%', height: '20%' },
+      ]
+      : [
+        { left: '8%', right: '8%', top: '10%', height: '22%' },
+        { left: '8%', right: '8%', top: '40%', height: '22%' },
+        { left: '8%', right: '8%', top: '70%', height: '22%' },
+      ]
 
-  const xAxes: XAXisComponentOption[] = [0, 1, 2].map((i) => {
-    const isLabelPlot = i === 2
+  const xAxisIndices = showOnlyFirstPlot.value ? [0] : [0, 1, 2]
+
+  const xAxes: XAXisComponentOption[] = xAxisIndices.map((i) => {
+    const isLabelPlot = showOnlyFirstPlot.value || i === 2
     const DAY_MS = 1000 * 60 * 60 * 24
     return {
       type: 'time',
@@ -317,50 +357,67 @@ function buildOptions() {
     }
   })
 
-  const yAxes: YAXisComponentOption[] = [
-    createYAxisConfig(
-      props.topLeftAxisName ?? 'Top left',
-      0,
-      'left',
-      hasYAxisSeriesData(0, 'left'),
-      hasVisibleSeriesForAxis(0, 'left'),
-    ),
-    createYAxisConfig(
-      props.topRightAxisName ?? 'Top right',
-      0,
-      'right',
-      hasYAxisSeriesData(0, 'right'),
-      hasVisibleSeriesForAxis(0, 'right'),
-    ),
-    createYAxisConfig(
-      props.bottomLeftAxisName ?? 'Bottom left',
-      1,
-      'left',
-      hasYAxisSeriesData(1, 'left'),
-      hasVisibleSeriesForAxis(1, 'left'),
-    ),
-    createYAxisConfig(
-      props.bottomRightAxisName ?? 'Bottom right',
-      1,
-      'right',
-      hasYAxisSeriesData(1, 'right'),
-      hasVisibleSeriesForAxis(1, 'right'),
-    ),
-    createYAxisConfig(
-      props.thirdLeftAxisName ?? 'Third left',
-      2,
-      'left',
-      hasYAxisSeriesData(2, 'left'),
-      hasVisibleSeriesForAxis(2, 'left'),
-    ),
-    createYAxisConfig(
-      props.thirdRightAxisName ?? 'Third right',
-      2,
-      'right',
-      hasYAxisSeriesData(2, 'right'),
-      hasVisibleSeriesForAxis(2, 'right'),
-    ),
-  ]
+  const yAxes: YAXisComponentOption[] = showOnlyFirstPlot.value
+    ? [
+      createYAxisConfig(
+        props.topLeftAxisName ?? 'Top left',
+        0,
+        'left',
+        hasYAxisSeriesData(0, 'left'),
+        hasVisibleSeriesForAxis(0, 'left'),
+      ),
+      createYAxisConfig(
+        props.topRightAxisName ?? 'Top right',
+        0,
+        'right',
+        hasYAxisSeriesData(0, 'right'),
+        hasVisibleSeriesForAxis(0, 'right'),
+      ),
+    ]
+    : [
+      createYAxisConfig(
+        props.topLeftAxisName ?? 'Top left',
+        0,
+        'left',
+        hasYAxisSeriesData(0, 'left'),
+        hasVisibleSeriesForAxis(0, 'left'),
+      ),
+      createYAxisConfig(
+        props.topRightAxisName ?? 'Top right',
+        0,
+        'right',
+        hasYAxisSeriesData(0, 'right'),
+        hasVisibleSeriesForAxis(0, 'right'),
+      ),
+      createYAxisConfig(
+        props.bottomLeftAxisName ?? 'Bottom left',
+        1,
+        'left',
+        hasYAxisSeriesData(1, 'left'),
+        hasVisibleSeriesForAxis(1, 'left'),
+      ),
+      createYAxisConfig(
+        props.bottomRightAxisName ?? 'Bottom right',
+        1,
+        'right',
+        hasYAxisSeriesData(1, 'right'),
+        hasVisibleSeriesForAxis(1, 'right'),
+      ),
+      createYAxisConfig(
+        props.thirdLeftAxisName ?? 'Third left',
+        2,
+        'left',
+        hasYAxisSeriesData(2, 'left'),
+        hasVisibleSeriesForAxis(2, 'left'),
+      ),
+      createYAxisConfig(
+        props.thirdRightAxisName ?? 'Third right',
+        2,
+        'right',
+        hasYAxisSeriesData(2, 'right'),
+        hasVisibleSeriesForAxis(2, 'right'),
+      ),
+    ]
 
   chartOptions.value = {
     useUTC: cfgStore.datetimeFormat === 'UTC',
@@ -425,7 +482,7 @@ function buildOptions() {
     dataZoom: [
       {
         type: 'inside',
-        xAxisIndex: [0, 1, 2],
+        xAxisIndex: showOnlyFirstPlot.value ? [0] : [0, 1, 2],
         filterMode: 'none',
         zoomOnMouseWheel: false,
         moveOnMouseMove: true,
@@ -472,12 +529,10 @@ onMounted(async () => {
 watch(
   () => props.seriesData,
   () => {
-    // preserve toggles, add defaults for new names, drop removed names
     const defaults = computeDefaultLegendSelected()
     const next: Record<string, boolean> = {}
 
     for (const name of seriesNames.value) {
-      // keep user's explicit choice; otherwise fall back to defaults
       if (legendSelectedState.value[name] === false) next[name] = false
       else next[name] = defaults[name] ?? true
     }
@@ -488,25 +543,10 @@ watch(
   { deep: true, flush: 'post' },
 )
 
-// layout breakpoint changes (mobile/desktop)
-watch(
-  () => isMobile.value,
-  () => scheduleRebuild(),
-)
+watch(() => isMobile.value, () => scheduleRebuild())
+watch(() => [props.xMin, props.xMax], () => scheduleRebuild())
+watch(() => cfgStore.datetimeFormat, () => scheduleRebuild())
 
-// xMin/xMax changes
-watch(
-  () => [props.xMin, props.xMax],
-  () => scheduleRebuild(),
-)
-
-// datetime format affects useUTC
-watch(
-  () => cfgStore.datetimeFormat,
-  () => scheduleRebuild(),
-)
-
-// route change can alter default hidden series; reset defaults + rebuild
 watch(
   () => route.name,
   () => {
@@ -519,13 +559,20 @@ watch(
 watch(
   () => props.cursorTime,
   (cursor) => {
-    const chart = chartRef.value?.chart as echarts.ECharts | undefined
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chart = chartRef.value?.chart as any | undefined
     if (!chart) return
 
     const updates: LineSeriesOption[] = []
-    if (hasDataForSubplot(0)) updates.push({ id: 'cursor-markline-top', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
-    if (hasDataForSubplot(1)) updates.push({ id: 'cursor-markline-bottom', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
-    if (hasDataForSubplot(2)) updates.push({ id: 'cursor-markline-third', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
+    if (hasDataForSubplot(0))
+      updates.push({ id: 'cursor-markline-top', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
+
+    if (!showOnlyFirstPlot.value) {
+      if (hasDataForSubplot(1))
+        updates.push({ id: 'cursor-markline-bottom', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
+      if (hasDataForSubplot(2))
+        updates.push({ id: 'cursor-markline-third', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
+    }
 
     chart.setOption({ series: updates }, { notMerge: false })
   },

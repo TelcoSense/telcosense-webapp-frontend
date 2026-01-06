@@ -18,7 +18,7 @@ import DatetimeToggle from '@/components/DatetimeToggle.vue'
 
 import { Icon } from '@iconify/vue'
 import { onClickOutside } from '@vueuse/core'
-import { computed, ref, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef, watchEffect } from 'vue'
 
 const SESSION_MAX_SECONDS = 1800 // 30 minutes
 
@@ -63,7 +63,7 @@ async function logout() {
     if (res.data.message === 'Logout successful') {
       await auth.checkLogin()
       resetData()
-      router.push({ name: 'login' })
+      router.push({ name: 'home' })
     }
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
@@ -73,6 +73,10 @@ async function logout() {
       console.error('Unknown error:', err)
     }
   }
+}
+
+function pushToLogin() {
+  router.push({ name: 'login' })
 }
 
 function toggleRoute() {
@@ -87,6 +91,16 @@ function toggleRoute() {
   }
 }
 
+const routeLabel = computed(() => {
+  if (route.name === 'rain') return 'TelcoRain'
+  if (route.name === 'temp') return 'TelcoTemp'
+  return ''
+})
+
+watchEffect(() => {
+  document.title = routeLabel.value
+})
+
 const menuVisible = ref(false)
 const profileMenuWrapper = useTemplateRef<HTMLElement>('profileMenuWrapper')
 
@@ -100,11 +114,15 @@ onClickOutside(profileMenuWrapper, () => {
 
     <div class="flex gap-x-3">
 
-      <span
-        class="flex h-8 cursor-pointer items-center justify-center rounded-md text-xl font-semibold text-gray-900 transition select-none hover:text-gray-700 mr-3"
-        @click="toggleRoute">
-        TelcoSense
+      <span @click="toggleRoute"
+        class="flex h-8 items-center justify-center rounded-md text-xl font-semibold text-gray-900 select-none mr-3 cursor-pointer hover:text-gray-700">
+        {{ routeLabel }}
       </span>
+      <!-- <span v-else
+        class="flex h-8 items-center justify-center rounded-md text-xl font-semibold text-gray-900 select-none mr-3">
+        {{ routeLabel }}
+      </span> -->
+
 
 
       <slot></slot>
@@ -120,7 +138,8 @@ onClickOutside(profileMenuWrapper, () => {
         <div v-if="menuVisible"
           class="absolute top-[calc(3rem-1px)] right-0 z-50 flex w-58 flex-col gap-y-2 rounded-md border border-gray-600 bg-gray-800/60 p-2 backdrop-blur-xs">
           <span class="flex w-full border-b border-gray-400 pb-1.5 text-sm text-nowrap text-white select-none">
-            {{ `${auth.username} (${auth.org})` }}
+            <div v-if="auth.username">{{ `${auth.username} (${auth.org})` }}</div>
+            <div v-else>Not logged in</div>
           </span>
 
           <div v-if="formattedTime" class="flex h-8 flex-col items-center justify-center px-2 text-nowrap ">
@@ -136,9 +155,13 @@ onClickOutside(profileMenuWrapper, () => {
 
           </slot>
 
-          <button @click="logout()"
+          <button v-if="auth.isLoggedIn" @click="logout()"
             class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
             Log out
+          </button>
+          <button v-else @click="pushToLogin()"
+            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
+            Log in
           </button>
         </div>
       </div>
