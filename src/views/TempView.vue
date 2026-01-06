@@ -918,9 +918,10 @@ watch(
           map-target="secondary" ref="layerSwitcherSecondary" />
 
         <!-- primary -->
-        <TempBar v-if="activeLayerMain" :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'" />
+        <TempBar v-if="activeLayerMain && config.barVisible"
+          :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'" />
         <!-- secondary -->
-        <TempBar v-if="activeLayerSecondary" />
+        <TempBar v-if="activeLayerSecondary && config.barVisible" />
 
         <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
         <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" ref="linkTable" />
