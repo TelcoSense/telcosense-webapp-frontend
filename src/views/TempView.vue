@@ -230,6 +230,177 @@ async function initLayer(
 
 let stopSync: null | (() => void) = null
 
+// tooltip code begins
+const clickTooltipByMap = new Map<'main' | 'secondary', L.Tooltip>()
+
+function clearTooltip(target: 'main' | 'secondary') {
+  const tt = clickTooltipByMap.get(target)
+  const m = target === 'main' ? map.value : secondaryMap.value
+  if (tt && m) {
+    m.removeLayer(tt)
+  }
+  clickTooltipByMap.delete(target)
+}
+
+function showTooltipOnTarget(target: 'main' | 'secondary', latlng: L.LatLng) {
+  const m = target === 'main' ? map.value : secondaryMap.value
+  if (!m) return
+  const active = target === 'main' ? activeLayerMain.value : activeLayerSecondary.value
+  if (!active?.id) return
+  const layerInst = getLayerInstanceById(active.id, target)
+  if (!layerInst) return
+  const overlay = layerInst.getOverlay()
+  if (!overlay) return
+  const hex = getOverlayPixelHex(m as L.Map, overlay as L.ImageOverlay, latlng)
+  const decoded = hex ? closestTemperatureFromHex(hex) : null
+  clearTooltip(target)
+  const tt = L.tooltip({
+    direction: 'top',
+    offset: [0, 0],
+    opacity: 1,
+    className: 'click-tooltip',
+  })
+    .setLatLng(latlng)
+    .setContent(`
+      <div class="font-inter text-sm text-black">
+        ${decoded ? `<div>${decoded} °C</div>` : `<div class="opacity-70">(no data)</div>`}
+      </div>
+    `)
+
+  tt.addTo(m as L.Map)
+  clickTooltipByMap.set(target, tt)
+}
+
+const TEMP_PALETTE = [
+  { hex: '#a301e3', value: -50 },
+  { hex: '#8100e8', value: -30 },
+  { hex: '#6101e7', value: -20 },
+  { hex: '#4001e4', value: -15 },
+  { hex: '#0525e4', value: -10 },
+  { hex: '#0446ea', value: -8 },
+  { hex: '#0367e7', value: -6 },
+  { hex: '#0788e7', value: -4 },
+  { hex: '#07a9e8', value: -3 },
+  { hex: '#04cbe8', value: -2 },
+  { hex: '#08e7e3', value: -1 },
+  { hex: '#07e9c4', value: 0 },
+  { hex: '#04eaa2', value: 1 },
+  { hex: '#0ae964', value: 2 },
+  { hex: '#6eec0e', value: 3 },
+  { hex: '#b0ec0c', value: 4 },
+  { hex: '#ceec11', value: 5 },
+  { hex: '#ebe80e', value: 8 },
+  { hex: '#ebc90d', value: 10 },
+  { hex: '#eca912', value: 12 },
+  { hex: '#ed8b11', value: 14 },
+  { hex: '#ed6b13', value: 16 },
+  { hex: '#f04b15', value: 18 },
+  { hex: '#f22c0f', value: 30 },
+  { hex: '#f01438', value: 35 },
+  { hex: '#ff0000', value: 50 },
+]
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const h = hex.replace('#', '')
+  if (h.length !== 6) return null
+  return {
+    r: parseInt(h.slice(0, 2), 16),
+    g: parseInt(h.slice(2, 4), 16),
+    b: parseInt(h.slice(4, 6), 16),
+  }
+}
+
+function colorDistanceSq(a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }) {
+  const dr = a.r - b.r
+  const dg = a.g - b.g
+  const db = a.b - b.b
+  return dr * dr + dg * dg + db * db
+}
+
+function closestTemperatureFromHex(hex: string): number | null {
+  const rgb = hexToRgb(hex.toLowerCase())
+  if (!rgb) return null
+  let bestDist = Infinity
+  let bestValue: number | null = null
+  for (const p of TEMP_PALETTE) {
+    const prgb = hexToRgb(p.hex)
+    if (!prgb) continue
+    const d = colorDistanceSq(rgb, prgb)
+    if (d < bestDist) {
+      bestDist = d
+      bestValue = p.value
+    }
+  }
+  return bestValue
+}
+
+function rgbaToHex(r: number, g: number, b: number) {
+  const toHex = (v: number) => v.toString(16).padStart(2, '0')
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`
+}
+
+function getOverlayPixelHex(
+  mapObj: L.Map,
+  overlay: L.ImageOverlay,
+  latlng: L.LatLng
+): string | null {
+  const img = overlay.getElement() as HTMLImageElement | null
+  if (!img) return null
+
+  const bounds = overlay.getBounds()
+  if (!bounds.contains(latlng)) return null
+
+  const nw = mapObj.latLngToContainerPoint(bounds.getNorthWest())
+  const se = mapObj.latLngToContainerPoint(bounds.getSouthEast())
+  const p = mapObj.latLngToContainerPoint(latlng)
+
+  const x = Math.floor(((p.x - nw.x) / (se.x - nw.x)) * img.naturalWidth)
+  const y = Math.floor(((p.y - nw.y) / (se.y - nw.y)) * img.naturalHeight)
+
+  if (x < 0 || y < 0 || x >= img.naturalWidth || y >= img.naturalHeight) return null
+
+  const canvas = document.createElement('canvas')
+  canvas.width = img.naturalWidth
+  canvas.height = img.naturalHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  ctx.drawImage(img, 0, 0)
+  const data = ctx.getImageData(x, y, 1, 1).data
+
+  return rgbaToHex(data[0], data[1], data[2])
+}
+
+function getLayerInstanceById(id: string, target: 'main' | 'secondary'): ImageSequenceLayer | null {
+  if (target === 'main') {
+    if (id === 'tempcz') return layers.tempcz
+    if (id === 'tempchmi') return layers.tempchmi
+    return null
+  } else {
+    if (id === 'tempcz') return layers.tempczSecondary
+    if (id === 'tempchmi') return layers.tempchmiSecondary
+    return null
+  }
+}
+
+function isAltClick(e: L.LeafletMouseEvent) {
+  return !!(e.originalEvent as MouseEvent | undefined)?.altKey
+}
+
+function onClickShowTooltipFor(target: 'main' | 'secondary', e: L.LeafletMouseEvent) {
+  if (!isAltClick(e)) return
+
+  e.originalEvent?.preventDefault?.()
+  e.originalEvent?.stopPropagation?.()
+
+  // only clear tooltip on THIS map
+  clearTooltip(target)
+
+  showTooltipOnTarget(target, e.latlng)
+}
+
+// tooltip code ends
+
 onMounted(async () => {
   initMap()
   initSecondaryMap()
@@ -255,6 +426,9 @@ onMounted(async () => {
     onMapMouseDown(e)
   })
 
+  mapObject.on('click', (e: L.LeafletMouseEvent) => onClickShowTooltipFor('main', e))
+  mapObjectSecondary.on('click', (e: L.LeafletMouseEvent) => onClickShowTooltipFor('secondary', e))
+
   window.addEventListener('keydown', onKeyDown)
 
   await Promise.all([
@@ -270,6 +444,8 @@ onBeforeUnmount(() => {
   stopSync?.()
   stopSync = null
   window.removeEventListener('keydown', onKeyDown)
+  map.value?.off('click')
+  secondaryMap.value?.off('click')
 })
 
 // link and station drawing setup
@@ -654,7 +830,7 @@ const {
         </div>
 
         <TopNavbar>
-          <!-- <div class="mr-32 hidden gap-x-2 md:flex">
+          <div class="mr-32 hidden gap-x-2 md:flex">
             <div class="cursor-pointer rounded-md h-8 text-white ">
               <button class="h-full menu-btn-top rounded-l-md border-r border-y border-gray-600"
                 @click="config.setToRealtime()" :class="{ active: config.realtime }">
@@ -674,24 +850,35 @@ const {
               Time range
             </button>
 
-            <button v-if="!config.realtime" id="user-calc-button"
+            <!-- <button v-if="!config.realtime" id="user-calc-button"
               class="h-full menu-btn-top rounded-md border border-gray-600" @click="showHistoric = !showHistoric"
               :class="{ active: showHistoric }">
               User calculations
-            </button>
-          </div> -->
+            </button> -->
+          </div>
+          <template #settings>
+            <span class="text-sm border-b w-full border-gray-400 pb-1.5">Settings</span>
+            <div class="pb-2 w-full flex flex-col gap-y-1">
+              <div class="flex items-center gap-x-2">
+                <label for="clusters-toggle" class="cursor-pointer select-none text-sm">
+                  Show link clusters
+                </label>
+                <input type="checkbox" id="clusters-toggle" :checked="config.clustersVisible"
+                  @change="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)" />
+              </div>
+              <!-- <div class="flex items-center gap-x-2">
+                <label for="wetlinks-toggle" class="cursor-pointer select-none text-sm">
+                  Show wet links
+                </label>
+                <input type="checkbox" id="wetlinks-toggle" :checked="config.clustersVisible"
+                  @change="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)" />
+              </div> -->
+            </div>
+          </template>
         </TopNavbar>
 
         <LeftMenu>
           <!-- insert the button for copying link ids here -->
-          <template #up>
-            <button v-if="links.hasLinks">
-              <Icon icon="mingcute:three-circles-fill" width="38" height="38" class="menu-btn"
-                @click="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)"
-                :class="{ active: config.clustersVisible }" />
-            </button>
-          </template>
-
           <template #down>
             <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
               class="menu-btn" @click="copySelectedLinksToClipboard" />
@@ -750,6 +937,18 @@ const {
 
 .leaflet-control-attribution.leaflet-control {
   display: none;
+}
+
+.leaflet-container {
+  cursor: default !important;
+}
+
+.leaflet-container.leaflet-grab {
+  cursor: default !important;
+}
+
+.leaflet-container.leaflet-grabbing {
+  cursor: default !important;
 }
 
 .dp__theme_light,

@@ -25,6 +25,14 @@ export interface Link {
   center_y: number
 }
 
+export interface DryWetFrame {
+  utc: string
+  overall: number
+  cml_rain_true: number[]
+  count_true: number
+  count_total: number
+}
+
 const FILTER_KEY = 'linkFilters'
 
 function loadSavedFilters() {
@@ -53,6 +61,21 @@ function saveFilters(state: ReturnType<typeof useLinksStore>) {
   localStorage.setItem(FILTER_KEY, JSON.stringify(filters))
 }
 
+function isoToUtcKey10min(iso: string): string {
+  const d = new Date(iso)
+
+  // snap DOWN to 10-minute grid
+  d.setUTCMinutes(Math.floor(d.getUTCMinutes() / 10) * 10, 0, 0)
+
+  const yyyy = d.getUTCFullYear()
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  const hh = String(d.getUTCHours()).padStart(2, '0')
+  const min = String(d.getUTCMinutes()).padStart(2, '0')
+
+  return `${yyyy}-${mm}-${dd}_${hh}${min}`
+}
+
 export const useLinksStore = defineStore('links', {
   state: () => {
     const saved = loadSavedFilters()
@@ -77,6 +100,10 @@ export const useLinksStore = defineStore('links', {
 
       manualIdFilterInput: saved.manualIdFilterInput ?? '',
       filteredIds: saved.filteredIds ?? [],
+      drywet: [] as DryWetFrame[],
+      drywetLoading: false,
+      drywetError: null as string | null,
+      drywetRange: { start: null as string | null, end: null as string | null },
     }
   },
 
@@ -96,6 +123,25 @@ export const useLinksStore = defineStore('links', {
       } finally {
         this.loading = false
         saveFilters(this)
+      }
+    },
+
+    async fetchDrywet(startIso: string, endIso: string) {
+      this.drywetLoading = true
+      this.drywetError = null
+      this.drywetRange = { start: startIso, end: endIso }
+      try {
+        const res = await api.get<DryWetFrame[]>('/drywet', {
+          ...getSecureConfig(),
+          params: { start: startIso, end: endIso },
+        })
+        this.drywet = res.data ?? []
+      } catch (err) {
+        this.drywetError = err instanceof Error ? err.message : 'Unknown error'
+        console.error('Error loading drywet:', err)
+        this.drywet = []
+      } finally {
+        this.drywetLoading = false
       }
     },
 
@@ -205,6 +251,16 @@ export const useLinksStore = defineStore('links', {
 
         return inTech && inPol && inLength && inFreq && !isDisabled && inManualIds
       })
+    },
+
+    drywetFrameByIso: (state) => {
+      const map: Record<string, DryWetFrame> = {}
+      for (const f of state.drywet) map[f.utc] = f
+
+      return (iso: string) => {
+        const key = isoToUtcKey10min(iso)
+        return map[key] ?? null
+      }
     },
 
     hasLinks: (state) => state.links.length > 0,

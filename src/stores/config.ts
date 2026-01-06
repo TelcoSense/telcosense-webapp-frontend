@@ -5,6 +5,7 @@ interface ConfigState {
   start: string | null;
   end: string | null;
   datetimeFormat: 'UTC' | 'Europe/Prague';
+  // visibility
   dataPlottingVisible: boolean;
   mainLayerSwitcherVisible: boolean;
   secondaryLayerSwitcherVisible: boolean;
@@ -13,6 +14,9 @@ interface ConfigState {
   clustersVisible: boolean;
   barVisible: boolean;
   datetimeSelectorVisible: boolean;
+  wetLinksVisible: boolean;
+
+  // splitview
   splitView: boolean;
   followPrimary: boolean;
   layerSwitchedTime: Date | null;
@@ -35,6 +39,7 @@ export const useConfigStore = defineStore('config', {
     clustersVisible: false,
     barVisible: false,
     datetimeSelectorVisible: false,
+    wetLinksVisible: false,
 
     // split view
     splitView: false,

@@ -15,15 +15,6 @@ type CacheEntry = {
   lastUsed: number
 }
 
-/**
- * - Preloading uses a queue with concurrency limit (no Promise.all stampede)
- * - Preload is cancelable and deprioritized vs showFrame()
- * - showFrame is race-safe (stale requests ignored), and aborts prior showFrame fetch
- * - Playback does not overlap showFrame calls (awaited loop instead of setInterval)
- * - Fast closest-index lookup via precomputed timestampMs[]
- * - Cache eviction via simple LRU-ish policy with maxCacheItems
- */
-
 export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L.LatLngBounds }) {
   const apiUrl = ref(initialConfig.apiUrl)
   const bounds = ref(initialConfig.bounds)
@@ -89,6 +80,10 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     if (!map.value || !overlay.value) return
     if (visible) overlay.value.addTo(map.value as L.Map)
     else map.value.removeLayer(overlay.value as L.ImageOverlay)
+  }
+
+  function getOverlay() {
+    return overlay.value
   }
 
   async function fetchList(start: string | null, end: string | null) {
@@ -448,6 +443,7 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     fetchList,
     showFrame,
     changeFrame,
+    getOverlay,
 
     // kept, but now schedules rather than Promise.all
     preloadWindow,

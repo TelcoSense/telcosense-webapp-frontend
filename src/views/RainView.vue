@@ -239,6 +239,172 @@ async function initLayer(
 
 let stopSync: null | (() => void) = null
 
+// tooltip code begins
+const clickTooltipByMap = new Map<'main' | 'secondary', L.Tooltip>()
+
+function clearTooltip(target: 'main' | 'secondary') {
+  const tt = clickTooltipByMap.get(target)
+  const m = target === 'main' ? map.value : secondaryMap.value
+  if (tt && m) {
+    m.removeLayer(tt)
+  }
+  clickTooltipByMap.delete(target)
+}
+
+function showTooltipOnTarget(target: 'main' | 'secondary', latlng: L.LatLng) {
+  const m = target === 'main' ? map.value : secondaryMap.value
+  if (!m) return
+  const active = target === 'main' ? activeLayerMain.value : activeLayerSecondary.value
+  if (!active?.id) return
+  const layerInst = getLayerInstanceById(active.id, target)
+  if (!layerInst) return
+  const overlay = layerInst.getOverlay()
+  if (!overlay) return
+  const hex = getOverlayPixelHex(m as L.Map, overlay as L.ImageOverlay, latlng)
+  const decoded = hex ? decodeValueFromHex(active.id, hex) : null
+  clearTooltip(target)
+  const tt = L.tooltip({
+    direction: 'top',
+    offset: [0, 0],
+    opacity: 1,
+    className: 'click-tooltip',
+  })
+    .setLatLng(latlng)
+    .setContent(`
+      <div class="font-inter text-sm text-black">
+        ${decoded ? `<div>${decoded}</div>` : `<div class="opacity-70">(no data)</div>`}
+      </div>
+    `)
+
+  tt.addTo(m as L.Map)
+  clickTooltipByMap.set(target, tt)
+}
+
+const PALETTE = [
+  '#380070',
+  '#3000a8',
+  '#0000fc',
+  '#006cc0',
+  '#00a000',
+  '#00bc00',
+  '#34d800',
+  '#9cdc00',
+  '#e0dc00',
+  '#fcb000',
+  '#fc8400',
+  '#fc5800',
+  '#fc0000',
+  '#a00000',
+  '#fcfcfc',
+] as const
+
+const MAXZ_DBZ = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60] as const
+const MERGE1H_MM = [0.1, 0.3, 0.6, 1.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0, 40.0, 60.0, 80.0, 100.0] as const
+
+function normHex(h: string) {
+  return h.trim().toLowerCase()
+}
+
+function paletteIndex(hex: string): number {
+  return PALETTE.map(normHex).indexOf(normHex(hex))
+}
+
+function dbzToRainRateMmH(dbz: number): number {
+  const Z = Math.pow(10, dbz / 10)
+  const R = Math.pow(Z / 200, 1 / 1.6)
+  return R
+}
+
+function decodeValueFromHex(layerId: string, hex: string): string | null {
+  const i = paletteIndex(hex)
+  if (i < 0) return null
+
+  if (layerId === 'maxz') return `${MAXZ_DBZ[i]} dBZ (${dbzToRainRateMmH(MAXZ_DBZ[i]).toFixed(1)} mm/h)`
+  if (layerId === 'merge1h') return `${MERGE1H_MM[i]} mm`
+  if (layerId === 'raincz') {
+    const dbz = MAXZ_DBZ[i]
+    const mmh = dbzToRainRateMmH(dbz)
+    return `${mmh.toFixed(1)} mm/h`
+  }
+  return null
+}
+
+function rgbaToHex(r: number, g: number, b: number, a = 255) {
+  const toHex = (v: number) => v.toString(16).padStart(2, '0')
+  // include alpha only if not fully opaque
+  return a === 255
+    ? `#${toHex(r)}${toHex(g)}${toHex(b)}`
+    : `#${toHex(r)}${toHex(g)}${toHex(b)}${toHex(a)}`
+}
+
+function getOverlayPixelHex(
+  mapObj: L.Map,
+  overlay: L.ImageOverlay,
+  latlng: L.LatLng
+): string | null {
+  const img = overlay.getElement() as HTMLImageElement | null
+  if (!img) return null
+
+  const bounds = overlay.getBounds()
+  if (!bounds.contains(latlng)) return null
+
+  const nw = mapObj.latLngToContainerPoint(bounds.getNorthWest())
+  const se = mapObj.latLngToContainerPoint(bounds.getSouthEast())
+  const p = mapObj.latLngToContainerPoint(latlng)
+
+  const x = Math.floor(((p.x - nw.x) / (se.x - nw.x)) * img.naturalWidth)
+  const y = Math.floor(((p.y - nw.y) / (se.y - nw.y)) * img.naturalHeight)
+
+  if (x < 0 || y < 0 || x >= img.naturalWidth || y >= img.naturalHeight) return null
+
+  const canvas = document.createElement('canvas')
+  canvas.width = img.naturalWidth
+  canvas.height = img.naturalHeight
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+
+  ctx.drawImage(img, 0, 0)
+  const data = ctx.getImageData(x, y, 1, 1).data
+
+  return rgbaToHex(data[0], data[1], data[2], data[3])
+}
+
+function getLayerInstanceById(id: string, target: 'main' | 'secondary'): ImageSequenceLayer | null {
+  if (target === 'main') {
+    if (id === 'maxz') return layers.maxz
+    if (id === 'merge1h') return layers.merge1h
+    if (id === 'raincz') return layers.raincz
+    if (id === 'user-calc') return layers.userCalc
+    return null
+  } else {
+    if (id === 'maxz') return layers.maxzSecondary
+    if (id === 'merge1h') return layers.merge1hSecondary
+    if (id === 'raincz') return layers.rainczSecondary
+    // NOTE: you currently don't have userCalcSecondary initialized in your Promise.all
+    return null
+  }
+}
+
+function isAltClick(e: L.LeafletMouseEvent) {
+  return !!(e.originalEvent as MouseEvent | undefined)?.altKey
+}
+
+function onClickShowTooltipFor(target: 'main' | 'secondary', e: L.LeafletMouseEvent) {
+  // normal click clears only THIS map's tooltip
+  if (!isAltClick(e)) {
+    clearTooltip(target)
+    return
+  }
+
+  e.originalEvent?.preventDefault?.()
+  e.originalEvent?.stopPropagation?.()
+
+  // Alt+click: show/update tooltip only on THIS map
+  clearTooltip(target)
+  showTooltipOnTarget(target, e.latlng)
+}
+// tooltip code ends
+
 onMounted(async () => {
   initMap()
   initSecondaryMap()
@@ -255,6 +421,7 @@ onMounted(async () => {
 
   weatherStations.fetchWeatherStations()
   await links.fetchLinks()
+  await links.fetchDrywet(config.start, config.end)
 
   dragBox.value = document.getElementById('drag-box') as HTMLDivElement
   const mapObject = map.value as L.Map
@@ -263,6 +430,9 @@ onMounted(async () => {
   mapObject.on('mousedown', (e: L.LeafletMouseEvent) => {
     onMapMouseDown(e)
   })
+
+  mapObject.on('click', (e: L.LeafletMouseEvent) => onClickShowTooltipFor('main', e))
+  mapObjectSecondary.on('click', (e: L.LeafletMouseEvent) => onClickShowTooltipFor('secondary', e))
 
   window.addEventListener('keydown', onKeyDown)
 
@@ -282,6 +452,8 @@ onBeforeUnmount(() => {
   stopSync?.()
   stopSync = null
   window.removeEventListener('keydown', onKeyDown)
+  map.value?.off('click')
+  secondaryMap.value?.off('click')
 })
 
 // link and station drawing setup
@@ -310,7 +482,6 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
       link.id.toString() === cmlData.selectedCmlId
 
     const color = isSelected ? 'red' : 'black'
-
     let polyline = store.get(link.id)
 
     if (!polyline) {
@@ -475,6 +646,93 @@ function drawStations() {
   drawStationsTo(stationsGroupMain.value as L.LayerGroup, stationMarkersMain)
   drawStationsTo(stationsGroupSecondary.value as L.LayerGroup, stationMarkersSecondary)
 }
+
+function updateLinkColors(
+  store: Map<number, L.Polyline>,
+  newTrue: Set<number>,
+  lastTrue: Set<number>,
+) {
+  // stopped being true
+  for (const id of lastTrue) {
+    if (!newTrue.has(id)) {
+      const poly = store.get(id)
+      if (!poly) continue
+      const isSelected =
+        selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
+      poly.setStyle({ color: isSelected ? 'red' : 'black', weight: 2 })
+      poly.bringToBack()
+    }
+  }
+  // became true
+  for (const id of newTrue) {
+    if (!lastTrue.has(id)) {
+      const poly = store.get(id)
+      if (!poly) continue
+      const isSelected =
+        selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
+      poly.setStyle({ color: isSelected ? 'red' : 'orange', weight: 4 })
+      poly.bringToFront()
+    }
+  }
+  lastTrue.clear()
+  for (const id of newTrue) lastTrue.add(id)
+}
+
+function resetWetLinkColors(
+  store: Map<number, L.Polyline>,
+  lastTrue: Set<number>,
+) {
+  for (const id of lastTrue) {
+    const poly = store.get(id)
+    if (!poly) continue
+
+    const isSelected =
+      selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
+
+    poly.setStyle({ color: isSelected ? 'red' : 'black', weight: 2 })
+    poly.bringToBack()
+  }
+  lastTrue.clear()
+}
+
+const lastTrueMain = new Set<number>()
+const lastTrueSecondary = new Set<number>()
+let rafMain = 0
+let rafSecondary = 0
+
+watch(
+  [() => config.wetLinksVisible, () => activeLayerMain.value?.currentTimestamp],
+  ([enabled, ts]) => {
+    cancelAnimationFrame(rafMain)
+    rafMain = requestAnimationFrame(() => {
+      if (!enabled || !ts) {
+        resetWetLinkColors(linkPolylinesMain, lastTrueMain)
+        return
+      }
+      const frame = links.drywetFrameByIso(ts)
+      const newTrue = frame ? new Set(frame.cml_rain_true) : new Set<number>()
+      updateLinkColors(linkPolylinesMain, newTrue, lastTrueMain)
+    })
+  },
+  { immediate: true }
+)
+
+watch(
+  [() => config.wetLinksVisible, () => activeLayerSecondary.value?.currentTimestamp],
+  ([enabled, ts]) => {
+    cancelAnimationFrame(rafSecondary)
+    rafSecondary = requestAnimationFrame(() => {
+      if (!enabled || !ts) {
+        resetWetLinkColors(linkPolylinesSecondary, lastTrueSecondary)
+        return
+      }
+      const frame = links.drywetFrameByIso(ts)
+      const newTrue = frame ? new Set(frame.cml_rain_true) : new Set<number>()
+      updateLinkColors(linkPolylinesSecondary, newTrue, lastTrueSecondary)
+    })
+  },
+  { immediate: true }
+)
 
 // watchers for the filtered links and stations drawing
 watch(
@@ -642,7 +900,7 @@ onClickOutside(userCalculations, () => {
         </div>
 
         <div v-if="config.start && config.end" id="timestamps"
-          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 p-1 text-sm text-white blurred-bg select-none md:visible md:bottom-3 md:flex">
+          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 p-1 text-sm text-white blurred-bg md:visible md:bottom-3 md:flex">
           <p v-if="config.realtime">Realtime bounds</p>
           <p v-if="!config.realtime">Historic bounds</p>
           <p v-if="config.start">
@@ -689,16 +947,32 @@ onClickOutside(userCalculations, () => {
               User calculations
             </button>
           </div>
+
+          <template #settings>
+            <span class="text-sm border-b w-full border-gray-400 pb-1.5">Settings</span>
+            <div class="pb-2 w-full flex flex-col gap-y-1">
+              <div class="flex items-center gap-x-2">
+                <label for="clusters-toggle" class="cursor-pointer select-none text-sm">
+                  Show link clusters
+                </label>
+                <input type="checkbox" id="clusters-toggle" :checked="config.clustersVisible"
+                  @change="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)" />
+              </div>
+              <div class="flex items-center gap-x-2">
+                <label for="wetlinks-toggle" class="cursor-pointer select-none text-sm">
+                  Show wet links
+                </label>
+                <input type="checkbox" id="wetlinks-toggle" :checked="config.wetLinksVisible"
+                  @change="config.wetLinksVisible = !config.wetLinksVisible" />
+              </div>
+            </div>
+          </template>
         </TopNavbar>
 
         <LeftMenu>
           <!-- insert the button for copying link ids here -->
           <template #up>
-            <button v-if="links.hasLinks">
-              <Icon icon="mingcute:three-circles-fill" width="38" height="38" class="menu-btn"
-                @click="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)"
-                :class="{ active: config.clustersVisible }" />
-            </button>
+
           </template>
 
           <template #down>
@@ -773,6 +1047,18 @@ onClickOutside(userCalculations, () => {
 
 .leaflet-control-attribution.leaflet-control {
   display: none;
+}
+
+.leaflet-container {
+  cursor: default !important;
+}
+
+.leaflet-container.leaflet-grab {
+  cursor: default !important;
+}
+
+.leaflet-container.leaflet-grabbing {
+  cursor: default !important;
 }
 
 .dp__theme_light,

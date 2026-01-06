@@ -123,7 +123,7 @@ onClickOutside(profileMenuWrapper, () => {
             {{ `${auth.username} (${auth.org})` }}
           </span>
 
-          <div v-if="formattedTime" class="flex h-8 flex-col items-center justify-center px-2 text-nowrap">
+          <div v-if="formattedTime" class="flex h-8 flex-col items-center justify-center px-2 text-nowrap ">
             <div class="text-center text-xs text-white">
               <span class="font-chivo">{{ formattedTime }}</span> min left
             </div>
@@ -131,6 +131,10 @@ onClickOutside(profileMenuWrapper, () => {
               <div class="h-2 bg-cyan-500" :style="{ width: progressBarWidth }"></div>
             </div>
           </div>
+
+          <slot name="settings">
+
+          </slot>
 
           <button @click="logout()"
             class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">

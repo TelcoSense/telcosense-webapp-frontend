@@ -52,6 +52,53 @@ const rainColors = [
   '#fc8400', '#fc5800', '#fc0000', '#a00000', '#fcfcfc'
 ]
 
+type TempStop = { t: number; color: string }
+
+const tempStops: TempStop[] = [
+  { t: -50, color: '#a301e3' },
+  { t: -30, color: '#8100e8' },
+  { t: -20, color: '#6101e7' },
+  { t: -15, color: '#4001e4' },
+  { t: -10, color: '#0525e4' },
+  { t: -8, color: '#0446ea' },
+  { t: -6, color: '#0367e7' },
+  { t: -4, color: '#0788e7' },
+  { t: -3, color: '#07a9e8' },
+  { t: -2, color: '#04cbe8' },
+  { t: -1, color: '#08e7e3' },
+  { t: 0, color: '#07e9c4' },
+  { t: 1, color: '#04eaa2' },
+  { t: 2, color: '#0ae964' },
+  { t: 3, color: '#6eec0e' },
+  { t: 4, color: '#b0ec0c' },
+  { t: 5, color: '#ceec11' },
+  { t: 8, color: '#ebe80e' },
+  { t: 10, color: '#ebc90d' },
+  { t: 12, color: '#eca912' },
+  { t: 14, color: '#ed8b11' },
+  { t: 16, color: '#ed6b13' },
+  { t: 18, color: '#f04b15' },
+  { t: 30, color: '#f22c0f' },
+  { t: 35, color: '#f01438' },
+  { t: 50, color: '#ff0000' },
+]
+
+function colorFromTemp(temp: number | null | undefined): string {
+  if (temp == null || Number.isNaN(temp)) return 'rgba(0,0,0,0)'
+
+  if (temp <= tempStops[0].t) return tempStops[0].color
+  if (temp >= tempStops[tempStops.length - 1].t) return tempStops[tempStops.length - 1].color
+
+  for (let i = tempStops.length - 1; i >= 0; i--) {
+    if (temp >= tempStops[i].t) return tempStops[i].color
+  }
+  return tempStops[0].color
+}
+
+const isTemperatureLayer = computed(() => {
+  const id = activeLayer.value?.id
+  return id === 'tempcz' || id === 'tempchmi'
+})
 
 const disablePrev = computed(
   () => !activeLayer.value || activeLayer.value.currentIndex <= 0 || activeLayer.value.isPlaying,
@@ -121,10 +168,16 @@ const frameColors = computed(() => {
   if (!activeLayer.value) return []
 
   return activeLayer.value.frames.map(frame => {
-    const score = frame.rain_score
-    if (score == null) return 'transparent'
-    // if (score <= 0.01) return 'transparent'
-    const idx = Math.floor(score * rainColors.length)
+    const v = frame.rain_score
+    if (v == null) return 'rgba(0,0,0,0)'
+
+    if (isTemperatureLayer.value) {
+      // here rain_score actually means “median temperature”
+      return colorFromTemp(v)
+    }
+
+    // normal rain layer behavior
+    const idx = Math.floor(v * rainColors.length)
     return rainColors[Math.min(rainColors.length - 1, Math.max(0, idx))]
   })
 })
@@ -133,18 +186,21 @@ const sliderGradient = computed(() => {
   const colors = frameColors.value
   const n = colors.length
 
-  // fallback (neutral gray track)
-  if (!n || colors.every(c => !c || c === 'transparent')) {
-    return 'linear-gradient(to right, #4b5563 0%, #4b5563 100%)' // tailwind gray-600
-  }
+  const base = 'linear-gradient(to right, #4b5563 0%, #4b5563 100%)' // gray-600
 
-  return `linear-gradient(to right, ${colors
+  if (!n) return base
+
+  const overlay = `linear-gradient(to right, ${colors
     .map((c, i) => {
       const a = (i / n) * 100
       const b = ((i + 1) / n) * 100
+      // keep transparent segments transparent; they'll reveal the base gray layer
       return `${c} ${a}% ${b}%`
     })
     .join(', ')})`
+
+  // overlay on top of gray base
+  return `${overlay}, ${base}`
 })
 
 

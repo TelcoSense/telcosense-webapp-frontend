@@ -45,8 +45,8 @@ const layerMainActive = computed(() => {
     <div class="flex flex-col gap-y-1">
 
       <button>
-        <Icon icon="carbon:split-screen" width="38" height="38" class="menu-btn" :class="{ active: config.splitView }"
-          @click="
+        <Icon icon="carbon:split-screen" width="38" height="38" class="menu-btn md:visible hidden md:block"
+          :class="{ active: config.splitView }" @click="
             () => {
               config.toggleSplitView()
             }
