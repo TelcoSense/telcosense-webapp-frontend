@@ -28,7 +28,7 @@ export function useTokenCountdown(pollInterval = 30000) {
     useConfigStore().$reset()
     useActiveLayer().clearMainLayer()
     useActiveLayer().clearSecondaryLayer()
-
+    remainingTime.value = null
     router.push({ name: 'login' })
   }
 
@@ -41,6 +41,10 @@ export function useTokenCountdown(pollInterval = 30000) {
     } else {
       remainingTime.value = null
     }
+  }
+
+  function resetRemaining() {
+    remainingTime.value = null
   }
 
   async function pollTokenStatus() {
@@ -74,5 +78,6 @@ export function useTokenCountdown(pollInterval = 30000) {
 
   return {
     remainingTime: computed(() => remainingTime.value),
+    resetRemaining
   }
 }

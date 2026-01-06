@@ -33,7 +33,7 @@ const cmlData = useCmlDataStore()
 const config = useConfigStore()
 
 const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
-const { remainingTime } = useTokenCountdown()
+const { remainingTime, resetRemaining } = useTokenCountdown()
 
 const formattedTime = computed(() => {
   if (remainingTime.value === null) return ''
@@ -63,6 +63,7 @@ async function logout() {
     if (res.data.message === 'Logout successful') {
       await auth.checkLogin()
       resetData()
+      resetRemaining()
       router.push({ name: 'home' })
     }
   } catch (err) {
@@ -76,7 +77,13 @@ async function logout() {
 }
 
 function pushToLogin() {
+  resetData()
   router.push({ name: 'login' })
+}
+
+function pushToHome() {
+  resetData()
+  router.push({ name: 'home' })
 }
 
 function toggleRoute() {
@@ -118,12 +125,6 @@ onClickOutside(profileMenuWrapper, () => {
         class="flex h-8 items-center justify-center rounded-md text-xl font-semibold text-gray-900 select-none mr-3 cursor-pointer hover:text-gray-700">
         {{ routeLabel }}
       </span>
-      <!-- <span v-else
-        class="flex h-8 items-center justify-center rounded-md text-xl font-semibold text-gray-900 select-none mr-3">
-        {{ routeLabel }}
-      </span> -->
-
-
 
       <slot></slot>
     </div>
@@ -154,7 +155,10 @@ onClickOutside(profileMenuWrapper, () => {
           <slot name="settings">
 
           </slot>
-
+          <button v-if="!auth.isLoggedIn" @click="pushToHome()"
+            class="cursor-pointer rounded-md  text-sm text-white select-none hover:underline">
+            Home page
+          </button>
           <button v-if="auth.isLoggedIn" @click="logout()"
             class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
             Log out

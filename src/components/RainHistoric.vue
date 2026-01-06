@@ -214,7 +214,7 @@ const canStart = computed(() => {
 
 <template>
   <div v-if="showHistoric && !config.realtime"
-    class="absolute top-14 left-36.5 z-50 w-3xl rounded-md  backdrop-blur-xs bg-gray-800 p-2 text-sm text-white">
+    class="absolute top-14 left-32 z-50 w-3xl rounded-md  backdrop-blur-xs bg-gray-800 p-2 text-sm text-white">
     <div class="w-full border-b border-gray-600 pb-1.5 text-white">User calculations</div>
 
     <div class="py-2 flex gap-x-2">

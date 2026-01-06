@@ -110,7 +110,7 @@ function goLogin() {
         </div>
 
         <!-- logos -->
-        <div class="flex items-center justify-center gap-y-2 flex-row sm:gap-6">
+        <div class="flex items-center justify-center gap-2 flex-row sm:gap-6">
           <img src="@/assets/eu.png" alt="European Union" class="h-10 sm:h-15 w-auto object-contain" />
           <img src="@/assets/tacr.png" alt="Technology Agency of the Czech Republic"
             class="h-9 sm:h-14 w-auto object-contain" />
@@ -128,6 +128,12 @@ function goLogin() {
                active:scale-[0.98]">
         Internal access
       </button>
+
+      <a href="https://about.telcosense.cz" target="_blank" rel="noopener" class="mt-4 text-xs tracking-wide text-blue-300/80
+         hover:text-blue-200 underline
+         transition">
+        About TelcoSense
+      </a>
     </main>
   </div>
 </template>

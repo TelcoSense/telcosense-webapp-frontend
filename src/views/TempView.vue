@@ -928,7 +928,7 @@ watch(
 
         <!-- date time selector -->
         <div v-show="!config.realtime && config.datetimeSelectorVisible"
-          class="absolute top-14 left-36.5 z-30 w-64 rounded-md bg-gray-800 p-2" ref="datetimeSelector">
+          class="absolute top-14 left-34.5 z-30 w-64 rounded-md bg-gray-800 p-2" ref="datetimeSelector">
 
           <label class="mb-1 block text-sm text-white">Start</label>
           <Datepicker v-model="selectedStart" utc time-picker-inline model-type="date" :max-date="new Date()"

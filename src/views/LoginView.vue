@@ -113,10 +113,16 @@ async function login() {
                    hover:bg-blue-500/20 hover:border-blue-400/60 hover:shadow-blue-500/40
                    active:scale-[0.98]
                    disabled:cursor-not-allowed disabled:opacity-60">
-            {{ loading ? 'Logging in…' : 'Log in' }}
+            {{ loading ? 'Logging in...' : 'Log in' }}
           </button>
         </form>
+
       </div>
+      <a @click="router.push({ name: 'home' })" class="mt-4 cursor-pointer text-xs tracking-wide text-blue-300/80
+         hover:text-blue-200 underline
+         transition">
+        Home page
+      </a>
     </main>
   </div>
 </template>
