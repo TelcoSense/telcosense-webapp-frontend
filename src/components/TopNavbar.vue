@@ -18,7 +18,7 @@ import DatetimeToggle from '@/components/DatetimeToggle.vue'
 
 import { Icon } from '@iconify/vue'
 import { onClickOutside } from '@vueuse/core'
-import { computed, ref, useTemplateRef } from 'vue'
+import { computed, ref, useTemplateRef, watchEffect } from 'vue'
 
 const SESSION_MAX_SECONDS = 1800 // 30 minutes
 
@@ -32,8 +32,8 @@ const weatherData = useWeatherDataStore()
 const cmlData = useCmlDataStore()
 const config = useConfigStore()
 
-const { clearLayer } = useActiveLayer()
-const { remainingTime } = useTokenCountdown()
+const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
+const { remainingTime, resetRemaining } = useTokenCountdown()
 
 const formattedTime = computed(() => {
   if (remainingTime.value === null) return ''
@@ -53,7 +53,8 @@ function resetData() {
   links.$reset()
   cmlData.$reset()
   config.$reset()
-  clearLayer()
+  clearMainLayer()
+  clearSecondaryLayer()
 }
 
 async function logout() {
@@ -62,7 +63,8 @@ async function logout() {
     if (res.data.message === 'Logout successful') {
       await auth.checkLogin()
       resetData()
-      router.push({ name: 'login' })
+      resetRemaining()
+      router.push({ name: 'home' })
     }
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
@@ -74,10 +76,20 @@ async function logout() {
   }
 }
 
+function pushToLogin() {
+  resetData()
+  router.push({ name: 'login' })
+}
+
+function pushToHome() {
+  resetData()
+  router.push({ name: 'home' })
+}
+
 function toggleRoute() {
   if (route.name === 'rain') {
-    config.realtime = true
     resetData()
+    config.realtime = true
     router.push({ name: 'temp' })
   } else {
     resetData()
@@ -85,6 +97,16 @@ function toggleRoute() {
     router.push({ name: 'rain' })
   }
 }
+
+const routeLabel = computed(() => {
+  if (route.name === 'rain') return 'TelcoRain'
+  if (route.name === 'temp') return 'TelcoTemp'
+  return ''
+})
+
+watchEffect(() => {
+  document.title = routeLabel.value
+})
 
 const menuVisible = ref(false)
 const profileMenuWrapper = useTemplateRef<HTMLElement>('profileMenuWrapper')
@@ -96,13 +118,14 @@ onClickOutside(profileMenuWrapper, () => {
 
 <template>
   <nav class="absolute top-1 z-10 flex h-12 w-full items-center justify-between px-3">
-    <span
-      class="flex h-8 cursor-pointer items-center justify-center rounded-md text-xl font-semibold text-gray-900 transition select-none hover:text-gray-700"
-      @click="toggleRoute">
-      TelcoSense
-    </span>
 
     <div class="flex gap-x-3">
+
+      <span @click="toggleRoute"
+        class="flex h-8 items-center justify-center rounded-md text-xl font-semibold text-gray-900 select-none mr-3 cursor-pointer hover:text-gray-700">
+        {{ routeLabel }}
+      </span>
+
       <slot></slot>
     </div>
 
@@ -116,10 +139,11 @@ onClickOutside(profileMenuWrapper, () => {
         <div v-if="menuVisible"
           class="absolute top-[calc(3rem-1px)] right-0 z-50 flex w-58 flex-col gap-y-2 rounded-md border border-gray-600 bg-gray-800/60 p-2 backdrop-blur-xs">
           <span class="flex w-full border-b border-gray-400 pb-1.5 text-sm text-nowrap text-white select-none">
-            {{ `${auth.username} (${auth.org})` }}
+            <div v-if="auth.username">{{ `${auth.username} (${auth.org})` }}</div>
+            <div v-else>Not logged in</div>
           </span>
 
-          <div v-if="formattedTime" class="flex h-8 flex-col items-center justify-center px-2 text-nowrap">
+          <div v-if="formattedTime" class="flex h-8 flex-col items-center justify-center px-2 text-nowrap ">
             <div class="text-center text-xs text-white">
               <span class="font-chivo">{{ formattedTime }}</span> min left
             </div>
@@ -128,9 +152,20 @@ onClickOutside(profileMenuWrapper, () => {
             </div>
           </div>
 
-          <button @click="logout()"
+          <slot name="settings">
+
+          </slot>
+          <button v-if="!auth.isLoggedIn" @click="pushToHome()"
+            class="cursor-pointer rounded-md  text-sm text-white select-none hover:underline">
+            Home page
+          </button>
+          <button v-if="auth.isLoggedIn" @click="logout()"
             class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
             Log out
+          </button>
+          <button v-else @click="pushToLogin()"
+            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
+            Log in
           </button>
         </div>
       </div>

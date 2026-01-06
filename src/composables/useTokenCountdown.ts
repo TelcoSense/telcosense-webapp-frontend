@@ -26,8 +26,9 @@ export function useTokenCountdown(pollInterval = 30000) {
     useLinksStore().$reset()
     useCmlDataStore().$reset()
     useConfigStore().$reset()
-    useActiveLayer().clearLayer()
-
+    useActiveLayer().clearMainLayer()
+    useActiveLayer().clearSecondaryLayer()
+    remainingTime.value = null
     router.push({ name: 'login' })
   }
 
@@ -42,13 +43,17 @@ export function useTokenCountdown(pollInterval = 30000) {
     }
   }
 
+  function resetRemaining() {
+    remainingTime.value = null
+  }
+
   async function pollTokenStatus() {
     try {
       const valid = await auth.checkLogin()
       if (!valid) throw new Error('Invalid token')
     } catch (err) {
       console.warn('Token polling failed:', err)
-      performLogout()
+      if (auth.isLoggedIn) performLogout()
     }
   }
 
@@ -73,5 +78,6 @@ export function useTokenCountdown(pollInterval = 30000) {
 
   return {
     remainingTime: computed(() => remainingTime.value),
+    resetRemaining
   }
 }

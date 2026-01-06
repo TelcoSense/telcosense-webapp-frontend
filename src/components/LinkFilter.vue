@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { useConfigStore } from '@/stores/config'
 import { useLinksStore } from '@/stores/links'
-
-import { onClickOutside } from '@vueuse/core'
-import { ref, useTemplateRef, watch } from 'vue'
+import { ref, watch } from 'vue'
 
 const links = useLinksStore()
 const config = useConfigStore()
@@ -98,21 +96,17 @@ watch(
   { deep: true },
 )
 
-const linkFilter = useTemplateRef<HTMLElement>('linkFilter')
 
-onClickOutside(linkFilter, () => {
-  config.linkFilterVisible = false
-})
 </script>
 
 <template>
   <div v-if="!links.loading && links.hasLinks"
     class="absolute top-14 left-15 z-20 flex flex-col rounded-md text-xs text-white md:text-sm" :class="{
-      'w-[250] border border-gray-600 bg-gray-800/60 p-2 backdrop-blur-xs md:w-[300px]':
+      'w-[250] border border-gray-600 bg-gray-800 p-2  md:w-[300px]':
         config.linkFilterVisible,
-    }" ref="linkFilter">
+    }">
     <div v-if="config.linkFilterVisible">
-      <div class="w-full border-b border-gray-400 pb-1.5 text-white">Link filter</div>
+      <div class="w-full border-b border-gray-600 pb-1.5 text-white">Link filter</div>
       <!-- length filter -->
       <div class="py-2">
         <div class="flex justify-between">
@@ -125,12 +119,12 @@ onClickOutside(linkFilter, () => {
           <div class="flex py-1">
             <span class="mr-1 py-1 text-white">Min</span>
             <input type="number" v-model.number="links.minDistance"
-              class="w-16 rounded-md bg-gray-800/40 p-1 text-white focus:outline-none" min="0" />
+              class="w-16 rounded-md bg-gray-700 p-1 text-white focus:outline-none" min="0" />
           </div>
           <div class="flex py-1">
             <span class="mr-1 py-1 text-white">Max</span>
             <input type="number" v-model.number="links.maxDistance"
-              class="w-16 rounded-md bg-gray-800/40 p-1 text-white focus:outline-none" min="0" />
+              class="w-16 rounded-md bg-gray-700 p-1 text-white focus:outline-none" min="0" />
           </div>
         </div>
       </div>
@@ -148,14 +142,14 @@ onClickOutside(linkFilter, () => {
             <input type="number" :value="links.minFrequency / 1000" @input="
               (e) =>
                 (links.minFrequency = parseFloat((e.target as HTMLInputElement).value) * 1000)
-            " class="w-16 rounded-md bg-gray-800/40 p-1 text-white focus:outline-none" min="0" />
+            " class="w-16 rounded-md bg-gray-700 p-1 text-white focus:outline-none" min="0" />
           </div>
           <div class="flex py-1">
             <span class="mr-1 py-1 text-white">Max</span>
             <input type="number" :value="links.maxFrequency / 1000" @input="
               (e) =>
                 (links.maxFrequency = parseFloat((e.target as HTMLInputElement).value) * 1000)
-            " class="w-16 rounded-md bg-gray-800/40 p-1 text-white focus:outline-none" min="0" />
+            " class="w-16 rounded-md bg-gray-700 p-1 text-white focus:outline-none" min="0" />
           </div>
         </div>
       </div>
@@ -177,15 +171,15 @@ onClickOutside(linkFilter, () => {
         </div>
         <input type="text" v-model="links.manualIdFilterInput"
           @change="links.applyManualIdFilter(links.manualIdFilterInput)" placeholder="e.g. 101, 204, 350"
-          class="mt-1 w-full rounded-md bg-gray-800/40 p-1 text-white focus:outline-none" />
+          class="mt-1 w-full rounded-md bg-gray-700 p-1 text-white focus:outline-none" />
       </div>
       <!-- by IDs end -->
 
       <!-- actual groups and techs -->
-      <div class="mb-2 flex h-[200px] flex-col gap-3 overflow-y-auto rounded-md border border-gray-400 p-2 md:h-[306px]"
+      <div class="mb-2 flex h-[200px] flex-col gap-3 overflow-y-auto rounded-md border border-gray-600 p-2 md:h-[306px]"
         style="scrollbar-gutter: stable; will-change: transform">
         <div v-for="(techs, group) in links.groupedLinksByMappingAndTechnology" :key="group"
-          class="rounded-md border border-gray-400 bg-gray-800/40 p-2">
+          class="rounded-md border border-gray-600 bg-gray-700 p-2">
           <div class="flex items-center justify-between">
             <label class="flex cursor-pointer items-center">
               <input type="checkbox" class="mr-2" :checked="isGroupChecked(group)"
@@ -212,11 +206,10 @@ onClickOutside(linkFilter, () => {
       <!-- link table toggle -->
       <div class="4 mb-2 hidden flex-col gap-3 md:flex">
         <button @click="links.showLinkTable = !links.showLinkTable" :class="[
-          'flex h-8 flex-nowrap items-center justify-between gap-x-2 rounded-md border border-gray-400 px-2',
-          'enabled:cursor-pointer enabled:hover:bg-gray-800/20',
+          'cursor-pointer rounded  px-3 py-1 text-white  hover:opacity-100',
           links.showLinkTable
-            ? 'bg-gray-800/20 text-cyan-200 enabled:hover:text-cyan-200'
-            : 'text-gray-500 enabled:text-gray-300 enabled:hover:text-cyan-200 disabled:text-gray-400',
+            ? 'bg-cyan-600  enabled:hover:bg-cyan-700'
+            : 'bg-gray-600  enabled:hover:bg-gray-700',
         ]">
           Show link table
         </button>

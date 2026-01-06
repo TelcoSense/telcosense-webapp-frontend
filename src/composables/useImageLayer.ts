@@ -4,16 +4,19 @@ import L from 'leaflet';
 const layerMap = new Map<string, ReturnType<typeof useImageSequenceLayer>>()
 
 export function useImageLayer(
+  mapTarget: 'main' | 'secondary',
   id: string,
+
   config?: { apiUrl: string; bounds: L.LatLngBounds }
 ) {
-  if (!layerMap.has(id)) {
+  const key = `${mapTarget}:${id}`
+
+  if (!layerMap.has(key)) {
     if (!config) {
-      throw new Error(`Layer with id '${id}' not initialized and no config provided`)
+      throw new Error(`Layer '${key}' not initialized and no config provided`)
     }
-    const instance = useImageSequenceLayer(config)
-    layerMap.set(id, instance)
+    layerMap.set(key, useImageSequenceLayer(config))
   }
 
-  return layerMap.get(id)!
+  return layerMap.get(key)!
 }

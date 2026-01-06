@@ -4,62 +4,166 @@ import { defineStore } from 'pinia'
 import { shallowRef } from 'vue'
 
 export const useLayersStore = defineStore('layers', () => {
+  const boundsCZ = L.latLngBounds([48.047, 11.267], [51.458, 19.624])
+  const boundsTemp = L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591])
+
+  // rain primary 
   const maxz = shallowRef(
-    useImageLayer('maxz', {
+    useImageLayer('main', 'maxz', {
       apiUrl: '/maxz/list',
-      bounds: L.latLngBounds(L.latLng(48.047, 11.267), L.latLng(51.458, 19.624)),
+      bounds: boundsCZ,
     }),
   )
 
   const merge1h = shallowRef(
-    useImageLayer('merge1h', {
+    useImageLayer('main', 'merge1h', {
       apiUrl: '/merge1h/list',
-      bounds: L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
+      bounds: boundsCZ,
     }),
   )
-
-  // const raincz = shallowRef(
-  //   useImageLayer('raincz', {
-  //     apiUrl: '/raincz/list',
-  //     bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
-  //   }),
-  // )
 
   const raincz = shallowRef(
-    useImageLayer('raincz', {
+    useImageLayer('main', 'raincz', {
       apiUrl: '/raincz/list',
-      bounds: L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
+      bounds: boundsCZ,
     }),
   )
 
-  // const raincz = shallowRef(
-  //   useImageLayer('raincz', {
-  //     apiUrl: '/raincz/list',
-  //     bounds: L.latLngBounds([48.55547303756637, 12.094991576420597], [51.05353169070471, 18.8503225129994]),
-  //   }),
-  // )
-
   const userCalc = shallowRef(
-    useImageLayer('user-calc', {
+    useImageLayer('main', 'user-calc', {
       apiUrl: '/placeholder',
       bounds: L.latLngBounds([0, 0], [0, 0]),
     }),
   )
 
-  // telcotemp starts here:
+  // rain secondary
+  const maxzSecondary = shallowRef(
+    useImageLayer('secondary', 'maxz', {
+      apiUrl: '/maxz/list',
+      bounds: boundsCZ,
+    }),
+  )
+
+  const merge1hSecondary = shallowRef(
+    useImageLayer('secondary', 'merge1h', {
+      apiUrl: '/merge1h/list',
+      bounds: boundsCZ,
+    }),
+  )
+
+  const rainczSecondary = shallowRef(
+    useImageLayer('secondary', 'raincz', {
+      apiUrl: '/raincz/list',
+      bounds: boundsCZ,
+    }),
+  )
+
+  // temp primary
   const tempcz = shallowRef(
-    useImageLayer('tempcz', {
+    useImageLayer('main', 'tempcz', {
       apiUrl: '/tempcz/list',
-      bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
+      bounds: boundsTemp,
     }),
   )
 
   const tempchmi = shallowRef(
-    useImageLayer('tempchmi', {
+    useImageLayer('main', 'tempchmi', {
       apiUrl: '/tempchmi/list',
-      bounds: L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591]),
+      bounds: boundsTemp,
     }),
   )
 
-  return { maxz, merge1h, raincz, userCalc, tempcz, tempchmi }
+  // temp primary
+  const tempczSecondary = shallowRef(
+    useImageLayer('secondary', 'tempcz', {
+      apiUrl: '/tempcz/list',
+      bounds: boundsTemp,
+    }),
+  )
+
+  const tempchmiSecondary = shallowRef(
+    useImageLayer('secondary', 'tempchmi', {
+      apiUrl: '/tempchmi/list',
+      bounds: boundsTemp,
+    }),
+  )
+
+  function clearRainLayers(secondary: boolean = false) {
+    maxz.value.clear()
+    merge1h.value.clear()
+    raincz.value.clear()
+    userCalc.value.clear()
+    if (secondary) {
+      maxzSecondary.value.clear()
+      merge1hSecondary.value.clear()
+      rainczSecondary.value.clear()
+    }
+  }
+
+  function clearTempLayers(secondary: boolean = false) {
+    tempcz.value.clear()
+    tempchmi.value.clear()
+    if (secondary) {
+      tempczSecondary.value.clear()
+      tempchmiSecondary.value.clear()
+    }
+  }
+
+  function fetchListRain(start: string | null, end: string | null, secondary: boolean = false) {
+    maxz.value.fetchList(start, end)
+    merge1h.value.fetchList(start, end)
+    raincz.value.fetchList(start, end)
+    if (secondary) {
+      maxzSecondary.value.fetchList(start, end)
+      merge1hSecondary.value.fetchList(start, end)
+      rainczSecondary.value.fetchList(start, end)
+    }
+  }
+
+  function fetchListTemp(start: string | null, end: string | null, secondary: boolean = false) {
+    tempcz.value.fetchList(start, end)
+    tempchmi.value.fetchList(start, end)
+    if (secondary) {
+      tempczSecondary.value.fetchList(start, end)
+      tempchmiSecondary.value.fetchList(start, end)
+    }
+  }
+
+  function fetchListRainSecondary(start: string | null, end: string | null) {
+    maxzSecondary.value.fetchList(start, end)
+    merge1hSecondary.value.fetchList(start, end)
+    rainczSecondary.value.fetchList(start, end)
+  }
+
+  function fetchListTempSecondary(start: string | null, end: string | null) {
+    tempczSecondary.value.fetchList(start, end)
+    tempchmiSecondary.value.fetchList(start, end)
+  }
+
+  return {
+    // rain primary
+    maxz,
+    merge1h,
+    raincz,
+    userCalc,
+    // secondary
+    maxzSecondary,
+    merge1hSecondary,
+    rainczSecondary,
+    // userCalcSecondary,
+    // temp primary
+    tempcz,
+    tempchmi,
+    // temp secondary
+    tempczSecondary,
+    tempchmiSecondary,
+
+    // funcs
+    clearRainLayers,
+    clearTempLayers,
+    fetchListRain,
+    fetchListTemp,
+    fetchListRainSecondary,
+    fetchListTempSecondary
+  }
 })

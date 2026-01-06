@@ -5,11 +5,21 @@ interface ConfigState {
   start: string | null;
   end: string | null;
   datetimeFormat: 'UTC' | 'Europe/Prague';
+  // visibility
   dataPlottingVisible: boolean;
-  layerSwitcherVisible: boolean;
+  mainLayerSwitcherVisible: boolean;
+  secondaryLayerSwitcherVisible: boolean;
   layerControlsVisible: boolean;
   linkFilterVisible: boolean;
+  clustersVisible: boolean;
   barVisible: boolean;
+  datetimeSelectorVisible: boolean;
+  wetLinksVisible: boolean;
+
+  // splitview
+  splitView: boolean;
+  followPrimary: boolean;
+  layerSwitchedTime: Date | null;
 }
 
 export const useConfigStore = defineStore('config', {
@@ -18,26 +28,66 @@ export const useConfigStore = defineStore('config', {
     start: null,
     end: null,
     datetimeFormat: 'UTC',
+
+    // visibility
     dataPlottingVisible: false,
-    layerSwitcherVisible: false,
+    mainLayerSwitcherVisible: false,
+    secondaryLayerSwitcherVisible: false,
+
     layerControlsVisible: false,
     linkFilterVisible: false,
-    barVisible: false
+    clustersVisible: false,
+    barVisible: false,
+    datetimeSelectorVisible: false,
+    wetLinksVisible: false,
+
+    // split view
+    splitView: false,
+    followPrimary: true,
+    layerSwitchedTime: null,
   }),
 
   actions: {
     setToRealtime() {
       this.realtime = true;
-      this.start = null;
-      this.end = null;
+      // this.start = null;
+      // this.end = null;
     },
 
     setToHistoric() {
       this.realtime = false;
     },
 
+    toggleRealtime() {
+      if (this.realtime) {
+        this.realtime = false
+      }
+      else {
+        this.realtime = true;
+        this.start = null;
+        this.end = null;
+      }
+    },
+
     toggleDatetimeFormat() {
-      this.datetimeFormat = this.datetimeFormat === 'UTC' ? 'Europe/Prague' : 'UTC';
+      this.datetimeFormat =
+        this.datetimeFormat === 'UTC' ? 'Europe/Prague' : 'UTC';
+    },
+
+    enableSplitView() {
+      this.splitView = true;
+    },
+
+    disableSplitView() {
+      this.splitView = false;
+    },
+
+    toggleSplitView() {
+      this.splitView = !this.splitView;
+    },
+
+    setLayerSwitchedTime() {
+      this.layerSwitchedTime = new Date()
     }
   },
 });
