@@ -7,7 +7,7 @@ export const useLayersStore = defineStore('layers', () => {
   const boundsCZ = L.latLngBounds([48.047, 11.267], [51.458, 19.624])
   const boundsTemp = L.latLngBounds([48.5525, 12.0905], [51.0557, 18.8591])
 
-  // rain primary 
+  // rain primary
   const maxz = shallowRef(
     useImageLayer('main', 'maxz', {
       apiUrl: '/maxz/list',
@@ -29,8 +29,22 @@ export const useLayersStore = defineStore('layers', () => {
     }),
   )
 
+  const rainSum = shallowRef(
+    useImageLayer('main', 'rainsum', {
+      apiUrl: '/rainsum/list',
+      bounds: boundsCZ,
+    }),
+  )
+
   const userCalc = shallowRef(
     useImageLayer('main', 'user-calc', {
+      apiUrl: '/placeholder',
+      bounds: L.latLngBounds([0, 0], [0, 0]),
+    }),
+  )
+
+  const userSum = shallowRef(
+    useImageLayer('main', 'user-sum', {
       apiUrl: '/placeholder',
       bounds: L.latLngBounds([0, 0], [0, 0]),
     }),
@@ -54,6 +68,13 @@ export const useLayersStore = defineStore('layers', () => {
   const rainczSecondary = shallowRef(
     useImageLayer('secondary', 'raincz', {
       apiUrl: '/raincz/list',
+      bounds: boundsCZ,
+    }),
+  )
+
+  const rainSumSecondary = shallowRef(
+    useImageLayer('secondary', 'rainsum', {
+      apiUrl: '/rainsum/list',
       bounds: boundsCZ,
     }),
   )
@@ -92,11 +113,14 @@ export const useLayersStore = defineStore('layers', () => {
     maxz.value.clear()
     merge1h.value.clear()
     raincz.value.clear()
+    rainSum.value.clear()
     userCalc.value.clear()
+    userSum.value.clear()
     if (secondary) {
       maxzSecondary.value.clear()
       merge1hSecondary.value.clear()
       rainczSecondary.value.clear()
+      rainSumSecondary.value.clear()
     }
   }
 
@@ -145,11 +169,14 @@ export const useLayersStore = defineStore('layers', () => {
     maxz,
     merge1h,
     raincz,
+    rainSum,
     userCalc,
+    userSum,
     // secondary
     maxzSecondary,
     merge1hSecondary,
     rainczSecondary,
+    rainSumSecondary,
     // userCalcSecondary,
     // temp primary
     tempcz,
@@ -164,6 +191,6 @@ export const useLayersStore = defineStore('layers', () => {
     fetchListRain,
     fetchListTemp,
     fetchListRainSecondary,
-    fetchListTempSecondary
+    fetchListTempSecondary,
   }
 })

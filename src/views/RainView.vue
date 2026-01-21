@@ -41,7 +41,6 @@ import { useMap } from '@/composables/useMap'
 import { useRealtime } from '@/composables/useRealtime'
 import { datetimeFormat, toUtcDate } from '@/utils'
 
-
 // realtime composable
 const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
 const { map, secondaryMap } = useMap()
@@ -62,8 +61,8 @@ function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => b
     dst.setView(src.getCenter(), src.getZoom(), { animate: false })
   }
 
-  src.on('moveend', sync)  // fires after drag ends
-  src.on('zoomend', sync)  // fires after zoom ends
+  src.on('moveend', sync) // fires after drag ends
+  src.on('zoomend', sync) // fires after zoom ends
 
   // return cleanup
   return () => {
@@ -93,12 +92,7 @@ watch([currentTimestamp, oneWeekAgoTimestamp], ([end, start]) => {
   }
 })
 
-
-const {
-  activeLayerMain,
-  activeLayerSecondary
-} = useActiveLayer()
-
+const { activeLayerMain, activeLayerSecondary } = useActiveLayer()
 
 const showHistoric = ref<boolean>(false)
 
@@ -121,7 +115,6 @@ const dragBox = ref<HTMLDivElement | null>(null)
 
 const clusterGroup = ref<L.LayerGroup>(L.layerGroup())
 const clusterMarkers = new Map<number, L.CircleMarker>()
-
 
 const { onMapMouseDown, selectionInProgress } = useLinkSelection({
   map: map as Ref<L.Map | null>,
@@ -172,7 +165,30 @@ const isTimeRangeValid = computed(() => {
   )
 })
 
+function isTypingTarget(el: EventTarget | null): boolean {
+  const t = el as HTMLElement | null
+  if (!t) return false
+  const tag = (t.tagName || '').toLowerCase()
+  return (
+    tag === 'input' ||
+    tag === 'textarea' ||
+    (t as HTMLElement).isContentEditable === true ||
+    tag === 'select'
+  )
+}
+
 function onKeyDown(e: KeyboardEvent) {
+  // don't steal shortcuts while typing
+  if (isTypingTarget(e.target)) return
+
+  // Shift+H toggles UI
+  if (e.altKey && e.key.toLowerCase() === 'h') {
+    e.preventDefault()
+    config.toggleHideUI()
+    return
+  }
+
+  // Escape clears selections (your existing behavior)
   if (e.key === 'Escape') {
     selectedLinkIds.value.clear()
     selectedStationIds.value.clear()
@@ -221,11 +237,7 @@ function initSecondaryMap() {
 }
 
 // map layers setup
-const {
-  clearMainLayer,
-  clearSecondaryLayer,
-} = useActiveLayer()
-
+const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
 
 async function initLayer(
   layer: ImageSequenceLayer,
@@ -270,9 +282,7 @@ function showTooltipOnTarget(target: 'main' | 'secondary', latlng: L.LatLng) {
     offset: [0, 0],
     opacity: 1,
     className: 'click-tooltip',
-  })
-    .setLatLng(latlng)
-    .setContent(`
+  }).setLatLng(latlng).setContent(`
       <div class="font-inter text-sm text-black">
         ${decoded ? `<div>${decoded}</div>` : `<div class="opacity-70">(no data)</div>`}
       </div>
@@ -301,7 +311,9 @@ const PALETTE = [
 ] as const
 
 const MAXZ_DBZ = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60] as const
-const MERGE1H_MM = [0.1, 0.3, 0.6, 1.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0, 40.0, 60.0, 80.0, 100.0] as const
+const MERGE1H_MM = [
+  0.1, 0.3, 0.6, 1.0, 2.0, 4.0, 6.0, 10.0, 15.0, 20.0, 30.0, 40.0, 60.0, 80.0, 100.0,
+] as const
 
 function normHex(h: string) {
   return h.trim().toLowerCase()
@@ -321,9 +333,11 @@ function decodeValueFromHex(layerId: string, hex: string): string | null {
   const i = paletteIndex(hex)
   if (i < 0) return null
 
-  if (layerId === 'maxz') return `${MAXZ_DBZ[i]} dBZ (${dbzToRainRateMmH(MAXZ_DBZ[i]).toFixed(1)} mm/h)`
-  if (layerId === 'merge1h') return `${MERGE1H_MM[i]} mm`
-  if (layerId === 'raincz') {
+  if (layerId === 'maxz')
+    return `${MAXZ_DBZ[i]} dBZ (${dbzToRainRateMmH(MAXZ_DBZ[i]).toFixed(1)} mm/h)`
+  if (layerId === 'merge1h' || layerId === 'rainsum' || layerId === 'user-sum')
+    return `${MERGE1H_MM[i]} mm`
+  if (layerId === 'raincz' || layerId === 'user-calc') {
     const dbz = MAXZ_DBZ[i]
     const mmh = dbzToRainRateMmH(dbz)
     return `${mmh.toFixed(1)} mm/h`
@@ -342,7 +356,7 @@ function rgbaToHex(r: number, g: number, b: number, a = 255) {
 function getOverlayPixelHex(
   mapObj: L.Map,
   overlay: L.ImageOverlay,
-  latlng: L.LatLng
+  latlng: L.LatLng,
 ): string | null {
   const img = overlay.getElement() as HTMLImageElement | null
   if (!img) return null
@@ -376,12 +390,15 @@ function getLayerInstanceById(id: string, target: 'main' | 'secondary'): ImageSe
     if (id === 'maxz') return layers.maxz
     if (id === 'merge1h') return layers.merge1h
     if (id === 'raincz') return layers.raincz
+    // if (id === 'rainsum') return layers.rainSum
     if (id === 'user-calc') return layers.userCalc
+    if (id === 'user-sum') return layers.userSum
     return null
   } else {
     if (id === 'maxz') return layers.maxzSecondary
     if (id === 'merge1h') return layers.merge1hSecondary
     if (id === 'raincz') return layers.rainczSecondary
+    // if (id === 'rainsum') return layers.rainSumSecondary
     // NOTE: you currently don't have userCalcSecondary initialized in your Promise.all
     return null
   }
@@ -415,7 +432,7 @@ onMounted(async () => {
   stopSync = syncPrimaryToSecondarySmooth(
     map.value as L.Map,
     secondaryMap.value as L.Map,
-    () => config.splitView
+    () => config.splitView,
   )
 
   config.start = oneWeekAgoTimestamp.value
@@ -442,11 +459,38 @@ onMounted(async () => {
     initLayer(layers.maxz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.merge1h, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.raincz, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
+    // initLayer(layers.rainSum, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, true),
     initLayer(layers.userCalc, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
+    initLayer(layers.userSum, mapObject, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
 
-    initLayer(layers.maxzSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
-    initLayer(layers.merge1hSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
-    initLayer(layers.rainczSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
+    initLayer(
+      layers.maxzSecondary,
+      mapObjectSecondary,
+      oneWeekAgoTimestamp.value,
+      currentTimestamp.value,
+      false,
+    ),
+    initLayer(
+      layers.merge1hSecondary,
+      mapObjectSecondary,
+      oneWeekAgoTimestamp.value,
+      currentTimestamp.value,
+      false,
+    ),
+    initLayer(
+      layers.rainczSecondary,
+      mapObjectSecondary,
+      oneWeekAgoTimestamp.value,
+      currentTimestamp.value,
+      false,
+    ),
+    // initLayer(
+    //   layers.rainSumSecondary,
+    //   mapObjectSecondary,
+    //   oneWeekAgoTimestamp.value,
+    //   currentTimestamp.value,
+    //   false,
+    // ),
   ])
 })
 
@@ -480,8 +524,7 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
 
   links.filteredLinks.forEach((link) => {
     const isSelected =
-      selectedLinkIds.value.has(link.id) ||
-      link.id.toString() === cmlData.selectedCmlId
+      selectedLinkIds.value.has(link.id) || link.id.toString() === cmlData.selectedCmlId
 
     const color = isSelected ? 'red' : 'black'
     let polyline = store.get(link.id)
@@ -494,7 +537,7 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
         ],
         { color, weight: 2 },
       )
-      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm';
+      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm'
       polyline.bindTooltip(
         `<div class="font-inter text-black ${tooltipFontsize}">
             <div class="mb-1 border-b font-semibold border-gray-300">Link ID: ${link.id}</div>
@@ -552,8 +595,7 @@ function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>)
 
   weatherStations.filteredStations.forEach((ws) => {
     const isSelected =
-      selectedStationIds.value.has(ws.id) ||
-      ws.gh_id === weatherData.selectedStationId
+      selectedStationIds.value.has(ws.id) || ws.gh_id === weatherData.selectedStationId
 
     const hasTemperature = ws.measurements.includes('T')
     const hasPrecipitation = ws.measurements.includes('SRA10M')
@@ -575,7 +617,7 @@ function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>)
         weight: 0.5,
       })
 
-      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm';
+      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm'
       marker.bindTooltip(
         `<div class="font-inter text-black ${tooltipFontsize}">
             <div class="mb-1 border-b border-gray-300 font-semibold">${ws.full_name}</div>
@@ -602,41 +644,29 @@ function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>)
   })
 }
 
-function rebuildLinksCluster(
-  cluster: L.LayerGroup,
-  store: Map<number, L.CircleMarker>
-) {
+function rebuildLinksCluster(cluster: L.LayerGroup, store: Map<number, L.CircleMarker>) {
   cluster.clearLayers()
   store.clear()
   links.links.forEach((link) => {
     const color = 'transparent'
-    const marker = L.circleMarker(
-      [link.center_y, link.center_x],
-      {
-        radius: 3.5,
-        color,
-        fillColor: color,
-      }
-    )
+    const marker = L.circleMarker([link.center_y, link.center_x], {
+      radius: 3.5,
+      color,
+      fillColor: color,
+    })
     cluster.addLayer(marker)
     store.set(link.id, marker)
   })
 }
 
-function clearLinksCluster(
-  cluster: L.LayerGroup,
-  store: Map<number, L.CircleMarker>
-) {
+function clearLinksCluster(cluster: L.LayerGroup, store: Map<number, L.CircleMarker>) {
   cluster.clearLayers()
   store.clear()
 }
 
-function toggleLinksCluster(
-  cluster: L.LayerGroup | null,
-  store: Map<number, L.CircleMarker>
-) {
+function toggleLinksCluster(cluster: L.LayerGroup | null, store: Map<number, L.CircleMarker>) {
   if (!cluster) return
-  config.clustersVisible = !config.clustersVisible;
+  config.clustersVisible = !config.clustersVisible
   if (config.clustersVisible) {
     rebuildLinksCluster(cluster, store)
   } else {
@@ -659,8 +689,7 @@ function updateLinkColors(
     if (!newTrue.has(id)) {
       const poly = store.get(id)
       if (!poly) continue
-      const isSelected =
-        selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
+      const isSelected = selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
       poly.setStyle({ color: isSelected ? 'red' : 'black', weight: 2 })
       poly.bringToBack()
     }
@@ -670,8 +699,7 @@ function updateLinkColors(
     if (!lastTrue.has(id)) {
       const poly = store.get(id)
       if (!poly) continue
-      const isSelected =
-        selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
+      const isSelected = selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
       poly.setStyle({ color: isSelected ? 'red' : 'orange', weight: 4 })
       poly.bringToFront()
     }
@@ -680,16 +708,12 @@ function updateLinkColors(
   for (const id of newTrue) lastTrue.add(id)
 }
 
-function resetWetLinkColors(
-  store: Map<number, L.Polyline>,
-  lastTrue: Set<number>,
-) {
+function resetWetLinkColors(store: Map<number, L.Polyline>, lastTrue: Set<number>) {
   for (const id of lastTrue) {
     const poly = store.get(id)
     if (!poly) continue
 
-    const isSelected =
-      selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
+    const isSelected = selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
 
     poly.setStyle({ color: isSelected ? 'red' : 'black', weight: 2 })
     poly.bringToBack()
@@ -716,7 +740,7 @@ watch(
       updateLinkColors(linkPolylinesMain, newTrue, lastTrueMain)
     })
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 watch(
@@ -733,7 +757,7 @@ watch(
       updateLinkColors(linkPolylinesSecondary, newTrue, lastTrueSecondary)
     })
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 // watchers for the filtered links and stations drawing
@@ -789,7 +813,7 @@ watch(
     layers.clearRainLayers()
     // for realtime fetch the frames from the realtime window
     if (newVal) layers.fetchListRain(config.start, config.end, config.splitView)
-  }
+  },
 )
 
 function formatDateForDatepicker(date: Date): string {
@@ -825,7 +849,7 @@ watch(
     if (!enabled) {
       clearSecondaryLayer()
     }
-  }
+  },
 )
 
 watch(
@@ -836,46 +860,65 @@ watch(
         stopSync = syncPrimaryToSecondarySmooth(
           map.value as L.Map,
           secondaryMap.value as L.Map,
-          () => config.splitView
+          () => config.splitView,
         )
       }
-    }
-    else {
+    } else {
       stopSync?.()
       stopSync = null
     }
-  }
+  },
 )
 
 // on click outsides
 // layer switchers
 const layerSwitcherMain = useTemplateRef<HTMLElement>('layerSwitcherMain')
-onClickOutside(layerSwitcherMain, () => {
-  config.mainLayerSwitcherVisible = false
-}, { ignore: ['#layer-button-main'] })
+onClickOutside(
+  layerSwitcherMain,
+  () => {
+    config.mainLayerSwitcherVisible = false
+  },
+  { ignore: ['#layer-button-main'] },
+)
 
 const layerSwitcherSecondary = useTemplateRef<HTMLElement>('layerSwitcherSecondary')
-onClickOutside(layerSwitcherSecondary, () => {
-  config.secondaryLayerSwitcherVisible = false
-}, { ignore: ['#layer-button-secondary'] })
+onClickOutside(
+  layerSwitcherSecondary,
+  () => {
+    config.secondaryLayerSwitcherVisible = false
+  },
+  { ignore: ['#layer-button-secondary'] },
+)
 
 // link filter
 const linkFilter = useTemplateRef<HTMLElement>('linkFilter')
-onClickOutside(linkFilter, () => {
-  config.linkFilterVisible = false
-}, { ignore: ['#link-filter-button', '#table-button-close'] })
+onClickOutside(
+  linkFilter,
+  () => {
+    config.linkFilterVisible = false
+  },
+  { ignore: ['#link-filter-button', '#table-button-close'] },
+)
 
 // datetime selector
 const datetimeSelector = useTemplateRef<HTMLElement>('datetimeSelector')
-onClickOutside(datetimeSelector, () => {
-  config.datetimeSelectorVisible = false
-}, { ignore: ['#time-range-button'] })
+onClickOutside(
+  datetimeSelector,
+  () => {
+    config.datetimeSelectorVisible = false
+  },
+  { ignore: ['#time-range-button'] },
+)
 
 // user calculations
 const userCalculations = useTemplateRef<HTMLElement>('userCalculations')
-onClickOutside(userCalculations, () => {
-  showHistoric.value = false
-}, { ignore: ['#user-calc-button'] })
+onClickOutside(
+  userCalculations,
+  () => {
+    showHistoric.value = false
+  },
+  { ignore: ['#user-calc-button'] },
+)
 
 function setMapInteractivity(m: L.Map, enabled: boolean) {
   const action = enabled ? 'enable' : 'disable'
@@ -900,7 +943,7 @@ watch(
     const unlocked = !(split && follow)
     setMapInteractivity(m as L.Map, unlocked)
   },
-  { immediate: true }
+  { immediate: true },
 )
 </script>
 
@@ -911,10 +954,10 @@ watch(
         <div class="flex h-full w-full">
           <!-- primary map -->
           <div :class="config.splitView ? 'w-1/2 border-r' : 'w-full'">
-            <div id="map" class="leaflet-container h-full z-0"></div>
+            <div id="map" class="leaflet-container z-0 h-full"></div>
           </div>
           <div v-show="config.splitView" class="relative w-1/2">
-            <div id="secondary-map" class="leaflet-container h-full z-0 border-l-1"></div>
+            <div id="secondary-map" class="leaflet-container z-0 h-full border-l-1"></div>
             <!-- interaction blocker + label -->
             <!-- <div v-if="config.followPrimary" class="absolute inset-0 z-10 p-3 flex items-end">
 
@@ -925,8 +968,8 @@ watch(
           </div>
         </div>
 
-        <div v-if="config.start && config.end" id="timestamps"
-          class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 p-1 text-sm text-white blurred-bg md:visible md:bottom-3 md:flex">
+        <div v-if="config.start && config.end && !config.hideUI" id="timestamps"
+          class="blurred-bg absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 p-1 text-sm text-white md:visible md:bottom-3 md:flex">
           <p v-if="config.realtime">Realtime bounds</p>
           <p v-if="!config.realtime">Historic bounds</p>
           <p v-if="config.start">
@@ -946,46 +989,46 @@ watch(
         <div id="drag-box" class="pointer-events-none absolute z-40 hidden border-1 border-blue-400 bg-blue-400/10">
         </div>
 
-        <TopNavbar>
+        <TopNavbar v-show="!config.hideUI">
           <div v-if="auth.isLoggedIn" class="mr-32 hidden gap-x-2 md:flex">
-            <div class="cursor-pointer rounded-md h-8 text-white ">
-              <button class="h-full menu-btn-top rounded-l-md border-r border-y border-gray-600"
+            <div class="h-8 cursor-pointer rounded-md text-white">
+              <button class="menu-btn-top h-full rounded-l-md border-y border-r border-gray-600"
                 @click="config.setToRealtime()" :class="{ active: config.realtime }">
                 Realtime
               </button>
 
-              <button class="h-full menu-btn-top rounded-r-md border-y border-r border-gray-600"
+              <button class="menu-btn-top h-full rounded-r-md border-y border-r border-gray-600"
                 @click="config.setToHistoric()" :class="{ active: !config.realtime }">
                 Historic
               </button>
             </div>
 
             <button v-if="!config.realtime" id="time-range-button"
-              class="h-full menu-btn-top rounded-md border border-gray-600"
+              class="menu-btn-top h-full rounded-md border border-gray-600"
               @click="config.datetimeSelectorVisible = !config.datetimeSelectorVisible"
               :class="{ active: config.datetimeSelectorVisible }">
               Time range
             </button>
 
             <button v-if="!config.realtime" id="user-calc-button"
-              class="h-full menu-btn-top rounded-md border border-gray-600" @click="showHistoric = !showHistoric"
+              class="menu-btn-top h-full rounded-md border border-gray-600" @click="showHistoric = !showHistoric"
               :class="{ active: showHistoric }">
               User calculations
             </button>
           </div>
 
           <template #settings>
-            <span v-if="links.hasLinks" class="text-sm border-b w-full border-gray-400 pb-1.5">Settings</span>
-            <div v-if="links.hasLinks" class="pb-2 w-full flex flex-col gap-y-1">
+            <span v-if="links.hasLinks" class="w-full border-b border-gray-400 pb-1.5 text-sm">Settings</span>
+            <div v-if="links.hasLinks" class="flex w-full flex-col gap-y-1 pb-2">
               <div class="flex items-center gap-x-2">
-                <label for="clusters-toggle" class="cursor-pointer select-none text-sm">
+                <label for="clusters-toggle" class="cursor-pointer text-sm select-none">
                   Show link clusters
                 </label>
                 <input type="checkbox" id="clusters-toggle" :checked="config.clustersVisible"
                   @change="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)" />
               </div>
               <div class="flex items-center gap-x-2">
-                <label for="wetlinks-toggle" class="cursor-pointer select-none text-sm">
+                <label for="wetlinks-toggle" class="cursor-pointer text-sm select-none">
                   Show wet links
                 </label>
                 <input type="checkbox" id="wetlinks-toggle" :checked="config.wetLinksVisible"
@@ -995,11 +1038,9 @@ watch(
           </template>
         </TopNavbar>
 
-        <LeftMenu>
+        <LeftMenu v-show="!config.hideUI">
           <!-- insert the button for copying link ids here -->
-          <template #up>
-
-          </template>
+          <template #up> </template>
 
           <template #down>
             <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
@@ -1007,44 +1048,52 @@ watch(
           </template>
         </LeftMenu>
 
-        <RightMenu v-if="config.splitView" />
+        <RightMenu v-if="config.splitView && !config.hideUI" />
 
-        <LinkFilter ref="linkFilter" />
+        <LinkFilter v-show="!config.hideUI" ref="linkFilter" />
 
-        <LayerControls :class="config.splitView ? 'left-[calc(25%-190px)]' : null" map-target="main" />
-        <LayerControls v-if="config.splitView" class="left-[calc(75%-190px)]" map-target="secondary" />
+        <LayerControls v-show="!config.hideUI" :class="config.splitView ? 'left-[calc(25%-190px)]' : null"
+          map-target="main" />
+        <LayerControls v-if="config.splitView && !config.hideUI" class="left-[calc(75%-190px)]"
+          map-target="secondary" />
 
-        <LayerSwitcher v-if="config.mainLayerSwitcherVisible" map-target="main" ref="layerSwitcherMain" />
-        <LayerSwitcher v-if="config.secondaryLayerSwitcherVisible" class="left-[calc(50%+3.75rem)]"
+        <LayerSwitcher v-if="config.mainLayerSwitcherVisible && !config.hideUI" map-target="main"
+          ref="layerSwitcherMain" />
+        <LayerSwitcher v-if="config.secondaryLayerSwitcherVisible && !config.hideUI" class="left-[calc(50%+3.75rem)]"
           map-target="secondary" ref="layerSwitcherSecondary" />
 
         <!-- primary -->
-        <PrecipitationBar v-if="activeLayerMain?.id == 'merge1h' && config.barVisible"
-          :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'" />
+        <PrecipitationBar v-if="
+          (activeLayerMain?.id == 'merge1h' || activeLayerMain?.id == 'user-sum') &&
+          config.barVisible &&
+          !config.hideUI
+        " :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'" />
         <ReflectivityBar v-if="
           (activeLayerMain?.id == 'maxz' ||
             activeLayerMain?.id == 'raincz' ||
             activeLayerMain?.id == 'user-calc') &&
-          config.barVisible" :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'"
-          :layer-id="activeLayerMain.id" />
-
+          config.barVisible &&
+          !config.hideUI
+        " :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'" :layer-id="activeLayerMain.id" />
 
         <!-- secondary -->
-        <PrecipitationBar v-if="activeLayerSecondary?.id == 'merge1h' && config.barVisible" />
+        <PrecipitationBar v-if="activeLayerSecondary?.id == 'merge1h' && config.barVisible && !config.hideUI" />
         <ReflectivityBar v-if="
           (activeLayerSecondary?.id == 'maxz' ||
             activeLayerSecondary?.id == 'raincz' ||
             activeLayerSecondary?.id == 'user-calc') &&
-          config.barVisible" :layer-id="activeLayerSecondary.id" />
+          config.barVisible &&
+          !config.hideUI
+        " :layer-id="activeLayerSecondary.id" />
 
-        <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
-        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" ref="linkTable" />
-        <RainHistoric :link-ids="selectedLinkIds" :show-historic="showHistoric" ref="userCalculations" />
+        <DataPlotting v-show="config.dataPlottingVisible && !config.hideUI" :start="config.start" :end="config.end" />
+        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible && !config.hideUI" ref="linkTable" />
+        <RainHistoric v-show="!config.hideUI" :link-ids="selectedLinkIds" :show-historic="showHistoric"
+          ref="userCalculations" />
 
         <!-- date time selector -->
-        <div v-show="!config.realtime && config.datetimeSelectorVisible"
+        <div v-show="!config.realtime && config.datetimeSelectorVisible && !config.hideUI"
           class="absolute top-14 left-32 z-30 w-64 rounded-md bg-gray-800 p-2" ref="datetimeSelector">
-
           <label class="mb-1 block text-sm text-white">Start</label>
           <Datepicker v-model="selectedStart" utc time-picker-inline model-type="date" :max-date="new Date()"
             class="mb-3 w-full text-sm" dark :format="formatDateForDatepicker" :timezone="config.datetimeFormat" />
@@ -1060,7 +1109,6 @@ watch(
           </button>
         </div>
         <!-- date time selector end-->
-
       </div>
     </main>
   </div>

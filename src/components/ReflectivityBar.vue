@@ -1,26 +1,23 @@
 <script setup lang="ts">
-
 const props = defineProps({
   layerId: {
     type: String,
     default: 'layer',
   },
 })
-
-
 </script>
 
 <template>
   <div
     class="font-chivo absolute top-14 right-3 flex flex-col items-center gap-y-1 rounded-md border border-gray-600 bg-gray-800/60 p-1.5 text-[9px] backdrop-blur-xs md:text-sm">
     <div class="flex w-full justify-between text-white select-none"
-      :class="{ 'justify-center': (props.layerId === 'raincz') }">
-      <div v-if="props.layerId !== 'raincz' && 'user-calc'">dBZ</div>
+      :class="{ 'justify-center': props.layerId === 'raincz' || props.layerId === 'user-calc' }">
+      <div v-if="props.layerId != 'raincz' && props.layerId != 'user-calc'">dBZ</div>
       <div>mm/h</div>
     </div>
     <div class="flex gap-x-1.5">
-      <div v-if="props.layerId !== 'raincz' && 'user-calc'"
-        class="flex flex-col-reverse items-center justify-around text-white select-none ">
+      <div v-if="props.layerId != 'raincz' && props.layerId != 'user-calc'"
+        class="flex flex-col-reverse items-center justify-around text-white select-none">
         <div>4</div>
         <div>8</div>
         <div>12</div>

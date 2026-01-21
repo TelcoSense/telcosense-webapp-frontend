@@ -36,7 +36,7 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
   const loading = ref(false)
   const error = ref<string | null>(null)
   const frameLoading = ref(false)
-  const opacity = ref(0.5)
+  const opacity = ref(0.4)
 
   const currentTimestamp = computed(() => frames.value[currentIndex.value]?.timestamp ?? null)
 
@@ -246,7 +246,9 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
 
       if (!overlay.value) {
         overlay.value = markRaw(
-          L.imageOverlay(objectUrl, bounds.value, { opacity: opacity.value }).addTo(map.value as L.Map),
+          L.imageOverlay(objectUrl, bounds.value, { opacity: opacity.value }).addTo(
+            map.value as L.Map,
+          ),
         )
       } else {
         overlay.value.setUrl(objectUrl)

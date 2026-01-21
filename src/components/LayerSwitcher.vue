@@ -28,9 +28,7 @@ const {
 } = useActiveLayer()
 
 const activeLayer = computed(() =>
-  props.mapTarget === 'main'
-    ? activeLayerMain.value
-    : activeLayerSecondary.value
+  props.mapTarget === 'main' ? activeLayerMain.value : activeLayerSecondary.value,
 )
 
 function setLayerForTarget(layer: ImageSequenceLayer, id: string, name: string) {
@@ -63,16 +61,30 @@ const layers = [
   },
   {
     id: 'raincz',
-    label: 'Rain CZ',
+    label: 'Rain intensity',
     group: 'TelcoRain',
     layer: computed(() => useImageLayer(props.mapTarget, 'raincz')),
     showOnRoutes: ['rain'],
   },
+  // {
+  //   id: 'rainsum',
+  //   label: 'Rain sum 1h',
+  //   group: 'TelcoRain',
+  //   layer: computed(() => useImageLayer(props.mapTarget, 'rainsum')),
+  //   showOnRoutes: ['rain'],
+  // },
   {
     id: 'user-calc',
-    label: 'User calc',
+    label: 'User intensity',
     group: 'TelcoRain',
     layer: computed(() => useImageLayer(props.mapTarget, 'user-calc')),
+    showOnRoutes: ['rain'],
+  },
+  {
+    id: 'user-sum',
+    label: 'User sum',
+    group: 'TelcoRain',
+    layer: computed(() => useImageLayer(props.mapTarget, 'user-sum')),
     showOnRoutes: ['rain'],
   },
   {
@@ -109,7 +121,7 @@ const isCustomRangeUnset = computed(() => !config.start && !config.end && !confi
 const currentRouteName = computed(() => route.name as string)
 
 const chmiLayers = computed(() =>
-  layers.filter((l) => l.group === 'CHMI' && l.showOnRoutes?.includes(currentRouteName.value))
+  layers.filter((l) => l.group === 'CHMI' && l.showOnRoutes?.includes(currentRouteName.value)),
 )
 
 function isActive(id: string) {
@@ -122,24 +134,24 @@ const TELCO_GROUPS = ['TelcoRain', 'TelcoTemp'] as const
 const telcoSections = computed(() => {
   const routeName = currentRouteName.value
 
-  return TELCO_GROUPS
-    .map((group) => {
-      const items = layers.filter(
-        (l) =>
-          l.group === group &&
-          l.showOnRoutes?.includes(routeName) &&
-          // show "user-calc" ONLY on primary (main) map
-          (l.id !== 'user-calc' || props.mapTarget === 'main') &&
-          // keep existing rule
-          (l.id !== 'user-calc' || !config.realtime),
-      )
+  return TELCO_GROUPS.map((group) => {
+    const items = layers.filter(
+      (l) =>
+        l.group === group &&
+        l.showOnRoutes?.includes(routeName) &&
+        // show "user-calc" ONLY on primary (main) map
+        (l.id !== 'user-calc' || props.mapTarget === 'main') &&
+        (l.id !== 'user-sum' || props.mapTarget === 'main') &&
+        // keep existing rule
+        (l.id !== 'user-calc' || !config.realtime) &&
+        (l.id !== 'user-sum' || !config.realtime),
+    )
 
-      // map group -> label shown in UI
-      const label = group === 'TelcoRain' ? 'TelcoRain' : 'TelcoTemp'
+    // map group -> label shown in UI
+    const label = group === 'TelcoRain' ? 'TelcoRain' : 'TelcoTemp'
 
-      return { group, label, items }
-    })
-    .filter((s) => s.items.length > 0)
+    return { group, label, items }
+  }).filter((s) => s.items.length > 0)
 })
 </script>
 
@@ -157,14 +169,16 @@ const telcoSections = computed(() => {
           'enabled:cursor-pointer enabled:hover:bg-gray-600/70',
           isActive(id)
             ? ['bg-gray-600/90 text-blue-200', 'border border-blue-200']
-            : 'text-gray-300 border border-transparent',
-          'disabled:bg-gray-800/60 disabled:text-gray-500 disabled:cursor-not-allowed',
+            : 'border border-transparent text-gray-300',
+          'disabled:cursor-not-allowed disabled:bg-gray-800/60 disabled:text-gray-500',
         ]">
         <div class="whitespace-normal">
           {{ label }}
         </div>
 
-        <div class="text-white" v-if="!(layer.value.frames.value.length > 0 && !isCustomRangeUnset)">
+        <div class="text-white" v-if="
+          !(layer.value.frames.value.length > 0 && !isCustomRangeUnset) && !layer.value.loading
+        ">
           <Icon icon="eos-icons:loading" width="18" height="18" />
         </div>
       </button>
@@ -182,14 +196,16 @@ const telcoSections = computed(() => {
             'enabled:cursor-pointer enabled:hover:bg-gray-600/70',
             isActive(id)
               ? ['bg-gray-600/90 text-blue-200', 'border border-blue-200']
-              : 'text-gray-300 border border-transparent',
-            'disabled:bg-gray-800/60 disabled:text-gray-500 disabled:cursor-not-allowed',
+              : 'border border-transparent text-gray-300',
+            'disabled:cursor-not-allowed disabled:bg-gray-800/60 disabled:text-gray-500',
           ]">
           <div class="whitespace-normal">
             {{ label }}
           </div>
 
-          <div class="text-white" v-if="!(layer.value.frames.value.length > 0 && !isCustomRangeUnset)">
+          <div class="text-white" v-if="
+            !(layer.value.frames.value.length > 0 && !isCustomRangeUnset) && !layer.value.loading
+          ">
             <Icon icon="eos-icons:loading" width="18" height="18" />
           </div>
         </button>

@@ -11,7 +11,6 @@ import { datetimeFormat, toUtcDate } from '@/utils'
 import { useConfigStore } from '@/stores/config'
 import { useLayersStore } from '@/stores/layers'
 
-
 import { useActiveLayer } from '@/composables/useActiveLayer'
 import { useImageLayer } from '@/composables/useImageLayer'
 import { useMap } from '@/composables/useMap'
@@ -44,6 +43,7 @@ interface Calculation {
 }
 
 const userCalcLayer = useImageLayer('main', 'user-calc')
+const userSumLayer = useImageLayer('main', 'user-sum')
 const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
 
 const config = useConfigStore()
@@ -79,8 +79,8 @@ const data = ref({
   wet_dry_deviation: 0.8,
   baseline_samples: 5,
   idw_power: 2,
-  idw_near: 8,
-  idw_dist_m: 30000,
+  idw_near: 12,
+  idw_dist_m: 20000,
   is_crop_enabled: true,
   exclude_cmls: false,
 })
@@ -90,11 +90,14 @@ async function viewCalculation(calc: Calculation) {
   applyCustomRange(calc.start, calc.end)
   userCalcLayer.clear()
   userCalcLayer.setMap(map.value as L.Map)
-  userCalcLayer.setApiUrl(`/historic/${calc.name}/list`)
-  userCalcLayer.setBounds(
-    L.latLngBounds([48.047, 11.267], [51.458, 19.624]),
-  )
+  userCalcLayer.setApiUrl(`/intensities/${calc.name}/list`)
+  userCalcLayer.setBounds(L.latLngBounds([48.047, 11.267], [51.458, 19.624]))
   await userCalcLayer.fetchList(calc.start, calc.end)
+  userSumLayer.clear()
+  userSumLayer.setMap(map.value as L.Map)
+  userSumLayer.setApiUrl(`/sum/${calc.name}/list`)
+  userSumLayer.setBounds(L.latLngBounds([48.047, 11.267], [51.458, 19.624]))
+  await userSumLayer.fetchList(calc.start, calc.end)
 }
 
 async function startRainCalculation() {
@@ -174,8 +177,7 @@ function applyCustomRange(start: string, end: string) {
     clearSecondaryLayer()
     layers.clearRainLayers(true)
     layers.fetchListRain(config.start, config.end, true)
-  }
-  else {
+  } else {
     clearMainLayer()
     layers.clearRainLayers(false)
     layers.fetchListRain(config.start, config.end, false)
@@ -199,7 +201,7 @@ watch(
       intervalId = null
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const activeCalculationCount = computed(
@@ -214,21 +216,23 @@ const canStart = computed(() => {
 
 <template>
   <div v-if="showHistoric && !config.realtime"
-    class="absolute top-14 left-32 z-50 w-3xl rounded-md  backdrop-blur-xs bg-gray-800 p-2 text-sm text-white">
+    class="absolute top-14 left-32 z-50 w-3xl rounded-md bg-gray-800 p-2 text-sm text-white backdrop-blur-xs">
     <div class="w-full border-b border-gray-600 pb-1.5 text-white">User calculations</div>
 
-    <div class="py-2 flex gap-x-2">
+    <div class="flex gap-x-2 py-2">
       <button @click="activeTab = 'status'" :class="[
-        'cursor-pointer rounded px-3 py-1 ',
+        'cursor-pointer rounded px-3 py-1',
         activeTab === 'status'
-          ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+          ? 'bg-cyan-600 text-white hover:bg-cyan-700'
           : 'bg-gray-600 text-gray-200 hover:bg-gray-700',
       ]">
         View calculations
       </button>
       <button @click="activeTab = 'create'" :class="[
-        'cursor-pointer rounded px-3 py-1 ',
-        activeTab === 'create' ? 'bg-cyan-600 hover:bg-cyan-700 text-white' : 'bg-gray-600 text-gray-200 hover:bg-gray-700',
+        'cursor-pointer rounded px-3 py-1',
+        activeTab === 'create'
+          ? 'bg-cyan-600 text-white hover:bg-cyan-700'
+          : 'bg-gray-600 text-gray-200 hover:bg-gray-700',
       ]">
         New calculation
       </button>
@@ -280,7 +284,7 @@ const canStart = computed(() => {
           <label class="block">Max length (km)</label>
           <input v-model.number="data.max_length" type="number" class="w-full bg-gray-700 p-1 focus:outline-none" />
         </div>
-        <div class="flex gap-x-2 mt-2">
+        <div class="mt-2 flex gap-x-2">
           <label class="block">Exclude CMLs</label>
           <input v-model="data.exclude_cmls" type="checkbox" />
         </div>

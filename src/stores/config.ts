@@ -1,25 +1,29 @@
-import { defineStore } from 'pinia';
+import { defineStore } from 'pinia'
 
 interface ConfigState {
-  realtime: boolean;
-  start: string | null;
-  end: string | null;
-  datetimeFormat: 'UTC' | 'Europe/Prague';
+  realtime: boolean
+  start: string | null
+  end: string | null
+  datetimeFormat: 'UTC' | 'Europe/Prague'
+
   // visibility
-  dataPlottingVisible: boolean;
-  mainLayerSwitcherVisible: boolean;
-  secondaryLayerSwitcherVisible: boolean;
-  layerControlsVisible: boolean;
-  linkFilterVisible: boolean;
-  clustersVisible: boolean;
-  barVisible: boolean;
-  datetimeSelectorVisible: boolean;
-  wetLinksVisible: boolean;
+  dataPlottingVisible: boolean
+  mainLayerSwitcherVisible: boolean
+  secondaryLayerSwitcherVisible: boolean
+  layerControlsVisible: boolean
+  linkFilterVisible: boolean
+  clustersVisible: boolean
+  barVisible: boolean
+  datetimeSelectorVisible: boolean
+  wetLinksVisible: boolean
+
+  // NEW: global UI hide
+  hideUI: boolean
 
   // splitview
-  splitView: boolean;
-  followPrimary: boolean;
-  layerSwitchedTime: Date | null;
+  splitView: boolean
+  followPrimary: boolean
+  layerSwitchedTime: Date | null
 }
 
 export const useConfigStore = defineStore('config', {
@@ -41,6 +45,9 @@ export const useConfigStore = defineStore('config', {
     datetimeSelectorVisible: false,
     wetLinksVisible: false,
 
+    // NEW
+    hideUI: false,
+
     // split view
     splitView: false,
     followPrimary: true,
@@ -49,45 +56,48 @@ export const useConfigStore = defineStore('config', {
 
   actions: {
     setToRealtime() {
-      this.realtime = true;
+      this.realtime = true
       // this.start = null;
       // this.end = null;
     },
 
     setToHistoric() {
-      this.realtime = false;
+      this.realtime = false
     },
 
     toggleRealtime() {
       if (this.realtime) {
         this.realtime = false
-      }
-      else {
-        this.realtime = true;
-        this.start = null;
-        this.end = null;
+      } else {
+        this.realtime = true
+        this.start = null
+        this.end = null
       }
     },
 
     toggleDatetimeFormat() {
-      this.datetimeFormat =
-        this.datetimeFormat === 'UTC' ? 'Europe/Prague' : 'UTC';
+      this.datetimeFormat = this.datetimeFormat === 'UTC' ? 'Europe/Prague' : 'UTC'
     },
 
     enableSplitView() {
-      this.splitView = true;
+      this.splitView = true
     },
 
     disableSplitView() {
-      this.splitView = false;
+      this.splitView = false
     },
 
     toggleSplitView() {
-      this.splitView = !this.splitView;
+      this.splitView = !this.splitView
     },
 
     setLayerSwitchedTime() {
       this.layerSwitchedTime = new Date()
-    }
+    },
+
+    // NEW
+    toggleHideUI() {
+      this.hideUI = !this.hideUI
+    },
   },
-});
+})
