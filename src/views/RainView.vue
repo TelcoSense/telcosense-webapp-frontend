@@ -42,7 +42,9 @@ import { useRealtime } from '@/composables/useRealtime'
 import { datetimeFormat, toUtcDate } from '@/utils'
 
 // realtime composable
-const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
+const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(1)
+const layersReady = ref(false)
+
 const { map, secondaryMap } = useMap()
 
 // store definitions
@@ -492,6 +494,7 @@ onMounted(async () => {
     //   false,
     // ),
   ])
+  layersReady.value = true;
 })
 
 onBeforeUnmount(() => {
@@ -760,6 +763,37 @@ watch(
   { immediate: true },
 )
 
+// this allows for layers updating
+watch(
+  () => currentTimestamp.value,
+  async (tickEnd) => {
+    if (!config.realtime) return
+    if (!layersReady.value) return
+    if (!tickEnd) return
+
+    // 1) sync (adds missing frames)
+    await activeLayerMain.value?.syncSinceLast?.(tickEnd, { followLatest: false })
+
+    if (config.splitView) {
+      await activeLayerSecondary.value?.syncSinceLast?.(tickEnd, { followLatest: false })
+    }
+
+    // 2) force layers to newest available frame
+    if (config.followLatestMain) {
+      const main = activeLayerMain.value
+      if (main) {
+        const n = main.frames.length
+        if (n > 0) main.showFrame(n - 1)
+      }
+      const secondary = activeLayerSecondary.value
+      if (secondary) {
+        const n = secondary.frames.length
+        if (n > 0) secondary.showFrame(n - 1)
+      }
+    }
+  },
+)
+
 // watchers for the filtered links and stations drawing
 watch(
   () => links.filteredLinks,
@@ -1018,7 +1052,17 @@ watch(
           </div>
 
           <template #settings>
-            <span v-if="links.hasLinks" class="w-full border-b border-gray-400 pb-1.5 text-sm">Settings</span>
+            <span class="w-full border-b border-gray-400 pb-1.5 text-sm">Settings</span>
+
+            <div class="flex w-full flex-col gap-y-1 pb-2">
+              <div class="flex items-center gap-x-2">
+                <label for="wetlinks-toggle" class="cursor-pointer text-sm select-none">
+                  Automatic layer update
+                </label>
+                <input type="checkbox" id="wetlinks-toggle" :checked="config.followLatestMain"
+                  @change="config.followLatestMain = !config.followLatestMain" />
+              </div>
+            </div>
             <div v-if="links.hasLinks" class="flex w-full flex-col gap-y-1 pb-2">
               <div class="flex items-center gap-x-2">
                 <label for="clusters-toggle" class="cursor-pointer text-sm select-none">

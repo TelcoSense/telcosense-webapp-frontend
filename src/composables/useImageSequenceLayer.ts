@@ -11,7 +11,6 @@ export interface Frame {
 
 type CacheEntry = {
   objectUrl: string
-  index: number
   lastUsed: number
 }
 
@@ -21,6 +20,9 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
 
   const frames = shallowRef<Frame[]>([])
   const timestampMs = shallowRef<number[]>([])
+
+  // fast membership check (prevents duplicates when windows overlap)
+  const knownTimestamps = new Set<string>()
 
   // cache key = frame.timestamp
   const blobCache = new Map<string, CacheEntry>()
@@ -52,6 +54,28 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
 
   // playback token to cancel loop
   let playToken = 0
+
+  function isCanceled(err: unknown): boolean {
+    // AbortController cancellation (some browsers / fetch-style)
+    if (err instanceof DOMException && err.name === 'AbortError') return true
+
+    // axios cancellation (v1): usually { code: 'ERR_CANCELED', name: 'CanceledError' }
+    if (typeof err !== 'object' || err === null) return false
+
+    if (!('name' in err) && !('code' in err)) return false
+
+    const name =
+      'name' in err && typeof (err as { name: unknown }).name === 'string'
+        ? (err as { name: string }).name
+        : null
+
+    const code =
+      'code' in err && typeof (err as { code: unknown }).code === 'string'
+        ? (err as { code: string }).code
+        : null
+
+    return code === 'ERR_CANCELED' || name === 'CanceledError'
+  }
 
   function setApiUrl(newUrl: string) {
     apiUrl.value = newUrl
@@ -86,6 +110,11 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     return overlay.value
   }
 
+  function rebuildKnownSet() {
+    knownTimestamps.clear()
+    for (const f of frames.value) knownTimestamps.add(f.timestamp)
+  }
+
   async function fetchList(start: string | null, end: string | null) {
     if (!start || !end) return
     loading.value = true
@@ -104,14 +133,19 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
       // precompute ms array for fast binary search
       timestampMs.value = frames.value.map((f) => new Date(f.timestamp).getTime())
 
+      // rebuild membership set
+      rebuildKnownSet()
+
       // clear cache
       releaseBlobs()
 
       // reset index safely
       currentIndex.value = Math.min(currentIndex.value, Math.max(0, frames.value.length - 1))
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Unknown error'
-      console.error('Frame fetch error:', err)
+      if (!isCanceled(err)) {
+        error.value = err instanceof Error ? err.message : 'Unknown error'
+        console.error('Frame fetch error:', err)
+      }
     } finally {
       loading.value = false
     }
@@ -160,7 +194,7 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     })
 
     const objectUrl = URL.createObjectURL(res.data as Blob)
-    blobCache.set(frame.timestamp, { objectUrl, index, lastUsed: performance.now() })
+    blobCache.set(frame.timestamp, { objectUrl, lastUsed: performance.now() })
     evictIfNeeded()
     return objectUrl
   }
@@ -194,14 +228,15 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
 
       void (async () => {
         try {
-          // if got cached while queued, skip
           const f = frames.value[idx]
           if (!f) return
           if (blobCache.has(f.timestamp)) return
 
           await getObjectUrlFor(idx, 'low')
         } catch (err) {
-          console.error(`Preload failed @${idx}`, err)
+          if (!isCanceled(err)) {
+            console.error(`Preload failed @${idx}`, err)
+          }
         } finally {
           preloadQueued.delete(idx)
           preloadRunning--
@@ -212,15 +247,10 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
   }
 
   function schedulePreloadWindow(centerIndex: number, range = 25) {
-    // ensure we don't keep old abort around if nothing running
-    // (preloadAbort will be created lazily on first request)
     for (let d = 1; d <= range; d++) {
       enqueuePreload(centerIndex + d)
       enqueuePreload(centerIndex - d)
     }
-
-    // pptional: trim cache based on distance avoiding O(n^2)
-    // since we do LRU eviction, this is less necessary.
   }
 
   // ---- main display ----
@@ -237,7 +267,6 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     showAbort = new AbortController()
 
     // deprioritize preload: abort any in-flight preload downloads
-    // so "show this frame now" wins.
     stopPreload()
 
     try {
@@ -246,9 +275,7 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
 
       if (!overlay.value) {
         overlay.value = markRaw(
-          L.imageOverlay(objectUrl, bounds.value, { opacity: opacity.value }).addTo(
-            map.value as L.Map,
-          ),
+          L.imageOverlay(objectUrl, bounds.value, { opacity: opacity.value }).addTo(map.value as L.Map),
         )
       } else {
         overlay.value.setUrl(objectUrl)
@@ -260,7 +287,9 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
       // start preloading around current frame (non-blocking)
       schedulePreloadWindow(index, 25)
     } catch (err) {
-      console.error('Failed to show frame:', err)
+      if (!isCanceled(err)) {
+        console.error('Failed to show frame:', err)
+      }
     } finally {
       if (reqId === showReqId) frameLoading.value = false
     }
@@ -268,67 +297,79 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
 
   // kept for API compatibility; now schedules via queue
   async function preloadWindow(centerIndex: number, range = 25) {
-    // Make it safe to call as before, but do not block.
-    // It returns immediately after scheduling work.
     schedulePreloadWindow(centerIndex, range)
   }
 
-  // ---- realtime update ----
-  async function fetchLatestFrame(newTimestamp: string) {
-    const lastFrame = frames.value[frames.value.length - 1]
-    if (!lastFrame) return
-    if (new Date(newTimestamp) <= new Date(lastFrame.timestamp)) return
+  // ---- rolling window sync (your 1-week window, timer step 5 min) ----
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
-    try {
-      // Abort any "show" request? No. This is background-ish.
-      // Abort only prior preload (so we don't pile up)
-      stopPreload()
+  function dropOlderThan(cutoffMs: number) {
+    // frames are assumed chronological
+    while (frames.value.length) {
+      const t0 = new Date(frames.value[0]!.timestamp).getTime()
+      if (t0 >= cutoffMs) break
 
-      const controller = new AbortController()
-      const res = await api.get<Frame[]>(apiUrl.value, {
-        params: { start: newTimestamp, end: newTimestamp },
-        signal: controller.signal,
-      })
-      if (!res.data.length) return
+      const removed = frames.value.shift()!
+      timestampMs.value.shift()
+      knownTimestamps.delete(removed.timestamp)
 
-      const newFrame = res.data[0]
-
-      // fetch blob (low priority-ish but immediate for latest)
-      const blobRes = await api.get(newFrame.url, { responseType: 'blob' })
-      const objectUrl = URL.createObjectURL(blobRes.data as Blob)
-
-      // shift old frame out
-      const removed = frames.value.shift()
-
-      // remove removed from cache if present
-      if (removed?.timestamp) {
-        const entry = blobCache.get(removed.timestamp)
-        if (entry) {
-          URL.revokeObjectURL(entry.objectUrl)
-          blobCache.delete(removed.timestamp)
-        }
+      const entry = blobCache.get(removed.timestamp)
+      if (entry) {
+        URL.revokeObjectURL(entry.objectUrl)
+        blobCache.delete(removed.timestamp)
       }
 
-      frames.value.push(newFrame)
-      timestampMs.value.push(new Date(newFrame.timestamp).getTime())
-
-      // put in cache
-      blobCache.set(newFrame.timestamp, {
-        objectUrl,
-        index: frames.value.length - 1,
-        lastUsed: performance.now(),
-      })
-      evictIfNeeded()
-
-      // ensure currentIndex stays valid after shift
       if (currentIndex.value > 0) currentIndex.value -= 1
-
-      // if we were at the end, keep showing latest
-      // (optional behavior; comment out if not desired)
-      // await showFrame(frames.value.length - 1)
-    } catch (err) {
-      console.error('Fetch latest frame error:', err)
     }
+  }
+
+  async function syncRollingWindow(
+    tickStart: string,
+    tickEnd: string,
+    opts?: { windowMs?: number; followLatest?: boolean },
+  ) {
+    if (!tickStart || !tickEnd) return
+
+    if (knownTimestamps.size !== frames.value.length) rebuildKnownSet()
+
+    try {
+      stopPreload()
+      const res = await api.get<Frame[]>(apiUrl.value, { params: { start: tickStart, end: tickEnd } })
+      const got = res.data ?? []
+      const wasAtEnd = currentIndex.value >= frames.value.length - 1
+      const fresh = got
+        .filter((f) => !knownTimestamps.has(f.timestamp))
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+
+      if (fresh.length) {
+        for (const f of fresh) {
+          frames.value.push(f)
+          timestampMs.value.push(new Date(f.timestamp).getTime())
+          knownTimestamps.add(f.timestamp)
+        }
+      }
+      const endMs = new Date(tickEnd).getTime()
+      const cutoffMs = endMs - (opts?.windowMs ?? WEEK_MS)
+      dropOlderThan(cutoffMs)
+      const followLatest = opts?.followLatest ?? true
+      if (followLatest && wasAtEnd && frames.value.length) {
+        void showFrame(frames.value.length - 1)
+      }
+    } catch (err) {
+      if (!isCanceled(err)) {
+        console.error('syncRollingWindow failed:', err)
+      }
+    }
+  }
+  async function syncSinceLast(tickEnd: string, opts?: { windowMs?: number; followLatest?: boolean }) {
+    const last = frames.value[frames.value.length - 1]
+    if (!last) return
+    const startIso = new Date(new Date(last.timestamp).getTime() + 1).toISOString()
+    await syncRollingWindow(startIso, tickEnd, opts)
+  }
+
+  async function fetchLatestFrame(newTimestamp: string) {
+    await syncSinceLast(newTimestamp, { windowMs: WEEK_MS, followLatest: false })
   }
 
   function changeFrame(delta: number) {
@@ -338,7 +379,6 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     }
   }
 
-  // ---- playback (awaited loop, no overlap) ----
   function play() {
     if (isPlaying.value || !frames.value.length) return
     isPlaying.value = true
@@ -348,7 +388,6 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
       while (isPlaying.value && token === playToken) {
         const next = (currentIndex.value + 1) % frames.value.length
         await showFrame(next)
-        // wait uses current speed each iteration
         await new Promise((r) => setTimeout(r, animationSpeed.value))
       }
     }
@@ -411,18 +450,16 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     showAbort?.abort()
     showAbort = null
 
-    // Remove overlay from map
     if (overlay.value && map.value) {
       map.value.removeLayer(overlay.value as L.ImageOverlay)
     }
 
-    // Revoke and clear blobs
     releaseBlobs()
 
-    // Reset everything
     overlay.value = null
     frames.value = []
     timestampMs.value = []
+    knownTimestamps.clear()
     currentIndex.value = 0
     error.value = null
   }
@@ -447,10 +484,12 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     changeFrame,
     getOverlay,
 
-    // kept, but now schedules rather than Promise.all
     preloadWindow,
-
     fetchLatestFrame,
+
+    syncRollingWindow,
+    syncSinceLast,
+
     play,
     pause,
     toggle,

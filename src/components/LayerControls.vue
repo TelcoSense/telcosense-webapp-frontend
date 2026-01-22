@@ -13,21 +13,31 @@ const props = withDefaults(
   }>(),
   {
     mapTarget: 'main',
-  }
+  },
 )
 
 const { activeLayerMain, activeLayerSecondary } = useActiveLayer()
 
-function findClosestFrameIndex(
-  frames: { timestamp: string }[],
-  targetTs: number,
-) {
+function setOpacityMain(e: Event) {
+  const v = parseFloat((e.target as HTMLInputElement).value)
+  activeLayerMain.value?.setOpacity(v)
+
+  // sync secondary ONLY when locked
+  if (useConfigStore().followPrimary) {
+    activeLayerSecondary.value?.setOpacity(v)
+  }
+}
+
+function setOpacitySecondary(e: Event) {
+  const v = parseFloat((e.target as HTMLInputElement).value)
+  activeLayerSecondary.value?.setOpacity(v)
+}
+
+function findClosestFrameIndex(frames: { timestamp: string }[], targetTs: number) {
   let bestIdx = 0
   let bestDiff = Infinity
   for (let i = 0; i < frames.length; i++) {
-    const diff = Math.abs(
-      new Date(frames[i].timestamp).getTime() - targetTs,
-    )
+    const diff = Math.abs(new Date(frames[i].timestamp).getTime() - targetTs)
     if (diff < bestDiff) {
       bestDiff = diff
       bestIdx = i
@@ -36,20 +46,29 @@ function findClosestFrameIndex(
   return bestIdx
 }
 
-
 const activeLayer = computed(() =>
-  props.mapTarget === 'secondary'
-    ? activeLayerSecondary.value
-    : activeLayerMain.value
+  props.mapTarget === 'secondary' ? activeLayerSecondary.value : activeLayerMain.value,
 )
 
 const config = useConfigStore()
 const device = useDeviceStore()
 
 const rainColors = [
-  '#380070', '#3000a8', '#0000fc', '#006cc0', '#00a000',
-  '#00bc00', '#34d800', '#9cdc00', '#e0dc00', '#fcb000',
-  '#fc8400', '#fc5800', '#fc0000', '#a00000', '#fcfcfc'
+  '#380070',
+  '#3000a8',
+  '#0000fc',
+  '#006cc0',
+  '#00a000',
+  '#00bc00',
+  '#34d800',
+  '#9cdc00',
+  '#e0dc00',
+  '#fcb000',
+  '#fc8400',
+  '#fc5800',
+  '#fc0000',
+  '#a00000',
+  '#fcfcfc',
 ]
 
 type TempStop = { t: number; color: string }
@@ -100,6 +119,10 @@ const isTemperatureLayer = computed(() => {
   return id === 'tempcz' || id === 'tempchmi'
 })
 
+const isFollowingPrimaryOnSecondary = computed(() => {
+  return props.mapTarget === 'secondary' && config.followPrimary
+})
+
 const disablePrev = computed(
   () => !activeLayer.value || activeLayer.value.currentIndex <= 0 || activeLayer.value.isPlaying,
 )
@@ -128,7 +151,6 @@ watch(
   },
 )
 
-
 watch(
   () => activeLayerMain.value?.currentTimestamp ?? null,
   async (ts) => {
@@ -141,10 +163,7 @@ watch(
     if (!config.followPrimary) return
 
     const now = new Date()
-    if (
-      config.layerSwitchedTime &&
-      now.getTime() - config.layerSwitchedTime.getTime() < 100
-    ) {
+    if (config.layerSwitchedTime && now.getTime() - config.layerSwitchedTime.getTime() < 100) {
       return
     }
 
@@ -167,7 +186,7 @@ const sliderLabel = computed(() =>
 const frameColors = computed(() => {
   if (!activeLayer.value) return []
 
-  return activeLayer.value.frames.map(frame => {
+  return activeLayer.value.frames.map((frame) => {
     const v = frame.rain_score
     if (v == null) return 'rgba(0,0,0,0)'
 
@@ -187,7 +206,6 @@ const sliderGradient = computed(() => {
   const n = colors.length
 
   const base = 'linear-gradient(to right, #4b5563 0%, #4b5563 100%)' // gray-600
-
   if (!n) return base
 
   const overlay = `linear-gradient(to right, ${colors
@@ -202,14 +220,15 @@ const sliderGradient = computed(() => {
   // overlay on top of gray base
   return `${overlay}, ${base}`
 })
-
-
 </script>
 
 <template>
-  <div v-if="activeLayer && config.layerControlsVisible && (!device.isMobile || !config.dataPlottingVisible)"
-    class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 blurred-bg p-2 text-xs text-white  md:text-sm">
-
+  <div v-if="
+    activeLayer &&
+    config.layerControlsVisible &&
+    (!device.isMobile || !config.dataPlottingVisible)
+  "
+    class="absolute bottom-3 w-[calc(100%-1.5rem)] max-w-[380px] rounded-md border border-gray-600 blurred-bg p-2 text-xs text-white md:text-sm">
     <div class="flex items-center justify-between gap-x-3">
       <span> Layer: {{ activeLayer.name }}</span>
 
@@ -227,7 +246,11 @@ const sliderGradient = computed(() => {
           Play/Pause
         </button>
       </div>
+      <div v-else>
+        <Icon icon="material-symbols:lock-outline" width="20" height="20" />
+      </div>
     </div>
+
     <div class="mt-1 flex items-center justify-between">
       <p>
         Current frame:
@@ -237,18 +260,19 @@ const sliderGradient = computed(() => {
           }}
         </span>
         <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
-
       </p>
       <Icon v-if="activeLayer.frameLoading" icon="eos-icons:loading" width="18" height="18" />
-
     </div>
-    <div class="flex flex-col items-center gap-x-3">
 
+    <div class="flex flex-col items-center gap-x-3">
+      <!-- Slider wrapper that makes it visually obvious it is not scrollable -->
 
       <input v-if="activeLayer.frames.length" type="range" min="0" :max="activeLayer.frames.length - 1"
         v-model.number="sliderIndex" @change="onSliderChanged"
-        :disabled="activeLayer.isPlaying || activeLayer.frameLoading || (config.followPrimary && props.mapTarget === 'secondary')"
-        :key="activeLayer.id" class="w-full timeline-range mb-1 mt-0.5" :style="{ '--track-bg': sliderGradient }" />
+        :disabled="activeLayer.isPlaying || activeLayer.frameLoading || isFollowingPrimaryOnSecondary"
+        :key="activeLayer.id" class="w-full timeline-range mb-1 mt-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+        :style="{ '--track-bg': sliderGradient }" />
+
 
       <div class="flex w-full justify-between">
         <span class="font-chivo text-nowrap">
@@ -267,11 +291,20 @@ const sliderGradient = computed(() => {
 
     <div class="flex items-center justify-between gap-x-1">
       <div class="flex items-center gap-x-1">
-        <span>Opacity:</span>
-        <input type="range" min="0" max="1" step="0.01" :value="activeLayer.opacity"
-          @input="(e) => activeLayer?.setOpacity(parseFloat((e.target as HTMLInputElement).value))"
-          class="w-14 md:w-20" />
+        <div v-if="props.mapTarget !== 'secondary'" class="flex items-center gap-x-1">
+          <span>Opacity:</span>
+          <input type="range" min="0" max="1" step="0.01" :value="activeLayerMain?.opacity ?? 1" @input="setOpacityMain"
+            class="w-14 md:w-20" />
+        </div>
+
+        <!-- SECONDARY opacity only when UNLOCKED -->
+        <div v-else-if="!config.followPrimary" class="flex items-center gap-x-1">
+          <span>Opacity:</span>
+          <input type="range" min="0" max="1" step="0.01" :value="activeLayerSecondary?.opacity ?? 1"
+            @input="setOpacitySecondary" class="w-14 md:w-20" />
+        </div>
       </div>
+
       <div v-if="!(props.mapTarget === 'secondary' && config.followPrimary)" class="flex items-center gap-x-1">
         <span>Speed:</span>
         <input type="range" min="0.1" max="10" step="0.1" :value="1000 / activeLayer.animationSpeed" @input="
@@ -284,17 +317,15 @@ const sliderGradient = computed(() => {
       </div>
     </div>
   </div>
+
   <div v-else-if="activeLayer && !config.layerControlsVisible && (!device.isMobile && !config.dataPlottingVisible)"
     class="absolute bottom-3 rounded-md border border-gray-600 bg-gray-800/60 p-2 text-xs text-white backdrop-blur-xs md:text-sm">
     Current frame:
     <span class="font-chivo">
       {{ datetimeFormat(activeLayer.frames[sliderIndex]?.timestamp, config.datetimeFormat) ?? '—' }}
     </span>
-
-
   </div>
 </template>
-
 
 <style scoped>
 .timeline-range {
@@ -302,7 +333,6 @@ const sliderGradient = computed(() => {
   appearance: none;
   background: transparent;
 }
-
 
 .timeline-range::-webkit-slider-runnable-track {
   height: 6px;
@@ -318,7 +348,6 @@ const sliderGradient = computed(() => {
   background: rgba(255, 255, 255, 0.75);
   margin-top: -3px;
 }
-
 
 .timeline-range::-moz-range-track {
   height: 6px;

@@ -32,8 +32,16 @@ const activeLayer = computed(() =>
 )
 
 function setLayerForTarget(layer: ImageSequenceLayer, id: string, name: string) {
-  if (props.mapTarget === 'main') setMainLayer(layer, id, name)
-  else setSecondaryLayer(layer, id, name)
+  if (props.mapTarget === 'main') {
+    setMainLayer(layer, id, name)
+  } else {
+    setSecondaryLayer(
+      layer,
+      id,
+      name,
+      activeLayerMain.value?.currentTimestamp ?? null,
+    )
+  }
 }
 
 function hideLayerForTarget() {

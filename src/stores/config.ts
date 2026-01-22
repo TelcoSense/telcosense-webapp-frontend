@@ -24,6 +24,9 @@ interface ConfigState {
   splitView: boolean
   followPrimary: boolean
   layerSwitchedTime: Date | null
+
+  // realtime rolling 
+  followLatestMain: boolean
 }
 
 export const useConfigStore = defineStore('config', {
@@ -52,6 +55,9 @@ export const useConfigStore = defineStore('config', {
     splitView: false,
     followPrimary: true,
     layerSwitchedTime: null,
+
+    // realtime rolling
+    followLatestMain: false
   }),
 
   actions: {

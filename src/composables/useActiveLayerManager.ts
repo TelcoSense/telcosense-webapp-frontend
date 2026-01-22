@@ -11,6 +11,7 @@ export interface ControllableLayer {
   opacity: ComputedRef<number>
   currentTimestamp: ComputedRef<string | null>
   animationSpeed: ComputedRef<number>
+
   showFrame(index: number): void
   showNearestTimestamp(ts: string): Promise<void>
   play(): void
@@ -21,6 +22,18 @@ export interface ControllableLayer {
   setOpacity(value: number): void
   setAnimationSpeed(value: number): void
   clear(): void
+
+  // NEW: sync methods (optional so non-image layers can still be active)
+  syncRollingWindow?(
+    tickStart: string,
+    tickEnd: string,
+    opts?: { windowMs?: number; followLatest?: boolean },
+  ): Promise<void>
+
+  syncSinceLast?(
+    tickEnd: string,
+    opts?: { windowMs?: number; followLatest?: boolean },
+  ): Promise<void>
 }
 
 function toComputed<T>(source: Ref<T> | T): ComputedRef<T> {
@@ -39,6 +52,7 @@ export function createActiveLayerManager() {
       opacity: Ref<number> | number
       animationSpeed: Ref<number> | number
       currentTimestamp: Ref<string | null> | string | null
+
       showFrame(index: number): void
       showNearestTimestamp(ts: string): Promise<void>
       play(): void
@@ -49,12 +63,23 @@ export function createActiveLayerManager() {
       setOpacity(value: number): void
       setAnimationSpeed(value: number): void
       clear(): void
+
+      // only present on image-sequence layers that support syncing
+      syncRollingWindow?: (
+        tickStart: string,
+        tickEnd: string,
+        opts?: { windowMs?: number; followLatest?: boolean },
+      ) => Promise<void>
+
+      syncSinceLast?: (
+        tickEnd: string,
+        opts?: { windowMs?: number; followLatest?: boolean },
+      ) => Promise<void>
     },
     id = 'Default',
     name = 'Default',
-    initialTimestamp?: string | null
+    initialTimestamp?: string | null,
   ) {
-
     const prevTs = initialTimestamp ?? activeLayer.value?.currentTimestamp ?? null
     const prevOpacity = activeLayer.value?.opacity
     const prevAnimationSpeed = activeLayer.value?.animationSpeed
@@ -72,6 +97,7 @@ export function createActiveLayerManager() {
       opacity: toComputed(store.opacity),
       animationSpeed: toComputed(store.animationSpeed),
       currentTimestamp: toComputed(store.currentTimestamp),
+
       showFrame: store.showFrame.bind(store),
       showNearestTimestamp: store.showNearestTimestamp.bind(store),
       play: store.play.bind(store),
@@ -82,6 +108,10 @@ export function createActiveLayerManager() {
       setOpacity: store.setOpacity.bind(store),
       setAnimationSpeed: store.setAnimationSpeed.bind(store),
       clear: store.clear.bind(store),
+
+      // bind sync methods if present
+      syncRollingWindow: store.syncRollingWindow?.bind(store),
+      syncSinceLast: store.syncSinceLast?.bind(store),
     }
 
     const layer = activeLayer.value!

@@ -41,8 +41,10 @@ import { datetimeFormat, toUtcDate } from '@/utils'
 
 
 // realtime composable
-const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(10)
+const { currentTimestamp, oneWeekAgoTimestamp } = useRealtime(1)
 const { map, secondaryMap } = useMap()
+const layersReady = ref(false)
+
 
 // store definitions
 const weatherStations = useWeatherStationsStore()
@@ -163,7 +165,30 @@ const isTimeRangeValid = computed(() => {
   )
 })
 
+function isTypingTarget(el: EventTarget | null): boolean {
+  const t = el as HTMLElement | null
+  if (!t) return false
+  const tag = (t.tagName || '').toLowerCase()
+  return (
+    tag === 'input' ||
+    tag === 'textarea' ||
+    (t as HTMLElement).isContentEditable === true ||
+    tag === 'select'
+  )
+}
+
 function onKeyDown(e: KeyboardEvent) {
+  // don't steal shortcuts while typing
+  if (isTypingTarget(e.target)) return
+
+  // Shift+H toggles UI
+  if (e.altKey && e.key.toLowerCase() === 'h') {
+    e.preventDefault()
+    config.toggleHideUI()
+    return
+  }
+
+  // Escape clears selections (your existing behavior)
   if (e.key === 'Escape') {
     selectedLinkIds.value.clear()
     selectedStationIds.value.clear()
@@ -171,6 +196,7 @@ function onKeyDown(e: KeyboardEvent) {
     drawStations()
   }
 }
+
 
 function initMap() {
   const zoom = device.isMobile ? 6 : 8
@@ -440,6 +466,7 @@ onMounted(async () => {
     initLayer(layers.tempczSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
     initLayer(layers.tempchmiSecondary, mapObjectSecondary, oneWeekAgoTimestamp.value, currentTimestamp.value, false),
   ])
+  layersReady.value = true
 })
 
 onBeforeUnmount(() => {
@@ -642,6 +669,37 @@ function drawStations() {
   drawStationsTo(stationsGroupSecondary.value as L.LayerGroup, stationMarkersSecondary)
 }
 
+// this allows for layers updating
+watch(
+  () => currentTimestamp.value,
+  async (tickEnd) => {
+    if (!config.realtime) return
+    if (!layersReady.value) return
+    if (!tickEnd) return
+
+    // 1) sync (adds missing frames)
+    await activeLayerMain.value?.syncSinceLast?.(tickEnd, { followLatest: false })
+
+    if (config.splitView) {
+      await activeLayerSecondary.value?.syncSinceLast?.(tickEnd, { followLatest: false })
+    }
+
+    // 2) force layers to newest available frame
+    if (config.followLatestMain) {
+      const main = activeLayerMain.value
+      if (main) {
+        const n = main.frames.length
+        if (n > 0) main.showFrame(n - 1)
+      }
+      const secondary = activeLayerSecondary.value
+      if (secondary) {
+        const n = secondary.frames.length
+        if (n > 0) secondary.showFrame(n - 1)
+      }
+    }
+  },
+)
+
 // watchers for the filtered links and stations drawing
 watch(
   () => links.filteredLinks,
@@ -829,7 +887,7 @@ watch(
           </div>
         </div>
 
-        <div v-if="config.start && config.end" id="timestamps"
+        <div v-if="config.start && config.end && !config.hideUI" id="timestamps"
           class="absolute right-3 bottom-32 z-10 hidden flex-col rounded-md border border-gray-600 p-1 text-sm text-white blurred-bg select-none md:visible md:bottom-3 md:flex">
           <p v-if="config.realtime">Realtime bounds</p>
           <p v-if="!config.realtime">Historic bounds</p>
@@ -850,7 +908,7 @@ watch(
         <div id="drag-box" class="pointer-events-none absolute z-40 hidden border-1 border-blue-400 bg-blue-400/10">
         </div>
 
-        <TopNavbar>
+        <TopNavbar v-show="!config.hideUI">
           <div v-if="auth.isLoggedIn" class="mr-32 hidden gap-x-2 md:flex">
             <div class="cursor-pointer rounded-md h-8 text-white ">
               <button class="h-full menu-btn-top-orange rounded-l-md border-r border-y border-gray-600"
@@ -878,7 +936,17 @@ watch(
             </button> -->
           </div>
           <template #settings>
-            <span v-if="links.hasLinks" class="text-sm border-b w-full border-gray-400 pb-1.5">Settings</span>
+            <span class="w-full border-b border-gray-400 pb-1.5 text-sm">Settings</span>
+
+            <div class="flex w-full flex-col gap-y-1 pb-2">
+              <div class="flex items-center gap-x-2">
+                <label for="wetlinks-toggle" class="cursor-pointer text-sm select-none">
+                  Automatic layer update
+                </label>
+                <input type="checkbox" id="wetlinks-toggle" :checked="config.followLatestMain"
+                  @change="config.followLatestMain = !config.followLatestMain" />
+              </div>
+            </div>
             <div v-if="links.hasLinks" class="pb-2 w-full flex flex-col gap-y-1">
               <div class="flex items-center gap-x-2">
                 <label for="clusters-toggle" class="cursor-pointer select-none text-sm">
@@ -898,7 +966,7 @@ watch(
           </template>
         </TopNavbar>
 
-        <LeftMenu>
+        <LeftMenu v-show="!config.hideUI">
           <!-- insert the button for copying link ids here -->
           <template #down>
             <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
@@ -906,29 +974,32 @@ watch(
           </template>
         </LeftMenu>
 
-        <RightMenu v-if="config.splitView" />
+        <RightMenu v-if="config.splitView && !config.hideUI" />
 
-        <LinkFilter ref="linkFilter" />
+        <LinkFilter v-show="!config.hideUI" ref="linkFilter" />
 
-        <LayerControls :class="config.splitView ? 'left-[calc(25%-190px)]' : null" map-target="main" />
-        <LayerControls v-if="config.splitView" class="left-[calc(75%-190px)]" map-target="secondary" />
+        <LayerControls v-show="!config.hideUI" :class="config.splitView ? 'left-[calc(25%-190px)]' : null"
+          map-target="main" />
+        <LayerControls v-if="config.splitView && !config.hideUI" class="left-[calc(75%-190px)]"
+          map-target="secondary" />
 
-        <LayerSwitcher v-if="config.mainLayerSwitcherVisible" map-target="main" ref="layerSwitcherMain" />
-        <LayerSwitcher v-if="config.secondaryLayerSwitcherVisible" class="left-[calc(50%+3.75rem)]"
+        <LayerSwitcher v-if="config.mainLayerSwitcherVisible && !config.hideUI" map-target="main"
+          ref="layerSwitcherMain" />
+        <LayerSwitcher v-if="config.secondaryLayerSwitcherVisible && !config.hideUI" class="left-[calc(50%+3.75rem)]"
           map-target="secondary" ref="layerSwitcherSecondary" />
 
         <!-- primary -->
-        <TempBar v-if="activeLayerMain && config.barVisible"
+        <TempBar v-if="activeLayerMain && config.barVisible && !config.hideUI"
           :class="config.splitView ? 'right-[calc(50%+0.75rem)]' : 'right-3'" />
         <!-- secondary -->
-        <TempBar v-if="activeLayerSecondary && config.barVisible" />
+        <TempBar v-if="activeLayerSecondary && config.barVisible && !config.hideUI" />
 
-        <DataPlotting v-show="config.dataPlottingVisible" :start="config.start" :end="config.end" />
-        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible" ref="linkTable" />
+        <DataPlotting v-show="config.dataPlottingVisible && !config.hideUI" :start="config.start" :end="config.end" />
+        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible && !config.hideUI" ref="linkTable" />
         <!-- <RainHistoric :link-ids="selectedLinkIds" :show-historic="showHistoric" ref="userCalculations" /> -->
 
         <!-- date time selector -->
-        <div v-show="!config.realtime && config.datetimeSelectorVisible"
+        <div v-show="!config.realtime && config.datetimeSelectorVisible && !config.hideUI"
           class="absolute top-14 left-34.5 z-30 w-64 rounded-md bg-gray-800 p-2" ref="datetimeSelector">
 
           <label class="mb-1 block text-sm text-white">Start</label>
