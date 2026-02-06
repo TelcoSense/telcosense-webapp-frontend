@@ -24,7 +24,6 @@ import RightMenu from '@/components/RightMenu.vue'
 import TempBar from '@/components/TempBar.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
-import { useAuthStore } from '@/stores/auth'
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
 import { useDeviceStore } from '@/stores/device'
@@ -54,7 +53,6 @@ const cmlData = useCmlDataStore()
 const config = useConfigStore()
 const layers = useLayersStore()
 const device = useDeviceStore()
-const auth = useAuthStore()
 
 function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => boolean) {
   const sync = () => {
@@ -909,7 +907,7 @@ watch(
         </div>
 
         <TopNavbar v-show="!config.hideUI">
-          <div v-if="auth.isLoggedIn" class="mr-32 hidden gap-x-2 md:flex">
+          <div class="mr-32 hidden gap-x-2 md:flex">
             <div class="cursor-pointer rounded-md h-8 text-white ">
               <button class="h-full menu-btn-top-orange rounded-l-md border-r border-y border-gray-600"
                 @click="config.setToRealtime()" :class="{ active: config.realtime }">

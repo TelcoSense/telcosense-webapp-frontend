@@ -1024,7 +1024,7 @@ watch(
         </div>
 
         <TopNavbar v-show="!config.hideUI">
-          <div v-if="auth.isLoggedIn" class="mr-32 hidden gap-x-2 md:flex">
+          <div class="mr-32 hidden gap-x-2 md:flex">
             <div class="h-8 cursor-pointer rounded-md text-white">
               <button class="menu-btn-top h-full rounded-l-md border-y border-r border-gray-600"
                 @click="config.setToRealtime()" :class="{ active: config.realtime }">
@@ -1044,7 +1044,7 @@ watch(
               Time range
             </button>
 
-            <button v-if="!config.realtime" id="user-calc-button"
+            <button v-if="!config.realtime && auth.isLoggedIn" id="user-calc-button"
               class="menu-btn-top h-full rounded-md border border-gray-600" @click="showHistoric = !showHistoric"
               :class="{ active: showHistoric }">
               User calculations
