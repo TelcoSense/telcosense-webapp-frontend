@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { useActiveLayer } from '@/composables/useActiveLayer'
+import { useAuthStore } from '@/stores/auth'
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
 import { useLinksStore } from '@/stores/links'
@@ -15,6 +16,7 @@ const weatherData = useWeatherDataStore()
 const cmlData = useCmlDataStore()
 const links = useLinksStore()
 const config = useConfigStore()
+const auth = useAuthStore()
 
 const route = useRoute()
 const currentRouteName = computed(() => route.name as string)
@@ -51,7 +53,7 @@ const layerMainActive = computed(() => activeLayerMain.value !== null)
           :class="[btnClass, { active: config.splitView }]" @click="config.toggleSplitView()" />
       </button>
 
-      <button v-if="links.hasLinks" id="link-filter-button">
+      <button v-if="links.hasLinks && auth.isLoggedIn" id="link-filter-button">
         <Icon icon="carbon:filter" width="38" height="38" :class="[btnClass, { active: config.linkFilterVisible }]"
           @click="
             () => {

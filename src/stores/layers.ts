@@ -15,6 +15,14 @@ export const useLayersStore = defineStore('layers', () => {
     }),
   )
 
+
+  const cappi2km = shallowRef(
+    useImageLayer('main', 'cappi2km', {
+      apiUrl: '/pseudocappi2km/list',
+      bounds: boundsCZ,
+    }),
+  )
+
   const merge1h = shallowRef(
     useImageLayer('main', 'merge1h', {
       apiUrl: '/merge1h/list',
@@ -57,6 +65,14 @@ export const useLayersStore = defineStore('layers', () => {
       bounds: boundsCZ,
     }),
   )
+
+  const cappi2kmSecondary = shallowRef(
+    useImageLayer('secondary', 'cappi2km', {
+      apiUrl: '/pseudocappi2km/list',
+      bounds: boundsCZ,
+    }),
+  )
+
 
   const merge1hSecondary = shallowRef(
     useImageLayer('secondary', 'merge1h', {
@@ -111,6 +127,7 @@ export const useLayersStore = defineStore('layers', () => {
 
   function clearRainLayers(secondary: boolean = false) {
     maxz.value.clear()
+    cappi2km.value.clear()
     merge1h.value.clear()
     raincz.value.clear()
     rainSum.value.clear()
@@ -118,6 +135,7 @@ export const useLayersStore = defineStore('layers', () => {
     userSum.value.clear()
     if (secondary) {
       maxzSecondary.value.clear()
+      cappi2kmSecondary.value.clear()
       merge1hSecondary.value.clear()
       rainczSecondary.value.clear()
       rainSumSecondary.value.clear()
@@ -136,9 +154,11 @@ export const useLayersStore = defineStore('layers', () => {
   function fetchListRain(start: string | null, end: string | null, secondary: boolean = false) {
     maxz.value.fetchList(start, end)
     merge1h.value.fetchList(start, end)
+    cappi2km.value.fetchList(start, end)
     raincz.value.fetchList(start, end)
     if (secondary) {
       maxzSecondary.value.fetchList(start, end)
+      cappi2km.value.fetchList(start, end)
       merge1hSecondary.value.fetchList(start, end)
       rainczSecondary.value.fetchList(start, end)
     }
@@ -155,6 +175,7 @@ export const useLayersStore = defineStore('layers', () => {
 
   function fetchListRainSecondary(start: string | null, end: string | null) {
     maxzSecondary.value.fetchList(start, end)
+    cappi2kmSecondary.value.fetchList(start, end)
     merge1hSecondary.value.fetchList(start, end)
     rainczSecondary.value.fetchList(start, end)
   }
@@ -167,6 +188,7 @@ export const useLayersStore = defineStore('layers', () => {
   return {
     // rain primary
     maxz,
+    cappi2km,
     merge1h,
     raincz,
     rainSum,
@@ -174,6 +196,7 @@ export const useLayersStore = defineStore('layers', () => {
     userSum,
     // secondary
     maxzSecondary,
+    cappi2kmSecondary,
     merge1hSecondary,
     rainczSecondary,
     rainSumSecondary,

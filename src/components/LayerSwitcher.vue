@@ -61,6 +61,13 @@ const layers = [
     showOnRoutes: ['rain'],
   },
   {
+    id: 'cappi2km',
+    label: 'CAPPI 2km',
+    group: 'CHMI',
+    layer: computed(() => useImageLayer(props.mapTarget, 'cappi2km')),
+    showOnRoutes: ['rain'],
+  },
+  {
     id: 'merge1h',
     label: 'Merge 1h',
     group: 'CHMI',

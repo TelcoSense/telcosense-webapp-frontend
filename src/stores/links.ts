@@ -9,7 +9,7 @@ export interface Site {
   altitude: number | null
 }
 
-export interface Link {
+export interface FullLink {
   id: number
   ip_address_A: string
   ip_address_B: string
@@ -25,6 +25,18 @@ export interface Link {
   center_y: number
 }
 
+export interface LinkMidpoint {
+  id: number
+  center_x: number
+  center_y: number
+}
+
+/**
+ * Backward-compatible exported type name.
+ * Existing imports using `Link` will still work.
+ */
+export type Link = FullLink | LinkMidpoint
+
 export interface DryWetFrame {
   utc: string
   overall: number
@@ -34,6 +46,19 @@ export interface DryWetFrame {
 }
 
 const FILTER_KEY = 'linkFilters'
+
+export function isFullLink(link: Link): link is FullLink {
+  return (
+    'site_A' in link &&
+    'site_B' in link &&
+    'technology' in link &&
+    'influx_mapping' in link &&
+    'polarization' in link &&
+    'frequency_A' in link &&
+    'frequency_B' in link &&
+    'length' in link
+  )
+}
 
 function loadSavedFilters() {
   try {
@@ -64,7 +89,6 @@ function saveFilters(state: ReturnType<typeof useLinksStore>) {
 function isoToUtcKey10min(iso: string): string {
   const d = new Date(iso)
 
-  // snap DOWN to 10-minute grid
   d.setUTCMinutes(Math.floor(d.getUTCMinutes() / 10) * 10, 0, 0)
 
   const yyyy = d.getUTCFullYear()
@@ -100,6 +124,7 @@ export const useLinksStore = defineStore('links', {
 
       manualIdFilterInput: saved.manualIdFilterInput ?? '',
       filteredIds: saved.filteredIds ?? [],
+
       drywet: [] as DryWetFrame[],
       drywetLoading: false,
       drywetError: null as string | null,
@@ -111,9 +136,13 @@ export const useLinksStore = defineStore('links', {
     async fetchLinks() {
       this.loading = true
       this.error = null
+
       try {
         const res = await api.get<Link[]>('/links', getSecureConfig())
         this.links = res.data
+
+        // Only initialize technologies from full links.
+        // For anonymous midpoint-only data this becomes [].
         if (this.selectedTechnologies.length === 0) {
           this.selectedTechnologies = this.allTechnologies
         }
@@ -130,6 +159,7 @@ export const useLinksStore = defineStore('links', {
       this.drywetLoading = true
       this.drywetError = null
       this.drywetRange = { start: startIso, end: endIso }
+
       try {
         const res = await api.get<DryWetFrame[]>('/drywet', {
           ...getSecureConfig(),
@@ -201,10 +231,12 @@ export const useLinksStore = defineStore('links', {
   },
 
   getters: {
-    groupedLinksByMappingAndTechnology(state): Record<string, Record<string, Link[]>> {
-      const grouped: Record<string, Record<string, Link[]>> = {}
+    groupedLinksByMappingAndTechnology(state): Record<string, Record<string, FullLink[]>> {
+      const grouped: Record<string, Record<string, FullLink[]>> = {}
 
       for (const link of state.links) {
+        if (!isFullLink(link)) continue
+
         const group = link.influx_mapping
         const tech = link.technology
 
@@ -213,15 +245,16 @@ export const useLinksStore = defineStore('links', {
 
         grouped[group][tech].push(link)
       }
+
       return grouped
     },
 
     allGroups(state): string[] {
-      return [...new Set(state.links.map((link) => link.influx_mapping))]
+      return [...new Set(state.links.filter(isFullLink).map((link) => link.influx_mapping))]
     },
 
     allTechnologies(state): string[] {
-      return [...new Set(state.links.map((link) => link.technology))]
+      return [...new Set(state.links.filter(isFullLink).map((link) => link.technology))]
     },
 
     filteredLinks(state): Link[] {
@@ -234,22 +267,39 @@ export const useLinksStore = defineStore('links', {
       const minFreq = isFinite(state.minFrequency) ? state.minFrequency : 0
       const maxFreq = isFinite(state.maxFrequency) ? state.maxFrequency : Infinity
 
-      return state.links.filter(link => {
-        const inTech = state.selectedTechnologies.includes(link.technology)
+      return state.links.filter((link) => {
+        const isDisabled = state.manuallyDisabledLinkIds.includes(link.id)
+        const inManualIds =
+          state.filteredIds.length === 0 || state.filteredIds.includes(link.id)
+
+        if (isDisabled || !inManualIds) {
+          return false
+        }
+
+        // Midpoint-only anonymous link:
+        // allow it through so manual show/hide and ID filters still work.
+        if (!isFullLink(link)) {
+          return true
+        }
+
+        const inGroup =
+          state.selectedGroups.length === 0 || state.selectedGroups.includes(link.influx_mapping)
+
+        const inTech =
+          state.selectedTechnologies.length === 0 ||
+          state.selectedTechnologies.includes(link.technology)
+
         const inPol = state.selectedPolarizations.includes(link.polarization)
 
         const inLength = link.length >= minLen && link.length <= maxLen
+
         const inFreq =
           link.frequency_A >= minFreq &&
           link.frequency_A <= maxFreq &&
           link.frequency_B >= minFreq &&
           link.frequency_B <= maxFreq
 
-        const isDisabled = state.manuallyDisabledLinkIds.includes(link.id)
-        const inManualIds =
-          state.filteredIds.length === 0 || state.filteredIds.includes(link.id)
-
-        return inTech && inPol && inLength && inFreq && !isDisabled && inManualIds
+        return inGroup && inTech && inPol && inLength && inFreq
       })
     },
 
