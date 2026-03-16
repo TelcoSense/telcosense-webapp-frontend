@@ -731,10 +731,15 @@ function drawLinkMidpointsTo(group: L.LayerGroup, store: Map<number, L.CircleMar
         tooltipOptions,
       )
 
-      marker.on('click', () => {
+      marker.on('click', async () => {
         if (selectionInProgress.value) return
-        // TODO:
-        // cmlData.fetchCmlData(config.start, config.end, link.id)
+
+        await cmlData.fetchCmlDataPublic(
+          config.start,
+          config.end,
+          String(link.id),
+        )
+
         config.dataPlottingVisible = true
       })
 

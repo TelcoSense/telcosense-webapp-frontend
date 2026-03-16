@@ -46,8 +46,6 @@ type SeriesInput = {
 }
 
 const auth = useAuthStore()
-
-const showOnlyFirstPlot = computed(() => !auth.isLoggedIn)
 const route = useRoute()
 const cfgStore = useConfigStore()
 
@@ -62,16 +60,49 @@ const props = defineProps<{
   bottomRightAxisName?: string
   thirdLeftAxisName?: string
   thirdRightAxisName?: string
-
-  // NEW: allow parent to force single-plot mode
-  // singlePlot?: boolean
 }>()
 
 const chartOptions = ref<EChartsOption>({})
 const chartRef = ref<InstanceType<typeof ECharts> | null>(null)
-
-// reactive breakpoint (updates on resize/orientation changes)
 const isMobile = useMediaQuery('(max-width: 768px)')
+
+// public: show subplot 0 + 1
+// logged in: show all 3
+const visibleSubplots = computed<number[]>(() => {
+  return auth.isLoggedIn ? [0, 1, 2] : [0, 1]
+})
+
+function isSubplotVisible(index: number): boolean {
+  return visibleSubplots.value.includes(index)
+}
+
+const subplotGridMap = computed(() => {
+  const map = new Map<number, number>()
+  visibleSubplots.value.forEach((subplotIndex, gridIndex) => {
+    map.set(subplotIndex, gridIndex)
+  })
+  return map
+})
+
+function getGridIndex(subplotIndex: number): number {
+  return subplotGridMap.value.get(subplotIndex) ?? 0
+}
+
+const SERIES_COLORS: Record<string, string> = {
+  'Weather station rainfall': '#38bdf8',
+  'Weather station temp': '#f97316',
+  'TRSL A': '#8b5cf6',
+  'TRSL B': '#6d28d9',
+  'HW temp A': '#10b981',
+  'HW temp B': '#059669',
+  'Rain intensity': '#14b8a6',
+  'Pred temp A': '#eab308',
+  'Pred temp B': '#ca8a04',
+}
+
+function getSeriesColor(name: string): string {
+  return SERIES_COLORS[name] ?? '#d1d5db'
+}
 
 // ----------------------------
 // helpers
@@ -80,27 +111,35 @@ const isMobile = useMediaQuery('(max-width: 768px)')
 function axisFormatSpec(axisName: string) {
   const n = axisName.toLowerCase()
 
-  if (n.includes('temp') || n.includes('temperature') || n.includes('t2m')) return { decimals: 0, step: 1 }
+  if (n.includes('temp') || n.includes('temperature') || n.includes('t2m'))
+    return { decimals: 0, step: 1 }
   if (n.includes('rain') || n.includes('rainfall')) return { decimals: 1, step: 0.1 }
-  if (n.includes('trsl') || n.includes('rsl') || n.includes('tsl')) return { decimals: 1, step: 0.1 }
+  if (n.includes('trsl') || n.includes('rsl') || n.includes('tsl'))
+    return { decimals: 1, step: 0.1 }
 
   return { decimals: 1, step: 0.1 }
 }
 
 function resolveYAxisSide(seriesName: string): 'left' | 'right' {
   const lower = seriesName.toLowerCase()
-  if (lower.includes('trsl') || lower.includes('rainfall') || lower.includes('rsl') || lower.includes('tsl'))
+  if (
+    lower.includes('trsl') ||
+    lower.includes('rainfall') ||
+    lower.includes('rsl') ||
+    lower.includes('tsl')
+  )
     return 'right'
   return 'left'
 }
 
 function hasDataForSubplot(index: number): boolean {
+  if (!isSubplotVisible(index)) return false
   return props.seriesData.some((s) => s.subplotIndex === index && s.data.length > 0)
 }
 
 const seriesNames = computed(() =>
   props.seriesData
-    .filter((s) => !showOnlyFirstPlot.value || s.subplotIndex === 0)
+    .filter((s) => isSubplotVisible(s.subplotIndex))
     .map((s) => s.name),
 )
 
@@ -113,32 +152,35 @@ function computeDefaultLegendSelected(): Record<string, boolean> {
   const selected: Record<string, boolean> = {}
 
   for (const s of props.seriesData) {
-    if (showOnlyFirstPlot.value && s.subplotIndex !== 0) continue
+    if (!isSubplotVisible(s.subplotIndex)) continue
 
     const hiddenList = hiddenByDefault[s.subplotIndex] ?? []
     selected[s.name] = !hiddenList.some((h) => s.name.toLowerCase().includes(h.toLowerCase()))
   }
+
   return selected
 }
 
-// live legend state (owned by this component)
+// live legend state
 const legendSelectedState = ref<Record<string, boolean>>({})
 
 function isSeriesVisible(name: string) {
-  // missing key => treated as true by ECharts
   return legendSelectedState.value[name] !== false
 }
 
 function hasYAxisSeriesData(subplot: number, side: 'left' | 'right') {
-  if (showOnlyFirstPlot.value && subplot !== 0) return false
+  if (!isSubplotVisible(subplot)) return false
 
   return props.seriesData.some(
-    (s) => s.subplotIndex === subplot && (s.yAxisSide ?? resolveYAxisSide(s.name)) === side && s.data.length > 0,
+    (s) =>
+      s.subplotIndex === subplot &&
+      (s.yAxisSide ?? resolveYAxisSide(s.name)) === side &&
+      s.data.length > 0,
   )
 }
 
 function hasVisibleSeriesForAxis(subplot: number, side: 'left' | 'right') {
-  if (showOnlyFirstPlot.value && subplot !== 0) return false
+  if (!isSubplotVisible(subplot)) return false
 
   return props.seriesData.some((s) => {
     if (s.subplotIndex !== subplot) return false
@@ -149,12 +191,14 @@ function hasVisibleSeriesForAxis(subplot: number, side: 'left' | 'right') {
 }
 
 function cursorYAxisIndexForSubplot(subplot: number): number {
+  const gridIndex = getGridIndex(subplot)
+
   const leftVisible = hasVisibleSeriesForAxis(subplot, 'left')
   const rightVisible = hasVisibleSeriesForAxis(subplot, 'right')
 
-  if (leftVisible) return subplot * 2 + 0
-  if (rightVisible) return subplot * 2 + 1
-  return subplot * 2 + 0
+  if (leftVisible) return gridIndex * 2 + 0
+  if (rightVisible) return gridIndex * 2 + 1
+  return gridIndex * 2 + 0
 }
 
 function createYAxisConfig(
@@ -164,8 +208,8 @@ function createYAxisConfig(
   hasAnyData: boolean,
   hasVisible: boolean,
 ): YAXisComponentOption {
-  const axisLabelSize = isMobile.value ? 10 : 12
-  const axisNameSize = isMobile.value ? 10 : 12
+  const axisLabelSize = isMobile.value ? 8 : 10
+  const axisNameSize = isMobile.value ? 8 : 10
   const spec = axisFormatSpec(name)
 
   const showAxis = hasAnyData && hasVisible
@@ -176,22 +220,17 @@ function createYAxisConfig(
     gridIndex,
     position,
     show: showAxis,
-
-    // hide ticks + labels on mobile
     axisLabel: {
       show: !hideAxisDecorations,
     },
     axisTick: {
       show: false,
     },
-
     axisLine: {
       show: !hideAxisDecorations,
       lineStyle: { color: '#6b7280' },
     },
-
     splitLine: { show: false },
-
     min: 'dataMin',
     max: 'dataMax',
     minInterval: spec.step,
@@ -246,6 +285,44 @@ function createCursorMarkline(id: string, xAxisIndex: number, yAxisIndex: number
   }
 }
 
+function buildGrids(subplotCount: number) {
+  const sideMargin = isMobile.value ? '5%' : '8%'
+  if (subplotCount <= 1) {
+    return [
+      {
+        left: sideMargin,
+        right: sideMargin,
+        top: '10%',
+        height: isMobile.value ? '78%' : '80%',
+      },
+    ]
+  }
+
+  if (subplotCount === 2) {
+    const height = isMobile.value ? 33 : 34
+    const gap = isMobile.value ? 12 : 13
+    const startTop = (100 - (2 * height + gap)) / 2
+
+    return Array.from({ length: 2 }, (_, index) => ({
+      left: sideMargin,
+      right: sideMargin,
+      top: `${startTop + index * (height + gap)}%`,
+      height: `${height}%`,
+    }))
+  }
+
+  const height = isMobile.value ? 19 : 20
+  const gap = isMobile.value ? 8 : 9
+  const startTop = (100 - (3 * height + 2 * gap)) / 2
+
+  return Array.from({ length: 3 }, (_, index) => ({
+    left: sideMargin,
+    right: sideMargin,
+    top: `${startTop + index * (height + gap)}%`,
+    height: `${height}%`,
+  }))
+}
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 function tooltipFormatter(params) {
@@ -254,7 +331,7 @@ function tooltipFormatter(params) {
 
   const header = items[0]?.axisValueLabel ?? ''
   const desiredOrder = props.seriesData
-    .filter((s) => !showOnlyFirstPlot.value || s.subplotIndex === 0)
+    .filter((s) => isSubplotVisible(s.subplotIndex))
     .map((s) => s.name)
 
   const map = new Map(items.map((p) => [p.seriesName, p]))
@@ -275,16 +352,17 @@ function tooltipFormatter(params) {
 function buildOptions() {
   const series: SeriesOption[] = []
 
-  // only build series for visible subplots
   for (const seriesItem of props.seriesData) {
-    if (showOnlyFirstPlot.value && seriesItem.subplotIndex !== 0) continue
+    if (!isSubplotVisible(seriesItem.subplotIndex)) continue
 
     const convertedData: [string, number | null][] = seriesItem.data.map((d) => [d.time, d.value])
+    const color = getSeriesColor(seriesItem.name)
 
     const subplotIndex = seriesItem.subplotIndex
+    const gridIndex = getGridIndex(subplotIndex)
     const ySide = seriesItem.yAxisSide ?? resolveYAxisSide(seriesItem.name)
     const yAxisOffset = ySide === 'left' ? 0 : 1
-    const yAxisIndex = subplotIndex * 2 + yAxisOffset
+    const yAxisIndex = gridIndex * 2 + yAxisOffset
 
     series.push({
       name: seriesItem.name,
@@ -292,132 +370,110 @@ function buildOptions() {
       data: convertedData,
       showSymbol: false,
       sampling: 'average',
-      lineStyle: { width: 1.5 },
-      xAxisIndex: subplotIndex,
+      itemStyle: { color },
+      lineStyle: { width: 1.5, color },
+      xAxisIndex: gridIndex,
       yAxisIndex,
     })
   }
 
-  // cursor markline (only on subplot 0 in single-plot mode)
-  if (hasDataForSubplot(0))
-    series.push(createCursorMarkline('cursor-markline-top', 0, cursorYAxisIndexForSubplot(0)))
-
-  if (!showOnlyFirstPlot.value) {
-    if (hasDataForSubplot(1))
-      series.push(createCursorMarkline('cursor-markline-bottom', 1, cursorYAxisIndexForSubplot(1)))
-    if (hasDataForSubplot(2))
-      series.push(createCursorMarkline('cursor-markline-third', 2, cursorYAxisIndexForSubplot(2)))
+  if (hasDataForSubplot(0)) {
+    series.push(
+      createCursorMarkline(
+        'cursor-markline-top',
+        getGridIndex(0),
+        cursorYAxisIndexForSubplot(0),
+      ),
+    )
   }
 
-  const activeXAxisIndices = showOnlyFirstPlot.value ? [0] : [0, 1, 2].filter(hasDataForSubplot)
+  if (hasDataForSubplot(1)) {
+    series.push(
+      createCursorMarkline(
+        'cursor-markline-bottom',
+        getGridIndex(1),
+        cursorYAxisIndexForSubplot(1),
+      ),
+    )
+  }
 
-  const grids = showOnlyFirstPlot.value
-    ? [
-      isMobile.value
-        ? { left: '5%', right: '5%', top: '10%', height: '80%' }
-        : { left: '8%', right: '8%', top: '10%', height: '80%' },
-    ]
-    : isMobile.value
-      ? [
-        { left: '5%', right: '5%', top: '10%', height: '20%' },
-        { left: '5%', right: '5%', top: '40%', height: '20%' },
-        { left: '5%', right: '5%', top: '70%', height: '20%' },
-      ]
-      : [
-        { left: '8%', right: '8%', top: '10%', height: '22%' },
-        { left: '8%', right: '8%', top: '40%', height: '22%' },
-        { left: '8%', right: '8%', top: '70%', height: '22%' },
-      ]
+  if (hasDataForSubplot(2)) {
+    series.push(
+      createCursorMarkline(
+        'cursor-markline-third',
+        getGridIndex(2),
+        cursorYAxisIndexForSubplot(2),
+      ),
+    )
+  }
 
-  const xAxisIndices = showOnlyFirstPlot.value ? [0] : [0, 1, 2]
+  const activeXAxisIndices = visibleSubplots.value.filter(hasDataForSubplot).map(getGridIndex)
 
-  const xAxes: XAXisComponentOption[] = xAxisIndices.map((i) => {
-    const isLabelPlot = showOnlyFirstPlot.value || i === 2
+  const subplotCount = visibleSubplots.value.length
+
+  const grids = buildGrids(subplotCount)
+
+  const xAxes: XAXisComponentOption[] = visibleSubplots.value.map((subplotIndex, gridIndex) => {
+    const isLastVisible = gridIndex === visibleSubplots.value.length - 1
     const DAY_MS = 1000 * 60 * 60 * 24
+
     return {
       type: 'time',
-      gridIndex: i,
+      gridIndex,
       min: props.xMin,
       max: props.xMax,
-
       minInterval: DAY_MS,
       interval: DAY_MS,
-
       axisLabel: {
-        show: isLabelPlot,
+        show: visibleSubplots.value.length === 1 || isLastVisible,
         fontSize: isMobile.value ? 10 : 12,
-        formatter: isLabelPlot ? (isMobile.value ? '{MM}-{dd}' : '{yyyy}-{MM}-{dd} ') : undefined,
+        formatter:
+          visibleSubplots.value.length === 1 || isLastVisible
+            ? isMobile.value
+              ? '{MM}-{dd}'
+              : '{yyyy}-{MM}-{dd} '
+            : undefined,
         color: '#ffffff',
         fontFamily: 'Chivo Mono',
         hideOverlap: true,
       },
       axisLine: { lineStyle: { color: '#6b7280' } },
       splitLine: { show: true, lineStyle: { color: '#374151' } },
-      ...(hasDataForSubplot(i) && { axisPointer: { label: { show: false } } }),
+      ...(hasDataForSubplot(subplotIndex) && { axisPointer: { label: { show: false } } }),
     }
   })
 
-  const yAxes: YAXisComponentOption[] = showOnlyFirstPlot.value
-    ? [
-      createYAxisConfig(
-        props.topLeftAxisName ?? 'Top left',
-        0,
-        'left',
-        hasYAxisSeriesData(0, 'left'),
-        hasVisibleSeriesForAxis(0, 'left'),
-      ),
-      createYAxisConfig(
-        props.topRightAxisName ?? 'Top right',
-        0,
-        'right',
-        hasYAxisSeriesData(0, 'right'),
-        hasVisibleSeriesForAxis(0, 'right'),
-      ),
-    ]
-    : [
-      createYAxisConfig(
-        props.topLeftAxisName ?? 'Top left',
-        0,
-        'left',
-        hasYAxisSeriesData(0, 'left'),
-        hasVisibleSeriesForAxis(0, 'left'),
-      ),
-      createYAxisConfig(
-        props.topRightAxisName ?? 'Top right',
-        0,
-        'right',
-        hasYAxisSeriesData(0, 'right'),
-        hasVisibleSeriesForAxis(0, 'right'),
-      ),
-      createYAxisConfig(
-        props.bottomLeftAxisName ?? 'Bottom left',
-        1,
-        'left',
-        hasYAxisSeriesData(1, 'left'),
-        hasVisibleSeriesForAxis(1, 'left'),
-      ),
-      createYAxisConfig(
-        props.bottomRightAxisName ?? 'Bottom right',
-        1,
-        'right',
-        hasYAxisSeriesData(1, 'right'),
-        hasVisibleSeriesForAxis(1, 'right'),
-      ),
-      createYAxisConfig(
-        props.thirdLeftAxisName ?? 'Third left',
-        2,
-        'left',
-        hasYAxisSeriesData(2, 'left'),
-        hasVisibleSeriesForAxis(2, 'left'),
-      ),
-      createYAxisConfig(
-        props.thirdRightAxisName ?? 'Third right',
-        2,
-        'right',
-        hasYAxisSeriesData(2, 'right'),
-        hasVisibleSeriesForAxis(2, 'right'),
-      ),
-    ]
+  const axisNamesBySubplot: Record<number, { left: string; right: string }> = {
+    0: {
+      left: props.topLeftAxisName ?? 'Top left',
+      right: props.topRightAxisName ?? 'Top right',
+    },
+    1: {
+      left: props.bottomLeftAxisName ?? 'Bottom left',
+      right: props.bottomRightAxisName ?? 'Bottom right',
+    },
+    2: {
+      left: props.thirdLeftAxisName ?? 'Third left',
+      right: props.thirdRightAxisName ?? 'Third right',
+    },
+  }
+
+  const yAxes: YAXisComponentOption[] = visibleSubplots.value.flatMap((subplotIndex, gridIndex) => [
+    createYAxisConfig(
+      axisNamesBySubplot[subplotIndex].left,
+      gridIndex,
+      'left',
+      hasYAxisSeriesData(subplotIndex, 'left'),
+      hasVisibleSeriesForAxis(subplotIndex, 'left'),
+    ),
+    createYAxisConfig(
+      axisNamesBySubplot[subplotIndex].right,
+      gridIndex,
+      'right',
+      hasYAxisSeriesData(subplotIndex, 'right'),
+      hasVisibleSeriesForAxis(subplotIndex, 'right'),
+    ),
+  ])
 
   chartOptions.value = {
     useUTC: cfgStore.datetimeFormat === 'UTC',
@@ -428,7 +484,11 @@ function buildOptions() {
     axisPointer: {
       animation: false,
       link: [{ xAxisIndex: activeXAxisIndices }],
-      label: { backgroundColor: '#6b7280', color: '#ffffff', fontFamily: 'Chivo Mono, monospace' },
+      label: {
+        backgroundColor: '#6b7280',
+        color: '#ffffff',
+        fontFamily: 'Chivo Mono, monospace',
+      },
       triggerTooltip: true,
       snap: true,
     },
@@ -470,8 +530,16 @@ function buildOptions() {
       orient: 'horizontal',
       padding: isMobile.value ? [2, 10] : 5,
       pageIconSize: isMobile.value ? 8 : 12,
-      textStyle: { fontSize: isMobile.value ? 10 : 12, color: '#ffffff', fontFamily: 'Inter' },
-      pageTextStyle: { color: '#ffffff', fontSize: isMobile.value ? 10 : 12, fontFamily: 'Inter' },
+      textStyle: {
+        fontSize: isMobile.value ? 10 : 12,
+        color: '#ffffff',
+        fontFamily: 'Inter',
+      },
+      pageTextStyle: {
+        color: '#ffffff',
+        fontSize: isMobile.value ? 10 : 12,
+        fontFamily: 'Inter',
+      },
     },
 
     grid: grids,
@@ -482,7 +550,7 @@ function buildOptions() {
     dataZoom: [
       {
         type: 'inside',
-        xAxisIndex: showOnlyFirstPlot.value ? [0] : [0, 1, 2],
+        xAxisIndex: visibleSubplots.value.map((_, idx) => idx),
         filterMode: 'none',
         zoomOnMouseWheel: false,
         moveOnMouseMove: true,
@@ -546,6 +614,7 @@ watch(
 watch(() => isMobile.value, () => scheduleRebuild())
 watch(() => [props.xMin, props.xMax], () => scheduleRebuild())
 watch(() => cfgStore.datetimeFormat, () => scheduleRebuild())
+watch(() => auth.isLoggedIn, () => scheduleRebuild())
 
 watch(
   () => route.name,
@@ -555,7 +624,6 @@ watch(
   },
 )
 
-// cursor markline update: keep incremental setOption (fast), but safe if chart was recreated
 watch(
   () => props.cursorTime,
   (cursor) => {
@@ -564,14 +632,26 @@ watch(
     if (!chart) return
 
     const updates: LineSeriesOption[] = []
-    if (hasDataForSubplot(0))
-      updates.push({ id: 'cursor-markline-top', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
 
-    if (!showOnlyFirstPlot.value) {
-      if (hasDataForSubplot(1))
-        updates.push({ id: 'cursor-markline-bottom', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
-      if (hasDataForSubplot(2))
-        updates.push({ id: 'cursor-markline-third', markLine: { data: cursor ? [{ xAxis: cursor }] : [] } } as LineSeriesOption)
+    if (hasDataForSubplot(0)) {
+      updates.push({
+        id: 'cursor-markline-top',
+        markLine: { data: cursor ? [{ xAxis: cursor }] : [] },
+      } as LineSeriesOption)
+    }
+
+    if (hasDataForSubplot(1)) {
+      updates.push({
+        id: 'cursor-markline-bottom',
+        markLine: { data: cursor ? [{ xAxis: cursor }] : [] },
+      } as LineSeriesOption)
+    }
+
+    if (hasDataForSubplot(2)) {
+      updates.push({
+        id: 'cursor-markline-third',
+        markLine: { data: cursor ? [{ xAxis: cursor }] : [] },
+      } as LineSeriesOption)
     }
 
     chart.setOption({ series: updates }, { notMerge: false })

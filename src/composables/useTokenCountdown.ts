@@ -33,6 +33,11 @@ export function useTokenCountdown(pollInterval = 30000) {
   }
 
   function updateRemaining() {
+    if (!auth.isLoggedIn) {
+      remainingTime.value = null
+      return
+    }
+
     const expiry = auth.tokenExpiry
     if (expiry) {
       const now = Math.floor(Date.now() / 1000)
@@ -58,6 +63,7 @@ export function useTokenCountdown(pollInterval = 30000) {
   }
 
   watch(() => auth.tokenExpiry, updateRemaining)
+  watch(() => auth.isLoggedIn, updateRemaining)
 
   watch(remainingTime, (seconds) => {
     if (seconds !== null && seconds <= 0) {

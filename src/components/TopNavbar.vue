@@ -36,11 +36,13 @@ const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
 const { remainingTime, resetRemaining } = useTokenCountdown()
 
 const formattedTime = computed(() => {
+  if (!auth.isLoggedIn) return ''
   if (remainingTime.value === null) return ''
   return Math.floor(remainingTime.value / 60).toString()
 })
 
 const progressBarWidth = computed(() => {
+  if (!auth.isLoggedIn) return '0%'
   if (remainingTime.value === null) return '0%'
   const used = SESSION_MAX_SECONDS - remainingTime.value
   const percentage = Math.min(100 - (used / SESSION_MAX_SECONDS) * 100, 100)
@@ -61,7 +63,7 @@ async function logout() {
   try {
     const res = await api.post('/logout')
     if (res.data.message === 'Logout successful') {
-      await auth.checkLogin()
+      auth.reset()
       resetData()
       resetRemaining()
       router.push({ name: 'home' })
@@ -143,7 +145,8 @@ onClickOutside(profileMenuWrapper, () => {
             <div v-else>Not logged in</div>
           </span>
 
-          <div v-if="formattedTime" class="flex h-8 flex-col items-center justify-center px-2 text-nowrap ">
+          <div v-if="auth.isLoggedIn && formattedTime"
+            class="flex h-8 flex-col items-center justify-center px-2 text-nowrap ">
             <div class="text-center text-xs text-white">
               <span class="font-chivo">{{ formattedTime }}</span> min left
             </div>

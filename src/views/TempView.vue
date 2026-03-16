@@ -24,11 +24,13 @@ import RightMenu from '@/components/RightMenu.vue'
 import TempBar from '@/components/TempBar.vue'
 import TopNavbar from '@/components/TopNavbar.vue'
 
+import { useAuthStore } from '@/stores/auth'
 import { useCmlDataStore } from '@/stores/cmlData'
 import { useConfigStore } from '@/stores/config'
 import { useDeviceStore } from '@/stores/device'
 import { useLayersStore } from '@/stores/layers'
-import { useLinksStore } from '@/stores/links'
+import type { FullLink } from '@/stores/links'
+import { isFullLink, useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 
@@ -53,6 +55,7 @@ const cmlData = useCmlDataStore()
 const config = useConfigStore()
 const layers = useLayersStore()
 const device = useDeviceStore()
+const auth = useAuthStore()
 
 function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => boolean) {
   const sync = () => {
@@ -104,6 +107,12 @@ const linkPolylinesSecondary = new Map<number, L.Polyline>()
 
 const stationMarkersMain = new Map<number, L.CircleMarker>()
 const stationMarkersSecondary = new Map<number, L.CircleMarker>()
+
+const linkMidpointsGroupMain = ref<L.LayerGroup>(L.layerGroup())
+const linkMidpointsGroupSecondary = ref<L.LayerGroup>(L.layerGroup())
+
+const linkMidpointMarkersMain = new Map<number, L.CircleMarker>()
+const linkMidpointMarkersSecondary = new Map<number, L.CircleMarker>()
 
 const selectedLinkIds = ref<Set<number>>(new Set())
 const selectedStationIds = ref<Set<number>>(new Set())
@@ -218,6 +227,7 @@ function initMap() {
   clusterGroup.value.addTo(map.value as L.Map)
   stationsGroupMain.value.addTo(map.value as L.Map)
   linksGroupMain.value.addTo(map.value as L.Map)
+  linkMidpointsGroupMain.value.addTo(map.value as L.Map)
 }
 
 function initSecondaryMap() {
@@ -233,6 +243,7 @@ function initSecondaryMap() {
   }).addTo(secondaryMap.value as L.Map)
   stationsGroupSecondary.value.addTo(secondaryMap.value as L.Map)
   linksGroupSecondary.value.addTo(secondaryMap.value as L.Map)
+  linkMidpointsGroupSecondary.value.addTo(secondaryMap.value as L.Map)
 }
 
 // map layers setup
@@ -485,7 +496,8 @@ const tooltipOptions: L.TooltipOptions = {
 }
 
 function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
-  const currentIds = new Set(links.filteredLinks.map((l) => l.id))
+  const fullLinks: FullLink[] = links.filteredLinks.filter(isFullLink)
+  const currentIds = new Set(fullLinks.map((l) => l.id))
 
   // remove deleted
   for (const [id, poly] of store.entries()) {
@@ -495,7 +507,7 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
     }
   }
 
-  links.filteredLinks.forEach((link) => {
+  fullLinks.forEach((link) => {
     const isSelected =
       selectedLinkIds.value.has(link.id) ||
       link.id.toString() === cmlData.selectedCmlId
@@ -553,8 +565,28 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
 }
 
 function drawLinks() {
-  drawLinksTo(linksGroupMain.value as L.LayerGroup, linkPolylinesMain)
-  drawLinksTo(linksGroupSecondary.value as L.LayerGroup, linkPolylinesSecondary)
+  if (auth.isLoggedIn) {
+    clearMidpointMarkers(linkMidpointsGroupMain.value as L.LayerGroup, linkMidpointMarkersMain)
+    clearMidpointMarkers(
+      linkMidpointsGroupSecondary.value as L.LayerGroup,
+      linkMidpointMarkersSecondary,
+    )
+
+    drawLinksTo(linksGroupMain.value as L.LayerGroup, linkPolylinesMain)
+    drawLinksTo(linksGroupSecondary.value as L.LayerGroup, linkPolylinesSecondary)
+  } else {
+    clearPolylines(linksGroupMain.value as L.LayerGroup, linkPolylinesMain)
+    clearPolylines(linksGroupSecondary.value as L.LayerGroup, linkPolylinesSecondary)
+
+    drawLinkMidpointsTo(
+      linkMidpointsGroupMain.value as L.LayerGroup,
+      linkMidpointMarkersMain,
+    )
+    drawLinkMidpointsTo(
+      linkMidpointsGroupSecondary.value as L.LayerGroup,
+      linkMidpointMarkersSecondary,
+    )
+  }
 }
 
 function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>) {
@@ -586,14 +618,14 @@ function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>)
 
     if (!marker) {
       marker = L.circleMarker([ws.Y, ws.X], {
-        radius: 3.5,
+        radius: 2.5,
         color,
         fillColor: color,
         fillOpacity: 0.5,
         weight: 0.5,
       })
 
-      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm';
+      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm'
       marker.bindTooltip(
         `<div class="font-inter text-black ${tooltipFontsize}">
             <div class="mb-1 border-b border-gray-300 font-semibold">${ws.full_name}</div>
@@ -618,6 +650,81 @@ function drawStationsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>)
       marker.setStyle({ color, fillColor: color })
     }
   })
+}
+
+function drawLinkMidpointsTo(group: L.LayerGroup, store: Map<number, L.CircleMarker>) {
+  const midpointLinks = links.filteredLinks.filter(
+    (link) => 'center_x' in link && 'center_y' in link,
+  )
+
+  const currentIds = new Set(midpointLinks.map((l) => l.id))
+
+  for (const [id, marker] of store.entries()) {
+    if (!currentIds.has(id)) {
+      group.removeLayer(marker)
+      store.delete(id)
+    }
+  }
+
+  midpointLinks.forEach((link) => {
+    const isSelected =
+      selectedLinkIds.value.has(link.id) || link.id.toString() === cmlData.selectedCmlId
+
+    const color = isSelected ? 'red' : '#000000'
+
+    let marker = store.get(link.id)
+
+    if (!marker) {
+      marker = L.circleMarker([link.center_y, link.center_x], {
+        radius: 2.5,
+        color,
+        opacity: 0.5,
+        fillColor: color,
+        fillOpacity: 0.5,
+        weight: 1,
+      })
+
+      const tooltipFontsize = device.isMobile ? 'text-xs' : 'text-sm'
+      marker.bindTooltip(
+        `<div class="font-inter text-black ${tooltipFontsize}">
+          <div class="font-semibold">Link ID: ${link.id}</div>
+        </div>`,
+        tooltipOptions,
+      )
+
+      marker.on('click', async () => {
+        if (selectionInProgress.value) return
+
+        await cmlData.fetchCmlDataPublic(
+          config.start,
+          config.end,
+          String(link.id),
+        )
+
+        config.dataPlottingVisible = true
+      })
+
+      group.addLayer(marker)
+      store.set(link.id, marker)
+    } else {
+      marker.setLatLng([link.center_y, link.center_x])
+      marker.setStyle({ color, fillColor: color })
+    }
+  })
+}
+
+function clearPolylines(group: L.LayerGroup, store: Map<number, L.Polyline>) {
+  for (const poly of store.values()) {
+    group.removeLayer(poly)
+  }
+  store.clear()
+}
+
+function clearMidpointMarkers(group: L.LayerGroup, store: Map<number, L.CircleMarker>) {
+  for (const marker of store.values()) {
+    group.removeLayer(marker)
+  }
+  store.clear()
 }
 
 function rebuildLinksCluster(
@@ -945,7 +1052,7 @@ watch(
                   @change="config.followLatestMain = !config.followLatestMain" />
               </div>
             </div>
-            <div v-if="links.hasLinks" class="pb-2 w-full flex flex-col gap-y-1">
+            <div v-if="links.hasLinks && auth.isLoggedIn" class="pb-2 w-full flex flex-col gap-y-1">
               <div class="flex items-center gap-x-2">
                 <label for="clusters-toggle" class="cursor-pointer select-none text-sm">
                   Show link clusters
@@ -967,14 +1074,14 @@ watch(
         <LeftMenu v-show="!config.hideUI">
           <!-- insert the button for copying link ids here -->
           <template #down>
-            <Icon v-if="selectedLinkIds.size !== 0" icon="clarity:copy-to-clipboard-line" width="38" height="38"
-              class="menu-btn" @click="copySelectedLinksToClipboard" />
+            <Icon v-if="selectedLinkIds.size !== 0 && auth.isLoggedIn" icon="clarity:copy-to-clipboard-line"
+              width="38" height="38" class="menu-btn" @click="copySelectedLinksToClipboard" />
           </template>
         </LeftMenu>
 
         <RightMenu v-if="config.splitView && !config.hideUI" />
 
-        <LinkFilter v-show="!config.hideUI" ref="linkFilter" />
+        <LinkFilter v-if="auth.isLoggedIn && !config.hideUI" ref="linkFilter" />
 
         <LayerControls v-show="!config.hideUI" :class="config.splitView ? 'left-[calc(25%-190px)]' : null"
           map-target="main" />
@@ -993,7 +1100,8 @@ watch(
         <TempBar v-if="activeLayerSecondary && config.barVisible && !config.hideUI" />
 
         <DataPlotting v-show="config.dataPlottingVisible && !config.hideUI" :start="config.start" :end="config.end" />
-        <LinkTable v-show="links.showLinkTable && links.linkFilterVisible && !config.hideUI" ref="linkTable" />
+        <LinkTable v-if="auth.isLoggedIn && links.showLinkTable && links.linkFilterVisible && !config.hideUI"
+          ref="linkTable" />
         <!-- <RainHistoric :link-ids="selectedLinkIds" :show-historic="showHistoric" ref="userCalculations" /> -->
 
         <!-- date time selector -->

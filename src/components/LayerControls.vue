@@ -234,16 +234,22 @@ const sliderGradient = computed(() => {
 
       <div v-if="!(props.mapTarget === 'secondary' && config.followPrimary)" class="flex gap-x-2">
         <button @click="activeLayer.changeFrame(-1)" :disabled="disablePrev"
-          class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
-          Prev
+          class="flex h-6 w-8 items-center justify-center cursor-pointer rounded-md bg-gray-600 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8 md:w-10"
+          aria-label="Previous frame" title="Previous frame">
+          <Icon icon="material-symbols:skip-previous-rounded" width="22" height="22" />
         </button>
         <button @click="activeLayer.changeFrame(1)" :disabled="disableNext"
-          class="h-6 cursor-pointer rounded-md bg-gray-600 px-3 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8">
-          Next
+          class="flex h-6 w-8 items-center justify-center cursor-pointer rounded-md bg-gray-600 text-white hover:bg-gray-700 disabled:cursor-default disabled:opacity-50 md:h-8 md:w-10"
+          aria-label="Next frame" title="Next frame">
+          <Icon icon="material-symbols:skip-next-rounded" width="22" height="22" />
         </button>
         <button @click="togglePlayback"
-          class="h-6 cursor-pointer rounded-md bg-blue-600 px-3 text-white hover:bg-blue-700 md:h-8">
-          Play/Pause
+          class="flex h-6 w-8 items-center justify-center cursor-pointer rounded-md bg-blue-600 text-white hover:bg-blue-700 md:h-8 md:w-10"
+          :aria-label="activeLayer.isPlaying ? 'Pause playback' : 'Play playback'"
+          :title="activeLayer.isPlaying ? 'Pause playback' : 'Play playback'">
+          <Icon :icon="activeLayer.isPlaying
+            ? 'material-symbols:pause-rounded'
+            : 'material-symbols:play-arrow-rounded'" width="22" height="22" />
         </button>
       </div>
       <div v-else>
@@ -261,7 +267,7 @@ const sliderGradient = computed(() => {
         </span>
         <span class="font-chivo">&nbsp;{{ sliderLabel }} </span>
       </p>
-      <Icon v-if="activeLayer.frameLoading" icon="eos-icons:loading" width="18" height="18" />
+      <Icon v-if="activeLayer.frameLoading" icon="eos-icons:loading" width="15" height="15" />
     </div>
 
     <div class="flex flex-col items-center gap-x-3">

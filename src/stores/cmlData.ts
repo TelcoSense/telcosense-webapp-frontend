@@ -97,6 +97,64 @@ export const useCmlDataStore = defineStore('cmlData', {
       }
     },
 
+    async fetchCmlDataPublic(
+      start: string | null,
+      stop: string | null,
+      cmlId: string
+    ) {
+      if (!start || !stop) return
+
+      this.loading = true
+      this.error = null
+
+      try {
+        const res = await api.post<{
+          rain_intensity: Array<number | null>
+          rain_intensity_time: string[]
+          temp_pred_a: Array<number | null>
+          temp_pred_b: Array<number | null>
+          temp_pred_time: string[]
+        }>(
+          '/cmldatapublic',
+          { start, stop, cmlId },
+          getSecureConfig()
+        )
+
+        const {
+          rain_intensity,
+          rain_intensity_time,
+          temp_pred_a,
+          temp_pred_b,
+          temp_pred_time,
+        } = res.data
+
+        const makeSeries = (values: Array<number | null>, timestamps: string[]): DataPoint[] =>
+          values.map((v, i) => ({
+            time: timestamps[i] ?? '',
+            value: v,
+          }))
+
+        const existing = this.cmls.get(cmlId)
+
+        this.cmls.set(cmlId, {
+          temperatureA: existing?.temperatureA ?? [],
+          temperatureB: existing?.temperatureB ?? [],
+          trslA: existing?.trslA ?? [],
+          trslB: existing?.trslB ?? [],
+          rainIntensity: makeSeries(rain_intensity, rain_intensity_time),
+          tempPredA: makeSeries(temp_pred_a, temp_pred_time),
+          tempPredB: makeSeries(temp_pred_b, temp_pred_time),
+        })
+
+        this.selectCml(cmlId)
+      } catch (err) {
+        this.error = err instanceof Error ? err.message : 'Unknown error'
+        console.error(err)
+      } finally {
+        this.loading = false
+      }
+    },
+
     async refresh(start: string, stop: string) {
       this.loading = true
       this.error = null
