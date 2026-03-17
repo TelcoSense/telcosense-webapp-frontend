@@ -2,14 +2,9 @@ import { useAuthStore } from '@/stores/auth'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { useCmlDataStore } from '@/stores/cmlData'
-import { useConfigStore } from '@/stores/config'
-import { useLinksStore } from '@/stores/links'
-import { useWeatherDataStore } from '@/stores/weatherData'
-import { useWeatherStationsStore } from '@/stores/weatherStations'
-import { useActiveLayer } from './useActiveLayer'
+import { resetSessionState } from '@/utils/resetSessionState'
 
-export function useTokenCountdown(pollInterval = 30000) {
+export function useTokenCountdown(pollInterval = 300000) {
   const auth = useAuthStore()
   const router = useRouter()
 
@@ -19,17 +14,9 @@ export function useTokenCountdown(pollInterval = 30000) {
   let pollingInterval: ReturnType<typeof setInterval>
 
   function performLogout() {
-    auth.reset()
-
-    useWeatherStationsStore().$reset()
-    useWeatherDataStore().$reset()
-    useLinksStore().$reset()
-    useCmlDataStore().$reset()
-    useConfigStore().$reset()
-    useActiveLayer().clearMainLayer()
-    useActiveLayer().clearSecondaryLayer()
+    resetSessionState()
     remainingTime.value = null
-    router.push({ name: 'login' })
+    void router.push({ name: 'login' })
   }
 
   function updateRemaining() {

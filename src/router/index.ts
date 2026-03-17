@@ -15,13 +15,13 @@ const router = createRouter({
       path: '/rain',
       name: 'rain',
       component: () => import('../views/RainView.vue'),
-      meta: { requiresAuth: true },
+      meta: { bootstrapAuth: true },
     },
     {
       path: '/temp',
       name: 'temp',
       component: () => import('../views/TempView.vue'),
-      meta: { requiresAuth: true },
+      meta: { bootstrapAuth: true },
     },
     {
       path: '/login',
@@ -36,12 +36,14 @@ router.beforeEach(async (to) => {
   const auth = useAuthStore();
   const needsAuth = to.meta.requiresAuth;
   const needsGuest = to.meta.requiresGuest;
-  if ((needsAuth || needsGuest) && auth.isLoggedIn === null) {
+  const shouldBootstrapAuth = to.meta.bootstrapAuth;
+
+  if ((needsAuth || needsGuest || shouldBootstrapAuth) && auth.isLoggedIn === null) {
     await auth.checkLogin();
   }
-  // if (needsAuth && auth.isLoggedIn === false) {
-  //   return { name: 'login' };
-  // }
+  if (needsAuth && auth.isLoggedIn !== true) {
+    return { name: 'login' };
+  }
   if (needsGuest && auth.isLoggedIn === true) {
     return { name: 'rain' };
   }

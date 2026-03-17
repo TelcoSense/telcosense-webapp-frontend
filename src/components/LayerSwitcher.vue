@@ -143,6 +143,15 @@ function isActive(id: string) {
   return activeLayer.value?.id === id
 }
 
+function isLayerLoading(id: string, layerRef: { value: ImageSequenceLayer }) {
+  const layer = layerRef.value
+  return layer.loading.value || (isActive(id) && layer.frameLoading.value)
+}
+
+function isLayerDisabled(layerRef: { value: ImageSequenceLayer }) {
+  return layerRef.value.frames.value.length === 0 || isCustomRangeUnset.value
+}
+
 // Telco groups in a fixed order (so UI doesn’t jump)
 const TELCO_GROUPS = ['TelcoRain', 'TelcoTemp'] as const
 
@@ -171,14 +180,14 @@ const telcoSections = computed(() => {
 </script>
 
 <template>
-  <div class="absolute top-14 left-15 z-50 w-[133px] rounded-md bg-gray-800 p-2 text-xs backdrop-blur-xs md:text-sm">
+  <div class="absolute top-14 left-15 z-50 w-[156px] rounded-md bg-gray-800 p-2 text-xs backdrop-blur-xs md:text-sm">
     <span class="flex border-b border-gray-600 pb-1.5 text-white">Map layers</span>
 
     <!-- CHMI -->
     <span v-if="chmiLayers.length > 0" class="my-1.5 flex text-white">CHMI</span>
     <div v-if="chmiLayers.length > 0" class="flex flex-col gap-y-2">
       <button v-for="{ id, label, layer } in chmiLayers" :key="id" @click="toggleLayer(id, label, layer)"
-        :disabled="layer.value.frames.value.length === 0 || isCustomRangeUnset" :class="[
+        :disabled="isLayerDisabled(layer)" :class="[
           'group flex h-8 w-full items-center justify-between gap-x-2 rounded-lg px-2 text-sm select-none',
           'bg-gray-700/70 backdrop-blur-sm',
           'enabled:cursor-pointer enabled:hover:bg-gray-600/70',
@@ -187,13 +196,11 @@ const telcoSections = computed(() => {
             : 'border border-transparent text-gray-300',
           'disabled:cursor-not-allowed disabled:bg-gray-800/60 disabled:text-gray-500',
         ]">
-        <div class="whitespace-normal">
+        <div class="truncate text-left">
           {{ label }}
         </div>
 
-        <div class="text-white" v-if="
-          !(layer.value.frames.value.length > 0 && !isCustomRangeUnset) && !layer.value.loading
-        ">
+        <div class="text-white" v-if="isLayerLoading(id, layer)">
           <Icon icon="eos-icons:loading" width="18" height="18" />
         </div>
       </button>
@@ -205,7 +212,7 @@ const telcoSections = computed(() => {
 
       <div class="flex flex-col gap-y-2">
         <button v-for="{ id, label, layer } in section.items" :key="id" @click="toggleLayer(id, label, layer)"
-          :disabled="layer.value.frames.value.length === 0 || isCustomRangeUnset" :class="[
+          :disabled="isLayerDisabled(layer)" :class="[
             'group flex h-8 w-full items-center justify-between gap-x-2 rounded-lg px-2 text-sm select-none',
             'bg-gray-700/70 backdrop-blur-sm',
             'enabled:cursor-pointer enabled:hover:bg-gray-600/70',
@@ -214,13 +221,11 @@ const telcoSections = computed(() => {
               : 'border border-transparent text-gray-300',
             'disabled:cursor-not-allowed disabled:bg-gray-800/60 disabled:text-gray-500',
           ]">
-          <div class="whitespace-normal">
+          <div class="truncate text-left">
             {{ label }}
           </div>
 
-          <div class="text-white" v-if="
-            !(layer.value.frames.value.length > 0 && !isCustomRangeUnset) && !layer.value.loading
-          ">
+          <div class="text-white" v-if="isLayerLoading(id, layer)">
             <Icon icon="eos-icons:loading" width="18" height="18" />
           </div>
         </button>

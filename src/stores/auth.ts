@@ -7,7 +7,8 @@ interface AuthState {
   username: string | null;
   org: string | null;
   linkAccessType: 'basic' | 'full' | null;
-  tokenExpiry: number | null,
+  tokenExpiry: number | null;
+  sessionExpiry: number | null;
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -16,7 +17,8 @@ export const useAuthStore = defineStore('auth', {
     username: null,
     org: null,
     linkAccessType: null,
-    tokenExpiry: null
+    tokenExpiry: null,
+    sessionExpiry: null,
   }),
 
   getters: {
@@ -36,6 +38,7 @@ export const useAuthStore = defineStore('auth', {
         this.org = res.data.org ?? null
         this.linkAccessType = res.data.link_access_type ?? null
         this.tokenExpiry = res.data.exp ?? null
+        this.sessionExpiry = res.data.session_exp ?? null
         return this.isLoggedIn === true;
       } catch (err) {
         if (err instanceof Error) {
@@ -48,7 +51,19 @@ export const useAuthStore = defineStore('auth', {
         this.org = null;
         this.linkAccessType = null;
         this.tokenExpiry = null;
+        this.sessionExpiry = null;
         return false;
+      }
+    },
+    updateSessionMetadata(exp: unknown, sessionExp: unknown) {
+      const accessValue = Number(exp)
+      const sessionValue = Number(sessionExp)
+
+      if (!Number.isNaN(accessValue) && accessValue > 0) {
+        this.tokenExpiry = accessValue
+      }
+      if (!Number.isNaN(sessionValue) && sessionValue > 0) {
+        this.sessionExpiry = sessionValue
       }
     },
     reset() {
@@ -57,6 +72,7 @@ export const useAuthStore = defineStore('auth', {
       this.org = null;
       this.linkAccessType = null;
       this.tokenExpiry = null;
+      this.sessionExpiry = null;
     },
   },
 });

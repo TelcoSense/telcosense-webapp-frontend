@@ -82,7 +82,7 @@ async function refreshLinkActivity(force = false) {
     links.clearActivity()
     return
   }
-  await links.fetchActivity(config.start, config.end, activityLinkIds, force)
+  await links.fetchActivity(config.start, config.end, activityLinkIds, 'rain', force)
 }
 
 function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => boolean) {
@@ -1249,30 +1249,29 @@ watch(
 
             <div class="flex w-full flex-col gap-y-1 pb-2">
               <div class="flex items-center gap-x-2">
-                <label for="wetlinks-toggle" class="cursor-pointer text-sm select-none">
+                <label for="follow-latest-toggle" class="cursor-pointer text-sm select-none">
                   Automatic layer update
                 </label>
-                <input type="checkbox" id="wetlinks-toggle" :checked="config.followLatestMain"
+                <input type="checkbox" id="follow-latest-toggle" :checked="config.followLatestMain"
                   @change="config.followLatestMain = !config.followLatestMain" />
               </div>
             </div>
             <div v-if="auth.canViewLinkPoints" class="flex w-full flex-col gap-y-1 pb-2">
               <div class="flex items-center gap-x-2">
                 <label for="activity-check-toggle" class="cursor-pointer text-sm select-none">
-                  Check inactive links
+                  Filter by active links
                 </label>
                 <input type="checkbox" id="activity-check-toggle" :checked="config.activityCheckEnabled"
                   @change="config.activityCheckEnabled = !config.activityCheckEnabled" />
               </div>
               <div v-if="config.activityCheckEnabled" class="text-xs text-gray-300">
                 <span v-if="links.activityLoading">
-                  Checking CML activity... {{ links.activityProgress }}%
+                  Checking active links... {{ links.activityProgress }}%
                 </span>
                 <span v-else-if="links.activitySummary">
-                  Active: {{ links.activitySummary.active }} / {{ links.activitySummary.total }},
-                  inactive: {{ links.activitySummary.inactive }}
+                  Active: {{ links.activitySummary.active }}/{{ links.activitySummary.total }}
                 </span>
-                <span v-else-if="links.activityError">Activity check failed.</span>
+                <span v-else-if="links.activityError">Active link check failed.</span>
               </div>
               <div v-if="config.activityCheckEnabled" class="h-1.5 w-full overflow-hidden rounded bg-gray-700">
                 <div class="h-full bg-cyan-500 transition-all duration-200"
@@ -1288,10 +1287,10 @@ watch(
                   @change="toggleLinksCluster(clusterGroup as L.LayerGroup, clusterMarkers)" />
               </div>
               <div class="flex items-center gap-x-2">
-                <label for="wetlinks-toggle" class="cursor-pointer text-sm select-none">
+                <label for="wet-links-toggle" class="cursor-pointer text-sm select-none">
                   Show wet links
                 </label>
-                <input type="checkbox" id="wetlinks-toggle" :checked="config.wetLinksVisible"
+                <input type="checkbox" id="wet-links-toggle" :checked="config.wetLinksVisible"
                   @change="config.wetLinksVisible = !config.wetLinksVisible" />
               </div>
             </div>

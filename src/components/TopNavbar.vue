@@ -2,6 +2,7 @@
 import axios from 'axios'
 
 import { api } from '@/api'
+import getSecureConfig from '@/cookies'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useActiveLayer } from '@/composables/useActiveLayer'
@@ -13,6 +14,7 @@ import { useConfigStore } from '@/stores/config'
 import { useLinksStore } from '@/stores/links'
 import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
+import { resetSessionState } from '@/utils/resetSessionState'
 
 import DatetimeToggle from '@/components/DatetimeToggle.vue'
 
@@ -20,7 +22,7 @@ import { Icon } from '@iconify/vue'
 import { onClickOutside } from '@vueuse/core'
 import { computed, ref, useTemplateRef, watchEffect } from 'vue'
 
-const SESSION_MAX_SECONDS = 1800 // 30 minutes
+const TOKEN_WARNING_SECONDS = 15 * 60
 
 const router = useRouter()
 const route = useRoute()
@@ -35,18 +37,14 @@ const config = useConfigStore()
 const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
 const { remainingTime, resetRemaining } = useTokenCountdown()
 
-const formattedTime = computed(() => {
+const expiryWarning = computed(() => {
   if (!auth.isLoggedIn) return ''
-  if (remainingTime.value === null) return ''
-  return Math.floor(remainingTime.value / 60).toString()
-})
+  if (remainingTime.value === null || remainingTime.value > TOKEN_WARNING_SECONDS) {
+    return ''
+  }
 
-const progressBarWidth = computed(() => {
-  if (!auth.isLoggedIn) return '0%'
-  if (remainingTime.value === null) return '0%'
-  const used = SESSION_MAX_SECONDS - remainingTime.value
-  const percentage = Math.min(100 - (used / SESSION_MAX_SECONDS) * 100, 100)
-  return `${percentage}%`
+  const minutesLeft = Math.max(1, Math.ceil(remainingTime.value / 60))
+  return `Token expires in about ${minutesLeft} min unless another request refreshes it.`
 })
 
 function resetData() {
@@ -61,17 +59,18 @@ function resetData() {
 
 async function logout() {
   try {
-    const res = await api.post('/logout')
+    const res = await api.post('/logout', {}, getSecureConfig())
     if (res.data.message === 'Logout successful') {
-      auth.reset()
-      resetData()
+      resetSessionState()
       resetRemaining()
-      router.push({ name: 'home' })
+      await router.push({ name: 'home' })
     }
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
       console.error('Caught error:', err.response.data.message)
-      alert(err.response.data.message)
+      resetSessionState()
+      resetRemaining()
+      await router.push({ name: 'login' })
     } else {
       console.error('Unknown error:', err)
     }
@@ -139,35 +138,39 @@ onClickOutside(profileMenuWrapper, () => {
           class="cursor-pointer text-gray-900 hover:text-gray-700" @click="menuVisible = !menuVisible" />
 
         <div v-if="menuVisible"
-          class="absolute top-[calc(3rem-1px)] right-0 z-50 flex w-58 flex-col gap-y-2 rounded-md border border-gray-600 bg-gray-800/60 p-2 backdrop-blur-xs">
-          <span class="flex w-full border-b border-gray-400 pb-1.5 text-sm text-nowrap text-white select-none">
-            <div v-if="auth.username">{{ `${auth.username} (${auth.org})` }}</div>
-            <div v-else>Not logged in</div>
-          </span>
-
-          <div v-if="auth.isLoggedIn && formattedTime"
-            class="flex h-8 flex-col items-center justify-center px-2 text-nowrap ">
-            <div class="text-center text-xs text-white">
-              <span class="font-chivo">{{ formattedTime }}</span> min left
+          class="absolute top-[calc(3rem-1px)] right-0 z-50 flex w-64 flex-col gap-y-2.5 rounded-md border border-gray-600 bg-gray-800/60 p-2.5 shadow-lg shadow-black/20 backdrop-blur-xs">
+          <div class="border-b border-gray-400/70 pb-2 text-sm text-white select-none">
+            <div v-if="auth.username" class="font-medium text-white">
+              {{ auth.username }}
             </div>
-            <div class="h-2 w-full overflow-hidden rounded bg-gray-600">
-              <div class="h-2 bg-cyan-500" :style="{ width: progressBarWidth }"></div>
+            <div v-if="auth.username" class="text-xs text-gray-300">
+              {{ auth.org }}
             </div>
+            <div v-else class="text-gray-200">Not logged in</div>
           </div>
 
-          <slot name="settings">
+          <div v-if="auth.isLoggedIn && expiryWarning"
+            class="rounded-md border border-amber-300/30 bg-amber-500/10 px-2.5 py-2 text-xs leading-relaxed text-amber-100">
+            {{ expiryWarning }}
+          </div>
 
-          </slot>
+          <div class="flex flex-col gap-y-2">
+            <slot name="settings">
+
+            </slot>
+          </div>
+
           <button v-if="!auth.isLoggedIn" @click="pushToHome()"
-            class="cursor-pointer rounded-md  text-sm text-white select-none hover:underline">
+            class="cursor-pointer rounded-md px-1 text-left text-sm text-white select-none hover:underline">
             Home page
           </button>
+
           <button v-if="auth.isLoggedIn" @click="logout()"
-            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
+            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm font-medium text-white select-none transition hover:bg-cyan-700">
             Log out
           </button>
           <button v-else @click="pushToLogin()"
-            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm text-white select-none hover:bg-cyan-700">
+            class="h-8 w-full cursor-pointer rounded-md bg-cyan-600 px-3 text-sm font-medium text-white select-none transition hover:bg-cyan-700">
             Log in
           </button>
         </div>

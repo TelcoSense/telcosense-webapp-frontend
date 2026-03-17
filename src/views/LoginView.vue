@@ -35,7 +35,7 @@ async function login() {
       alert('Login failed')
     }
   } finally {
-    // loading.value = false
+    loading.value = false
   }
 }
 </script>

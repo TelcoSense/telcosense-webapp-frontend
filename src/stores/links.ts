@@ -50,6 +50,7 @@ interface ActivitySummary {
   active: number
   inactive: number
   groups: number
+  activity_type?: 'rain' | 'temp'
   probe_start?: string
   probe_stop?: string
 }
@@ -143,6 +144,7 @@ export const useLinksStore = defineStore('links', {
       activityLoading: false,
       activityError: null as string | null,
       activityRange: { start: null as string | null, end: null as string | null },
+      activityMode: null as 'rain' | 'temp' | null,
       activitySummary: null as ActivitySummary | null,
       activityRequestId: 0,
       activityProgress: 0,
@@ -196,12 +198,14 @@ export const useLinksStore = defineStore('links', {
       startIso: string,
       endIso: string,
       linkIds: number[],
+      activityType: 'rain' | 'temp',
       force = false,
     ) {
       if (
         !force &&
         this.activityRange.start === startIso &&
         this.activityRange.end === endIso &&
+        this.activityMode === activityType &&
         Object.keys(this.activityByLinkId).length > 0 &&
         Object.keys(this.activityByLinkId).length === linkIds.length
       ) {
@@ -211,6 +215,7 @@ export const useLinksStore = defineStore('links', {
       this.activityLoading = true
       this.activityError = null
       this.activityRange = { start: startIso, end: endIso }
+      this.activityMode = activityType
       const requestId = ++this.activityRequestId
       this.activityProgress = 0
 
@@ -218,7 +223,13 @@ export const useLinksStore = defineStore('links', {
         this.activityLoading = false
         this.activityByLinkId = {}
         this.activityProgress = 100
-        this.activitySummary = { total: 0, active: 0, inactive: 0, groups: 0 }
+        this.activitySummary = {
+          total: 0,
+          active: 0,
+          inactive: 0,
+          groups: 0,
+          activity_type: activityType,
+        }
         return
       }
 
@@ -230,7 +241,7 @@ export const useLinksStore = defineStore('links', {
           summary: ActivitySummary
         }>(
           '/cml-activity',
-          { start: startIso, end: endIso, linkIds },
+          { start: startIso, end: endIso, linkIds, activityType },
           getSecureConfig(),
         )
 
@@ -267,6 +278,7 @@ export const useLinksStore = defineStore('links', {
       this.activityLoading = false
       this.activityError = null
       this.activityRange = { start: null as string | null, end: null as string | null }
+      this.activityMode = null
       this.activitySummary = null
       this.activityProgress = 0
     },
