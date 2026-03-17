@@ -66,10 +66,10 @@ const chartOptions = ref<EChartsOption>({})
 const chartRef = ref<InstanceType<typeof ECharts> | null>(null)
 const isMobile = useMediaQuery('(max-width: 768px)')
 
-// public: show subplot 0 + 1
-// logged in: show all 3
 const visibleSubplots = computed<number[]>(() => {
-  return auth.isLoggedIn ? [0, 1, 2] : [0, 1]
+  if (auth.hasFullLinkAccess) return [0, 1, 2]
+  if (auth.hasBasicLinkAccess) return [0, 1]
+  return [0]
 })
 
 function isSubplotVisible(index: number): boolean {
@@ -292,8 +292,8 @@ function buildGrids(subplotCount: number) {
       {
         left: sideMargin,
         right: sideMargin,
-        top: '10%',
-        height: isMobile.value ? '78%' : '80%',
+        top: isMobile.value ? '12%' : '10%',
+        bottom: isMobile.value ? '16%' : '14%',
       },
     ]
   }
@@ -614,7 +614,10 @@ watch(
 watch(() => isMobile.value, () => scheduleRebuild())
 watch(() => [props.xMin, props.xMax], () => scheduleRebuild())
 watch(() => cfgStore.datetimeFormat, () => scheduleRebuild())
-watch(() => auth.isLoggedIn, () => scheduleRebuild())
+watch(
+  () => [auth.hasBasicLinkAccess, auth.hasFullLinkAccess],
+  () => scheduleRebuild(),
+)
 
 watch(
   () => route.name,

@@ -57,6 +57,32 @@ const layers = useLayersStore()
 const device = useDeviceStore()
 const auth = useAuthStore()
 
+const INACTIVE_LINK_COLOR = 'rgba(127, 29, 29, 0.35)'
+
+function getLinkBaseColor(linkId: number, isSelected: boolean) {
+  if (isSelected) return 'red'
+  if (config.activityCheckEnabled && links.isLinkInactive(linkId)) return INACTIVE_LINK_COLOR
+  return 'black'
+}
+
+function getActivityLinkIds() {
+  return links.links.map((link) => link.id)
+}
+
+async function refreshLinkActivity(force = false) {
+  if (!config.activityCheckEnabled || !auth.canViewLinkPoints) {
+    links.clearActivity()
+    return
+  }
+  if (!config.start || !config.end) return
+  const activityLinkIds = getActivityLinkIds()
+  if (activityLinkIds.length === 0) {
+    links.clearActivity()
+    return
+  }
+  await links.fetchActivity(config.start, config.end, activityLinkIds, force)
+}
+
 function syncPrimaryToSecondarySmooth(src: L.Map, dst: L.Map, isEnabled: () => boolean) {
   const sync = () => {
     if (!isEnabled()) return
@@ -512,7 +538,7 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
       selectedLinkIds.value.has(link.id) ||
       link.id.toString() === cmlData.selectedCmlId
 
-    const color = isSelected ? 'red' : 'black'
+    const color = getLinkBaseColor(link.id, isSelected)
 
     let polyline = store.get(link.id)
 
@@ -565,7 +591,7 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
 }
 
 function drawLinks() {
-  if (auth.isLoggedIn) {
+  if (auth.hasFullLinkAccess) {
     clearMidpointMarkers(linkMidpointsGroupMain.value as L.LayerGroup, linkMidpointMarkersMain)
     clearMidpointMarkers(
       linkMidpointsGroupSecondary.value as L.LayerGroup,
@@ -574,7 +600,7 @@ function drawLinks() {
 
     drawLinksTo(linksGroupMain.value as L.LayerGroup, linkPolylinesMain)
     drawLinksTo(linksGroupSecondary.value as L.LayerGroup, linkPolylinesSecondary)
-  } else {
+  } else if (auth.hasBasicLinkAccess) {
     clearPolylines(linksGroupMain.value as L.LayerGroup, linkPolylinesMain)
     clearPolylines(linksGroupSecondary.value as L.LayerGroup, linkPolylinesSecondary)
 
@@ -583,6 +609,14 @@ function drawLinks() {
       linkMidpointMarkersMain,
     )
     drawLinkMidpointsTo(
+      linkMidpointsGroupSecondary.value as L.LayerGroup,
+      linkMidpointMarkersSecondary,
+    )
+  } else {
+    clearPolylines(linksGroupMain.value as L.LayerGroup, linkPolylinesMain)
+    clearPolylines(linksGroupSecondary.value as L.LayerGroup, linkPolylinesSecondary)
+    clearMidpointMarkers(linkMidpointsGroupMain.value as L.LayerGroup, linkMidpointMarkersMain)
+    clearMidpointMarkers(
       linkMidpointsGroupSecondary.value as L.LayerGroup,
       linkMidpointMarkersSecondary,
     )
@@ -670,7 +704,7 @@ function drawLinkMidpointsTo(group: L.LayerGroup, store: Map<number, L.CircleMar
     const isSelected =
       selectedLinkIds.value.has(link.id) || link.id.toString() === cmlData.selectedCmlId
 
-    const color = isSelected ? 'red' : '#000000'
+    const color = getLinkBaseColor(link.id, isSelected)
 
     let marker = store.get(link.id)
 
@@ -816,6 +850,19 @@ watch(
 )
 
 watch(
+  () => links.hasLinks,
+  (hasLinks) => {
+    if (!hasLinks) {
+      links.clearActivity()
+      return
+    }
+    if (config.activityCheckEnabled && auth.canViewLinkPoints) {
+      void refreshLinkActivity(true)
+    }
+  },
+)
+
+watch(
   () => weatherStations.filteredStations,
   () => {
     if (weatherStations.hasStations) {
@@ -838,6 +885,14 @@ watch(
   },
 )
 
+watch(
+  () => links.activityByLinkId,
+  () => {
+    drawLinks()
+  },
+  { deep: true },
+)
+
 // watcher for historic/realtime switching
 watch(
   () => config.realtime,
@@ -858,6 +913,19 @@ watch(
     layers.clearTempLayers()
     // for realtime fetch the frames from the realtime window
     if (newVal) layers.fetchListTemp(config.start, config.end, config.splitView)
+
+  }
+)
+
+watch(
+  [() => config.activityCheckEnabled, () => config.start, () => config.end, () => auth.canViewLinkPoints],
+  ([enabled, start, end, canView]) => {
+    if (!enabled || !canView || !start || !end) {
+      links.clearActivity()
+      drawLinks()
+      return
+    }
+    void refreshLinkActivity()
   }
 )
 
@@ -1052,7 +1120,30 @@ watch(
                   @change="config.followLatestMain = !config.followLatestMain" />
               </div>
             </div>
-            <div v-if="links.hasLinks && auth.isLoggedIn" class="pb-2 w-full flex flex-col gap-y-1">
+            <div v-if="auth.canViewLinkPoints" class="pb-2 w-full flex flex-col gap-y-1">
+              <div class="flex items-center gap-x-2">
+                <label for="activity-check-toggle" class="cursor-pointer select-none text-sm">
+                  Check inactive links
+                </label>
+                <input type="checkbox" id="activity-check-toggle" :checked="config.activityCheckEnabled"
+                  @change="config.activityCheckEnabled = !config.activityCheckEnabled" />
+              </div>
+              <div v-if="config.activityCheckEnabled" class="text-xs text-gray-300">
+                <span v-if="links.activityLoading">
+                  Checking CML activity... {{ links.activityProgress }}%
+                </span>
+                <span v-else-if="links.activitySummary">
+                  Active: {{ links.activitySummary.active }} / {{ links.activitySummary.total }},
+                  inactive: {{ links.activitySummary.inactive }}
+                </span>
+                <span v-else-if="links.activityError">Activity check failed.</span>
+              </div>
+              <div v-if="config.activityCheckEnabled" class="h-1.5 w-full overflow-hidden rounded bg-gray-700">
+                <div class="h-full bg-cyan-500 transition-all duration-200"
+                  :style="{ width: `${links.activityProgress}%` }"></div>
+              </div>
+            </div>
+            <div v-if="links.hasLinks && auth.hasFullLinkAccess" class="pb-2 w-full flex flex-col gap-y-1">
               <div class="flex items-center gap-x-2">
                 <label for="clusters-toggle" class="cursor-pointer select-none text-sm">
                   Show link clusters
@@ -1074,14 +1165,14 @@ watch(
         <LeftMenu v-show="!config.hideUI">
           <!-- insert the button for copying link ids here -->
           <template #down>
-            <Icon v-if="selectedLinkIds.size !== 0 && auth.isLoggedIn" icon="clarity:copy-to-clipboard-line"
+            <Icon v-if="selectedLinkIds.size !== 0 && auth.hasFullLinkAccess" icon="clarity:copy-to-clipboard-line"
               width="38" height="38" class="menu-btn" @click="copySelectedLinksToClipboard" />
           </template>
         </LeftMenu>
 
         <RightMenu v-if="config.splitView && !config.hideUI" />
 
-        <LinkFilter v-if="auth.isLoggedIn && !config.hideUI" ref="linkFilter" />
+        <LinkFilter v-if="auth.hasFullLinkAccess && !config.hideUI" ref="linkFilter" />
 
         <LayerControls v-show="!config.hideUI" :class="config.splitView ? 'left-[calc(25%-190px)]' : null"
           map-target="main" />
@@ -1100,7 +1191,7 @@ watch(
         <TempBar v-if="activeLayerSecondary && config.barVisible && !config.hideUI" />
 
         <DataPlotting v-show="config.dataPlottingVisible && !config.hideUI" :start="config.start" :end="config.end" />
-        <LinkTable v-if="auth.isLoggedIn && links.showLinkTable && links.linkFilterVisible && !config.hideUI"
+        <LinkTable v-if="auth.hasFullLinkAccess && links.showLinkTable && links.linkFilterVisible && !config.hideUI"
           ref="linkTable" />
         <!-- <RainHistoric :link-ids="selectedLinkIds" :show-historic="showHistoric" ref="userCalculations" /> -->
 

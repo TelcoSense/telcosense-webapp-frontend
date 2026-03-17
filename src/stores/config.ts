@@ -16,6 +16,7 @@ interface ConfigState {
   barVisible: boolean
   datetimeSelectorVisible: boolean
   wetLinksVisible: boolean
+  activityCheckEnabled: boolean
 
   // NEW: global UI hide
   hideUI: boolean
@@ -47,6 +48,7 @@ export const useConfigStore = defineStore('config', {
     barVisible: false,
     datetimeSelectorVisible: false,
     wetLinksVisible: false,
+    activityCheckEnabled: true,
 
     // NEW
     hideUI: false,

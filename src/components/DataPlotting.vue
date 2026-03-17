@@ -61,7 +61,7 @@ const seriesData = computed(() => {
     ]
 
   // Logged-in users: full internal plots
-  if (auth.isLoggedIn) {
+  if (auth.hasFullLinkAccess) {
     data.push(
       {
         name: 'TRSL A',
@@ -118,31 +118,32 @@ const seriesData = computed(() => {
     return data
   }
 
-  // Public users: only subplot 0 + subplot 1
-  if (isRainRoute.value) {
-    data.push({
-      name: 'Rain intensity',
-      data: selectedCml.value?.rainIntensity ?? [],
-      subplotIndex: 1,
-      yAxisSide: y('left'),
-    })
-  }
+  if (auth.hasBasicLinkAccess) {
+    if (isRainRoute.value) {
+      data.push({
+        name: 'Rain intensity',
+        data: selectedCml.value?.rainIntensity ?? [],
+        subplotIndex: 1,
+        yAxisSide: y('left'),
+      })
+    }
 
-  if (isTempRoute.value) {
-    data.push(
-      {
-        name: 'Pred temp A',
-        data: selectedCml.value?.tempPredA ?? [],
-        subplotIndex: 1,
-        yAxisSide: y('left'),
-      },
-      {
-        name: 'Pred temp B',
-        data: selectedCml.value?.tempPredB ?? [],
-        subplotIndex: 1,
-        yAxisSide: y('left'),
-      },
-    )
+    if (isTempRoute.value) {
+      data.push(
+        {
+          name: 'Pred temp A',
+          data: selectedCml.value?.tempPredA ?? [],
+          subplotIndex: 1,
+          yAxisSide: y('left'),
+        },
+        {
+          name: 'Pred temp B',
+          data: selectedCml.value?.tempPredB ?? [],
+          subplotIndex: 1,
+          yAxisSide: y('left'),
+        },
+      )
+    }
   }
 
   return data
@@ -172,8 +173,22 @@ const publicSecondAxisName = computed(() => {
   return ''
 })
 
+const visibleSubplotCount = computed(() => {
+  if (auth.hasFullLinkAccess) return 3
+  if (auth.hasBasicLinkAccess) return 2
+  return 1
+})
+
 const plottingContainerClass = computed(() => {
-  return auth.isLoggedIn ? 'h-[280px] md:h-[360px]' : 'h-[280px] md:h-[280px]'
+  if (visibleSubplotCount.value === 1) {
+    return 'h-[220px] md:h-[240px]'
+  }
+
+  if (visibleSubplotCount.value === 2) {
+    return 'h-[280px] md:h-[300px]'
+  }
+
+  return 'h-[320px] md:h-[360px]'
 })
 </script>
 
@@ -212,13 +227,13 @@ const plottingContainerClass = computed(() => {
 
       <MultiPlot v-else-if="hasAnyPlotSelection && isRainRoute" :seriesData="seriesData" :xMin="start" :xMax="end"
         :cursorTime="currentCursorTime" :topLeftAxisName="'Rainfall (mm)'" :topRightAxisName="'Temperature (°C)'"
-        :bottomLeftAxisName="auth.isLoggedIn ? 'TRSL (dB)' : publicSecondAxisName"
-        :bottomRightAxisName="auth.isLoggedIn ? 'Temperature (°C)' : ''" :thirdLeftAxisName="'Rain int. (mm/h)'" />
+        :bottomLeftAxisName="auth.hasFullLinkAccess ? 'TRSL (dB)' : publicSecondAxisName"
+        :bottomRightAxisName="auth.hasFullLinkAccess ? 'Temperature (°C)' : ''" :thirdLeftAxisName="'Rain int. (mm/h)'" />
 
       <MultiPlot v-else-if="hasAnyPlotSelection && isTempRoute" :seriesData="seriesData" :xMin="start" :xMax="end"
         :cursorTime="currentCursorTime" :topLeftAxisName="'Rainfall (mm)'" :topRightAxisName="'Temperature (°C)'"
-        :bottomLeftAxisName="auth.isLoggedIn ? 'TRSL (dB)' : publicSecondAxisName"
-        :bottomRightAxisName="auth.isLoggedIn ? 'Temperature (°C)' : ''" :thirdLeftAxisName="'Temperature (°C)'" />
+        :bottomLeftAxisName="auth.hasFullLinkAccess ? 'TRSL (dB)' : publicSecondAxisName"
+        :bottomRightAxisName="auth.hasFullLinkAccess ? 'Temperature (°C)' : ''" :thirdLeftAxisName="'Temperature (°C)'" />
     </div>
 
     <div class="flex h-8 items-center justify-between gap-2">

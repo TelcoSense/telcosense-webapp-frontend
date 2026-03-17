@@ -6,6 +6,7 @@ interface AuthState {
   isLoggedIn: boolean | null;
   username: string | null;
   org: string | null;
+  linkAccessType: 'basic' | 'full' | null;
   tokenExpiry: number | null,
 }
 
@@ -14,8 +15,17 @@ export const useAuthStore = defineStore('auth', {
     isLoggedIn: null,
     username: null,
     org: null,
+    linkAccessType: null,
     tokenExpiry: null
   }),
+
+  getters: {
+    hasBasicLinkAccess: (state) => state.isLoggedIn === true && state.linkAccessType === 'basic',
+    hasFullLinkAccess: (state) => state.isLoggedIn === true && state.linkAccessType === 'full',
+    canViewLinkPoints: (state) =>
+      state.isLoggedIn === true &&
+      (state.linkAccessType === 'basic' || state.linkAccessType === 'full'),
+  },
 
   actions: {
     async checkLogin(): Promise<boolean> {
@@ -24,6 +34,7 @@ export const useAuthStore = defineStore('auth', {
         this.isLoggedIn = res.data.valid
         this.username = res.data.username ?? null
         this.org = res.data.org ?? null
+        this.linkAccessType = res.data.link_access_type ?? null
         this.tokenExpiry = res.data.exp ?? null
         return this.isLoggedIn === true;
       } catch (err) {
@@ -34,6 +45,9 @@ export const useAuthStore = defineStore('auth', {
         }
         this.isLoggedIn = false;
         this.username = null;
+        this.org = null;
+        this.linkAccessType = null;
+        this.tokenExpiry = null;
         return false;
       }
     },
@@ -41,6 +55,7 @@ export const useAuthStore = defineStore('auth', {
       this.isLoggedIn = null;
       this.username = null;
       this.org = null;
+      this.linkAccessType = null;
       this.tokenExpiry = null;
     },
   },

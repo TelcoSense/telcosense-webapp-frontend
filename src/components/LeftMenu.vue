@@ -53,7 +53,7 @@ const layerMainActive = computed(() => activeLayerMain.value !== null)
           :class="[btnClass, { active: config.splitView }]" @click="config.toggleSplitView()" />
       </button>
 
-      <button v-if="links.hasLinks && auth.isLoggedIn" id="link-filter-button">
+      <button v-if="links.hasLinks && auth.hasFullLinkAccess" id="link-filter-button">
         <Icon icon="carbon:filter" width="38" height="38" :class="[btnClass, { active: config.linkFilterVisible }]"
           @click="
             () => {

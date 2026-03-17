@@ -45,6 +45,15 @@ export interface DryWetFrame {
   count_total: number
 }
 
+interface ActivitySummary {
+  total: number
+  active: number
+  inactive: number
+  groups: number
+  probe_start?: string
+  probe_stop?: string
+}
+
 const FILTER_KEY = 'linkFilters'
 
 export function isFullLink(link: Link): link is FullLink {
@@ -129,6 +138,14 @@ export const useLinksStore = defineStore('links', {
       drywetLoading: false,
       drywetError: null as string | null,
       drywetRange: { start: null as string | null, end: null as string | null },
+
+      activityByLinkId: {} as Record<number, boolean>,
+      activityLoading: false,
+      activityError: null as string | null,
+      activityRange: { start: null as string | null, end: null as string | null },
+      activitySummary: null as ActivitySummary | null,
+      activityRequestId: 0,
+      activityProgress: 0,
     }
   },
 
@@ -173,6 +190,85 @@ export const useLinksStore = defineStore('links', {
       } finally {
         this.drywetLoading = false
       }
+    },
+
+    async fetchActivity(
+      startIso: string,
+      endIso: string,
+      linkIds: number[],
+      force = false,
+    ) {
+      if (
+        !force &&
+        this.activityRange.start === startIso &&
+        this.activityRange.end === endIso &&
+        Object.keys(this.activityByLinkId).length > 0 &&
+        Object.keys(this.activityByLinkId).length === linkIds.length
+      ) {
+        return
+      }
+
+      this.activityLoading = true
+      this.activityError = null
+      this.activityRange = { start: startIso, end: endIso }
+      const requestId = ++this.activityRequestId
+      this.activityProgress = 0
+
+      if (linkIds.length === 0) {
+        this.activityLoading = false
+        this.activityByLinkId = {}
+        this.activityProgress = 100
+        this.activitySummary = { total: 0, active: 0, inactive: 0, groups: 0 }
+        return
+      }
+
+      try {
+        this.activityProgress = 25
+
+        const res = await api.post<{
+          activity: Record<string, boolean>
+          summary: ActivitySummary
+        }>(
+          '/cml-activity',
+          { start: startIso, end: endIso, linkIds },
+          getSecureConfig(),
+        )
+
+        if (requestId !== this.activityRequestId) {
+          return
+        }
+
+        this.activityProgress = 85
+        const nextActivityByLinkId = Object.fromEntries(
+          Object.entries(res.data.activity ?? {}).map(([id, isActive]) => [Number(id), Boolean(isActive)]),
+        )
+        this.activityByLinkId = nextActivityByLinkId
+        this.activitySummary = res.data.summary ?? null
+      } catch (err) {
+        if (requestId !== this.activityRequestId) {
+          return
+        }
+        this.activityError = err instanceof Error ? err.message : 'Unknown error'
+        console.error('Error loading link activity:', err)
+        this.activityProgress = 0
+      } finally {
+        if (requestId === this.activityRequestId) {
+          this.activityLoading = false
+          if (!this.activityError) {
+            this.activityProgress = 100
+          }
+        }
+      }
+    },
+
+    clearActivity() {
+      this.activityRequestId += 1
+      this.activityByLinkId = {}
+      this.activityLoading = false
+      this.activityError = null
+      this.activityRange = { start: null as string | null, end: null as string | null }
+      this.activitySummary = null
+      this.activityProgress = 0
     },
 
     applyManualIdFilter(input: string) {
@@ -311,6 +407,10 @@ export const useLinksStore = defineStore('links', {
         const key = isoToUtcKey10min(iso)
         return map[key] ?? null
       }
+    },
+
+    isLinkInactive: (state) => {
+      return (id: number) => state.activityByLinkId[id] === false
     },
 
     hasLinks: (state) => state.links.length > 0,
