@@ -16,6 +16,7 @@ import { useWeatherDataStore } from '@/stores/weatherData'
 import { useWeatherStationsStore } from '@/stores/weatherStations'
 import { resetSessionState } from '@/utils/resetSessionState'
 
+import AdminPanel from '@/components/AdminPanel.vue'
 import DatetimeToggle from '@/components/DatetimeToggle.vue'
 
 import { Icon } from '@iconify/vue'
@@ -61,6 +62,7 @@ async function logout() {
   try {
     const res = await api.post('/logout', {}, getSecureConfig())
     if (res.data.message === 'Logout successful') {
+      adminPanelVisible.value = false
       resetSessionState()
       resetRemaining()
       await router.push({ name: 'home' })
@@ -68,6 +70,7 @@ async function logout() {
   } catch (err) {
     if (axios.isAxiosError(err) && err.response) {
       console.error('Caught error:', err.response.data.message)
+      adminPanelVisible.value = false
       resetSessionState()
       resetRemaining()
       await router.push({ name: 'login' })
@@ -78,16 +81,19 @@ async function logout() {
 }
 
 function pushToLogin() {
+  adminPanelVisible.value = false
   resetData()
   router.push({ name: 'login' })
 }
 
 function pushToHome() {
+  adminPanelVisible.value = false
   resetData()
   router.push({ name: 'home' })
 }
 
 function toggleRoute() {
+  adminPanelVisible.value = false
   if (route.name === 'rain') {
     resetData()
     config.realtime = true
@@ -110,11 +116,17 @@ watchEffect(() => {
 })
 
 const menuVisible = ref(false)
+const adminPanelVisible = ref(false)
 const profileMenuWrapper = useTemplateRef<HTMLElement>('profileMenuWrapper')
 
 onClickOutside(profileMenuWrapper, () => {
   menuVisible.value = false
 })
+
+function toggleAdminPanel() {
+  adminPanelVisible.value = !adminPanelVisible.value
+  menuVisible.value = false
+}
 </script>
 
 <template>
@@ -160,6 +172,14 @@ onClickOutside(profileMenuWrapper, () => {
             </slot>
           </div>
 
+          <button
+            v-if="auth.canManageUsers"
+            @click="toggleAdminPanel()"
+            class="cursor-pointer rounded-md px-1 text-left text-sm text-white select-none hover:underline"
+          >
+            {{ adminPanelVisible ? 'Hide admin panel' : 'Admin panel' }}
+          </button>
+
           <button v-if="!auth.isLoggedIn" @click="pushToHome()"
             class="cursor-pointer rounded-md px-1 text-left text-sm text-white select-none hover:underline">
             Home page
@@ -176,6 +196,7 @@ onClickOutside(profileMenuWrapper, () => {
         </div>
       </div>
     </div>
+    <AdminPanel v-if="auth.canManageUsers && adminPanelVisible" @close="adminPanelVisible = false" />
     <!-- </div> -->
   </nav>
 </template>

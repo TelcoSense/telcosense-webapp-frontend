@@ -90,15 +90,15 @@ const layers = [
   // },
   {
     id: 'user-calc',
-    label: 'User intensity',
-    group: 'TelcoRain',
+    label: 'Rain intensity',
+    group: 'UserRain',
     layer: computed(() => useImageLayer(props.mapTarget, 'user-calc')),
     showOnRoutes: ['rain'],
   },
   {
     id: 'user-sum',
-    label: 'User sum',
-    group: 'TelcoRain',
+    label: 'Rain sum 1h',
+    group: 'UserRain',
     layer: computed(() => useImageLayer(props.mapTarget, 'user-sum')),
     showOnRoutes: ['rain'],
   },
@@ -153,7 +153,7 @@ function isLayerDisabled(layerRef: { value: ImageSequenceLayer }) {
 }
 
 // Telco groups in a fixed order (so UI doesn’t jump)
-const TELCO_GROUPS = ['TelcoRain', 'TelcoTemp'] as const
+const TELCO_GROUPS = ['TelcoRain', 'UserRain', 'TelcoTemp'] as const
 
 const telcoSections = computed(() => {
   const routeName = currentRouteName.value
@@ -172,7 +172,8 @@ const telcoSections = computed(() => {
     )
 
     // map group -> label shown in UI
-    const label = group === 'TelcoRain' ? 'TelcoRain' : 'TelcoTemp'
+    const label =
+      group === 'TelcoRain' ? 'TelcoRain' : group === 'UserRain' ? 'User calculations' : 'TelcoTemp'
 
     return { group, label, items }
   }).filter((s) => s.items.length > 0)
