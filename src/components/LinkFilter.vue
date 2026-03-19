@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useConfigStore } from '@/stores/config'
-import { useLinksStore } from '@/stores/links'
+import { isFullLink, useLinksStore } from '@/stores/links'
 import { ref, watch } from 'vue'
 
 const links = useLinksStore()
@@ -9,7 +9,10 @@ const config = useConfigStore()
 function getTechnologiesForGroup(group: string): string[] {
   return [
     ...new Set(
-      links.links.filter((link) => link.influx_mapping === group).map((link) => link.technology),
+      links.links
+        .filter(isFullLink)
+        .filter((link) => link.influx_mapping === group)
+        .map((link) => link.technology),
     ),
   ]
 }

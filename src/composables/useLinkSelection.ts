@@ -1,6 +1,7 @@
 import L from 'leaflet'
 import type { Ref } from 'vue'
 
+import { isFullLink } from '@/stores/links'
 import type { Link } from '@/stores/links'
 
 import { ref } from 'vue'
@@ -74,6 +75,8 @@ export function useLinkSelection({
 
       selectedLinkIds.value.clear()
       links.filteredLinks.forEach((link: Link) => {
+        if (!isFullLink(link)) return
+
         const pointA = L.latLng(link.site_A.y, link.site_A.x)
         const pointB = L.latLng(link.site_B.y, link.site_B.x)
         const mid = L.latLng((pointA.lat + pointB.lat) / 2, (pointA.lng + pointB.lng) / 2)

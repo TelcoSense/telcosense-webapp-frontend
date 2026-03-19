@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useLinksStore } from '@/stores/links'
+import { isFullLink } from '@/stores/links'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
@@ -19,9 +20,10 @@ watch(searchQuery, (newQuery) => {
 })
 
 const filteredAndSearchedLinks = computed(() => {
-  if (!debouncedQuery.value.trim()) return links.value
+  const fullLinks = links.value.filter(isFullLink)
+  if (!debouncedQuery.value.trim()) return fullLinks
   const q = debouncedQuery.value.toLowerCase()
-  return links.value.filter((link) => {
+  return fullLinks.filter((link) => {
     const allValues = [
       link.id,
       link.site_A.name,
