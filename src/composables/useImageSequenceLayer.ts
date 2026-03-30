@@ -1,6 +1,7 @@
 import { api } from '@/api'
 import getSecureConfig from '@/cookies'
 import axios from 'axios'
+import type { AxiosRequestConfig } from 'axios'
 import L from 'leaflet'
 import { computed, markRaw, ref, shallowRef } from 'vue'
 
@@ -207,11 +208,11 @@ export function useImageSequenceLayer(initialConfig: {
         : (preloadAbort ??= new AbortController())
 
     const frameUrl = api.getUri({ url: frame.url })
-    const requestConfig = getRequestConfig({
+    const requestConfig: AxiosRequestConfig = getRequestConfig({
       responseType: 'blob',
       signal: controller.signal,
       withCredentials: true,
-    })
+    } as const)
 
     if (priority === 'high') {
       console.log('[image-layer] fetching frame blob', {
