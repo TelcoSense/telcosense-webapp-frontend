@@ -625,9 +625,11 @@ function drawLinksTo(group: L.LayerGroup, store: Map<number, L.Polyline>) {
       })
 
       group.addLayer(polyline)
+      polyline.bringToFront()
       store.set(link.id, polyline)
     } else {
       polyline.setStyle({ color })
+      polyline.bringToFront()
     }
   })
 }
@@ -849,7 +851,6 @@ function updateLinkColors(
       if (!poly) continue
       const isSelected = selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
       poly.setStyle({ color: getLinkBaseColor(id, isSelected), weight: 2 })
-      poly.bringToBack()
     }
   }
   // became true
@@ -874,7 +875,7 @@ function resetWetLinkColors(store: Map<number, L.Polyline>, lastTrue: Set<number
     const isSelected = selectedLinkIds.value.has(id) || id.toString() === cmlData.selectedCmlId
 
     poly.setStyle({ color: getLinkBaseColor(id, isSelected), weight: 2 })
-    poly.bringToBack()
+    poly.bringToFront()
   }
   lastTrue.clear()
 }

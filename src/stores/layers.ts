@@ -48,6 +48,7 @@ export const useLayersStore = defineStore('layers', () => {
     useImageLayer('main', 'user-calc', {
       apiUrl: '/placeholder',
       bounds: L.latLngBounds([0, 0], [0, 0]),
+      secure: true,
     }),
   )
 
@@ -55,6 +56,7 @@ export const useLayersStore = defineStore('layers', () => {
     useImageLayer('main', 'user-sum', {
       apiUrl: '/placeholder',
       bounds: L.latLngBounds([0, 0], [0, 0]),
+      secure: true,
     }),
   )
 
@@ -125,14 +127,16 @@ export const useLayersStore = defineStore('layers', () => {
     }),
   )
 
-  function clearRainLayers(secondary: boolean = false) {
+  function clearRainLayers(secondary: boolean = false, includeUser: boolean = true) {
     maxz.value.clear()
     cappi2km.value.clear()
     merge1h.value.clear()
     raincz.value.clear()
     rainSum.value.clear()
-    userCalc.value.clear()
-    userSum.value.clear()
+    if (includeUser) {
+      userCalc.value.clear()
+      userSum.value.clear()
+    }
     if (secondary) {
       maxzSecondary.value.clear()
       cappi2kmSecondary.value.clear()

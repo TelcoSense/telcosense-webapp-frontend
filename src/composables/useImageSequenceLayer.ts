@@ -1,4 +1,5 @@
 import { api } from '@/api'
+import getSecureConfig from '@/cookies'
 import L from 'leaflet'
 import { computed, markRaw, ref, shallowRef } from 'vue'
 
@@ -14,9 +15,14 @@ type CacheEntry = {
   lastUsed: number
 }
 
-export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L.LatLngBounds }) {
+export function useImageSequenceLayer(initialConfig: {
+  apiUrl: string
+  bounds: L.LatLngBounds
+  secure?: boolean
+}) {
   const apiUrl = ref(initialConfig.apiUrl)
   const bounds = ref(initialConfig.bounds)
+  const secure = ref(initialConfig.secure ?? false)
 
   const frames = shallowRef<Frame[]>([])
   const timestampMs = shallowRef<number[]>([])
@@ -90,6 +96,10 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     map.value = markRaw(newMap)
   }
 
+  function getRequestConfig<T extends Record<string, unknown>>(extra: T = {} as T) {
+    return secure.value ? { ...extra, ...getSecureConfig() } : extra
+  }
+
   function setOpacity(value: number) {
     opacity.value = value
     overlay.value?.setOpacity(value)
@@ -127,7 +137,10 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     showAbort = null
 
     try {
-      const res = await api.get<Frame[]>(apiUrl.value, { params: { start, end } })
+      const res = await api.get<Frame[]>(
+        apiUrl.value,
+        getRequestConfig({ params: { start, end } }),
+      )
       frames.value = res.data
 
       // precompute ms array for fast binary search
@@ -188,10 +201,13 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
         ? (showAbort ??= new AbortController())
         : (preloadAbort ??= new AbortController())
 
-    const res = await api.get(frame.url, {
-      responseType: 'blob',
-      signal: controller.signal,
-    })
+    const res = await api.get(
+      frame.url,
+      getRequestConfig({
+        responseType: 'blob',
+        signal: controller.signal,
+      }),
+    )
 
     const objectUrl = URL.createObjectURL(res.data as Blob)
     blobCache.set(frame.timestamp, { objectUrl, lastUsed: performance.now() })
@@ -334,7 +350,10 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
 
     try {
       stopPreload()
-      const res = await api.get<Frame[]>(apiUrl.value, { params: { start: tickStart, end: tickEnd } })
+      const res = await api.get<Frame[]>(
+        apiUrl.value,
+        getRequestConfig({ params: { start: tickStart, end: tickEnd } }),
+      )
       const got = res.data ?? []
       const wasAtEnd = currentIndex.value >= frames.value.length - 1
       const fresh = got
@@ -498,6 +517,7 @@ export function useImageSequenceLayer(initialConfig: { apiUrl: string; bounds: L
     clear,
     setApiUrl,
     setBounds,
+    secure,
   }
 }
 

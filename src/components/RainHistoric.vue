@@ -44,7 +44,7 @@ interface Calculation {
 
 const userCalcLayer = useImageLayer('main', 'user-calc')
 const userSumLayer = useImageLayer('main', 'user-sum')
-const { clearMainLayer, clearSecondaryLayer } = useActiveLayer()
+const { activeLayerMain, clearMainLayer, clearSecondaryLayer } = useActiveLayer()
 
 const config = useConfigStore()
 const layers = useLayersStore()
@@ -98,6 +98,13 @@ async function viewCalculation(calc: Calculation) {
   userSumLayer.setApiUrl(`/sum/${calc.name}/list`)
   userSumLayer.setBounds(L.latLngBounds([48.047, 11.267], [51.458, 19.624]))
   await userSumLayer.fetchList(calc.start, calc.end)
+
+  // Keep the currently selected custom layer visible after the calculation data reloads.
+  if (activeLayerMain.value?.id === 'user-calc' && userCalcLayer.frames.value.length > 0) {
+    await userCalcLayer.showNearestTimestamp(calc.end)
+  } else if (activeLayerMain.value?.id === 'user-sum' && userSumLayer.frames.value.length > 0) {
+    await userSumLayer.showNearestTimestamp(calc.end)
+  }
 }
 
 async function startRainCalculation() {
@@ -175,11 +182,11 @@ function applyCustomRange(start: string, end: string) {
   if (config.splitView) {
     clearMainLayer()
     clearSecondaryLayer()
-    layers.clearRainLayers(true)
+    layers.clearRainLayers(true, false)
     layers.fetchListRain(config.start, config.end, true)
   } else {
     clearMainLayer()
-    layers.clearRainLayers(false)
+    layers.clearRainLayers(false, false)
     layers.fetchListRain(config.start, config.end, false)
   }
 

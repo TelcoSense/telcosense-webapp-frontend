@@ -7,7 +7,7 @@ export function useImageLayer(
   mapTarget: 'main' | 'secondary',
   id: string,
 
-  config?: { apiUrl: string; bounds: L.LatLngBounds }
+  config?: { apiUrl: string; bounds: L.LatLngBounds; secure?: boolean }
 ) {
   const key = `${mapTarget}:${id}`
 
