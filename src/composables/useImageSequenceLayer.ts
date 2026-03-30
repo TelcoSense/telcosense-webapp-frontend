@@ -1,5 +1,6 @@
 import { api } from '@/api'
 import getSecureConfig from '@/cookies'
+import axios from 'axios'
 import L from 'leaflet'
 import { computed, markRaw, ref, shallowRef } from 'vue'
 
@@ -205,13 +206,35 @@ export function useImageSequenceLayer(initialConfig: {
         ? (showAbort ??= new AbortController())
         : (preloadAbort ??= new AbortController())
 
-    const res = await api.get(
-      frame.url,
-      getRequestConfig({
-        responseType: 'blob',
-        signal: controller.signal,
-      }),
-    )
+    const frameUrl = api.getUri({ url: frame.url })
+    const requestConfig = getRequestConfig({
+      responseType: 'blob',
+      signal: controller.signal,
+      withCredentials: true,
+    })
+
+    if (priority === 'high') {
+      console.log('[image-layer] fetching frame blob', {
+        apiUrl: apiUrl.value,
+        frameUrl,
+        timestamp: frame.timestamp,
+        secure: secure.value,
+      })
+    }
+
+    const res = await axios.get(frameUrl, requestConfig)
+
+    if (priority === 'high') {
+      console.log('[image-layer] fetched frame blob', {
+        apiUrl: apiUrl.value,
+        frameUrl,
+        timestamp: frame.timestamp,
+        status: res.status,
+        contentType: res.headers['content-type'],
+        blobType: res.data?.type,
+        blobSize: res.data?.size,
+      })
+    }
 
     const objectUrl = URL.createObjectURL(res.data as Blob)
     blobCache.set(frame.timestamp, { objectUrl, lastUsed: performance.now() })
@@ -308,6 +331,14 @@ export function useImageSequenceLayer(initialConfig: {
       schedulePreloadWindow(index, 25)
     } catch (err) {
       if (!isCanceled(err)) {
+        console.error('[image-layer] failed to show frame', {
+          apiUrl: apiUrl.value,
+          frameUrl: frame.url,
+          timestamp: frame.timestamp,
+          index,
+          secure: secure.value,
+          error: err,
+        })
         console.error('Failed to show frame:', err)
       }
     } finally {

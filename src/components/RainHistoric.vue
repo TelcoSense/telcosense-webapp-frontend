@@ -87,15 +87,16 @@ const data = ref({
 
 async function viewCalculation(calc: Calculation) {
   if (!map.value) return
+  const calcPath = encodeURIComponent(calc.name)
   applyCustomRange(calc.start, calc.end)
   userCalcLayer.clear()
   userCalcLayer.setMap(map.value as L.Map)
-  userCalcLayer.setApiUrl(`/intensities/${calc.name}/list`)
+  userCalcLayer.setApiUrl(`/intensities/${calcPath}/list`)
   userCalcLayer.setBounds(L.latLngBounds([48.047, 11.267], [51.458, 19.624]))
   await userCalcLayer.fetchList(calc.start, calc.end)
   userSumLayer.clear()
   userSumLayer.setMap(map.value as L.Map)
-  userSumLayer.setApiUrl(`/sum/${calc.name}/list`)
+  userSumLayer.setApiUrl(`/sum/${calcPath}/list`)
   userSumLayer.setBounds(L.latLngBounds([48.047, 11.267], [51.458, 19.624]))
   await userSumLayer.fetchList(calc.start, calc.end)
 
