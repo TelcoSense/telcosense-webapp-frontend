@@ -96,8 +96,12 @@ export function useImageSequenceLayer(initialConfig: {
     map.value = markRaw(newMap)
   }
 
-  function getRequestConfig<T extends Record<string, unknown>>(extra: T = {} as T) {
-    return secure.value ? { ...extra, ...getSecureConfig() } : extra
+  function getRequestConfig<T>(extra: T): T & ReturnType<typeof getSecureConfig>
+  function getRequestConfig(extra?: undefined): ReturnType<typeof getSecureConfig> | undefined
+  function getRequestConfig<T>(extra?: T) {
+    if (!secure.value) return extra
+    if (!extra) return getSecureConfig()
+    return { ...extra, ...getSecureConfig() }
   }
 
   function setOpacity(value: number) {
